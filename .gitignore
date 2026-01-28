@@ -51,6 +51,9 @@ clients/GVGAI-JavaClient/sources.txt
 
 clients/GVGAI-JavaClient/logs/clientLog.txt
 
+# Build artifacts
+sources.txt
+
 clients/GVGAI-PythonClient/src/logs/output_server_redirect.txt
 
 clients/GVGAI-PythonClient/src/logs/clientLog.txt
