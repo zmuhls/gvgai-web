@@ -1,0 +1,9 @@
+{
+  "id": "aliens-strategy",
+  "name": "Aliens Strategy",
+  "layer": "game",
+  "category": "strategy",
+  "content": "Space invaders variant. Aliens scroll horizontally and drop bombs. You move left/right and shoot upward (ACTION_USE). Killing aliens scores +2, losing your bases scores +1 each but they're finite shields. Avoid bombs and alien contact (-1 each). Win by clearing all aliens and portals.\n\nAVAILABLE ACTIONS: {{availableActions}}",
+  "createdAt": "2026-01-31T00:00:00.000Z",
+  "updatedAt": "2026-01-31T00:00:00.000Z"
+}

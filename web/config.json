@@ -1,0 +1,21 @@
+{
+  "server": {
+    "port": 3000,
+    "host": "localhost"
+  },
+  "gvgai": {
+    "socketPort": 8080,
+    "classpath": "out:gson-2.6.2.jar:.",
+    "mainClass": "tracks.singleLearning.utils.JavaServer",
+    "screenshotPath": "gameStateByBytes.png",
+    "javaPath": "/usr/local/opt/openjdk@11/bin/java",
+    "projectRoot": "/Users/zacharymuhlbauer/Desktop/studio/projects/GVGAI"
+  },
+  "openrouter": {
+    "apiUrl": "https://openrouter.ai/api/v1/chat/completions",
+    "defaultModel": "gemma3:1b"
+  },
+  "ollama": {
+    "apiUrl": "http://localhost:11434/v1/chat/completions"
+  }
+}

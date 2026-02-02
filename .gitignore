@@ -62,3 +62,11 @@ clients/GVGAI-PythonClient/src/logs/clientLog.txt
 examples/super_secret
 src/META-INF/MANIFEST.MF
 src/rs/META-INF/MANIFEST.MF
+
+# Node
+node_modules/
+.env
+
+# Runtime artifacts
+gameStateByBytes.png
+logs/

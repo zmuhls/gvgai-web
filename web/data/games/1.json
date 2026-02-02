@@ -1,0 +1,15 @@
+{
+  "gameId": 1,
+  "gameName": "angelsdemons",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": "angelsdemons-strategy",
+    "customOverride": null
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-01-31T00:00:00.000Z"
+}

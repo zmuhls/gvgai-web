@@ -1,0 +1,9 @@
+{
+  "id": "avoidgeorge-strategy",
+  "name": "Avoid George Strategy",
+  "layer": "game",
+  "category": "strategy",
+  "content": "George chases citizens. When he touches one, it becomes annoyed. You lose if all quiet citizens are gone. Survive 1000 ticks to win. Fire a cigarette (ACTION_USE) at annoyed citizens to calm them back to quiet (+1). Keep distance from George (-1 on contact, kills you). Prioritize calming annoyed citizens before George reaches the remaining quiet ones.\n\nAVAILABLE ACTIONS: {{availableActions}}",
+  "createdAt": "2026-01-31T00:00:00.000Z",
+  "updatedAt": "2026-01-31T00:00:00.000Z"
+}

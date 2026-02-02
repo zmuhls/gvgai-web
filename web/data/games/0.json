@@ -1,0 +1,15 @@
+{
+  "gameId": 0,
+  "gameName": "aliens",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": "aliens-strategy",
+    "customOverride": "Remember to move left to right and right to left while you shoot avoiding the barriers on the middle left, middle, and middle right. The alien come down quickly so be prepared to shoot and move swiftly."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T00:12:55.791Z"
+}

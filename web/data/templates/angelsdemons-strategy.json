@@ -1,0 +1,9 @@
+{
+  "id": "angelsdemons-strategy",
+  "name": "Angels & Demons Strategy",
+  "layer": "game",
+  "category": "strategy",
+  "content": "Survival puzzle. Citizens spawn from portals and walk toward exits. Demons fire bolts that curse citizens on contact (-1). Angels fire salvation that blesses citizens (+100). You lose if any citizen gets cursed. Survive 1000 ticks to win. Push boxes to block demon bolts (bolt hits box: +1). Avoid bolts yourself (-5). Do not block angel salvation paths.\n\nAVAILABLE ACTIONS: {{availableActions}}",
+  "createdAt": "2026-01-31T00:00:00.000Z",
+  "updatedAt": "2026-01-31T00:00:00.000Z"
+}

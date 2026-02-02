@@ -1,0 +1,9 @@
+{
+  "id": "assemblyline-strategy",
+  "name": "Assemblyline Strategy",
+  "layer": "game",
+  "category": "strategy",
+  "content": "This is a routing puzzle. Items spawn from a portal, travel along conveyor lines, and must pass through three colored stations in order before reaching the goal. Your avatar fires a projectile (ACTION_USE) that rotates nearby cannons, which redirect item flow. Position yourself near cannons and rotate them to complete the route.\n\nAVAILABLE ACTIONS: {{availableActions}}",
+  "createdAt": "2026-01-30T00:00:00.000Z",
+  "updatedAt": "2026-01-30T00:00:00.000Z"
+}
