@@ -1,0 +1,15 @@
+{
+  "gameId": 18,
+  "gameName": "chase",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Scoring: angry (-1), collect scared (+1). Avoid: angry. Win: clear all scared. Lose: die. Mechanics: collect scared to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 200,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.700Z"
+}

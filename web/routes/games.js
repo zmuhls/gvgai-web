@@ -5,11 +5,23 @@ const router = express.Router();
 
 const PROJECT_ROOT = path.join(__dirname, '../..');
 
+// Load the featured-games list (curation is data; safe if the file is missing)
+function loadFeaturedSet() {
+  try {
+    const featuredPath = path.join(__dirname, '../data/featured.json');
+    const { featured } = JSON.parse(fs.readFileSync(featuredPath, 'utf-8'));
+    return new Set(Array.isArray(featured) ? featured : []);
+  } catch (e) {
+    return new Set();
+  }
+}
+
 // Parse games CSV and return list
 router.get('/', (req, res) => {
   try {
     const csvPath = path.join(PROJECT_ROOT, 'examples/all_games_sp.csv');
     const csvContent = fs.readFileSync(csvPath, 'utf-8');
+    const featuredSet = loadFeaturedSet();
 
     const games = csvContent
       .trim()
@@ -41,7 +53,8 @@ router.get('/', (req, res) => {
           file: trimmedFilepath,
           category,
           levels,
-          levelCount: levels.length
+          levelCount: levels.length,
+          featured: featuredSet.has(parseInt(id))
         };
       });
 

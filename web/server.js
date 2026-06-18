@@ -6,8 +6,16 @@ const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 const fs = require('fs');
-const chokidar = require('chokidar');
 const config = require('./config.json');
+
+// Derive the GVGAI project root from this file's location (web/ lives at <root>/web)
+// so the app is portable across machines, Docker, and Railway. An explicit
+// projectRoot in config is honored only when it actually exists on disk.
+// Mutating the shared (cached) config object propagates this to game-manager too.
+if (!config.gvgai.projectRoot || !fs.existsSync(config.gvgai.projectRoot)) {
+  config.gvgai.projectRoot = path.resolve(__dirname, '..');
+}
+
 const gameManager = require('./lib/game-manager');
 const LLMClient = require('./lib/llm-client');
 
@@ -25,80 +33,102 @@ validationClient.validateApiKey().then(valid => {
   }
 });
 
-// Screenshot streaming
+// Screenshot streaming — native fs.watch for low-latency macOS FSEvents
 let screenshotWatcher = null;
-let lastScreenshotMtime = null;  // Track last modification time to deduplicate
+let lastScreenshotMtime = null;
+let lastFrameSendTime = 0;
+let pendingFrameTimeout = null;
+const FRAME_MIN_INTERVAL = 33;  // ~30fps cap
 const screenshotPath = path.join(config.gvgai.projectRoot, config.gvgai.screenshotPath);
 
 function startScreenshotStreaming() {
-  if (screenshotWatcher) {
-    screenshotWatcher.close();
-  }
+  stopScreenshotStreaming();
 
   console.log('[Server] Starting screenshot streaming from:', screenshotPath);
 
-  screenshotWatcher = chokidar.watch(screenshotPath, {
-    persistent: true,
-    ignoreInitial: false,
-    awaitWriteFinish: {
-      stabilityThreshold: 10,  // Reduced from 50ms to 10ms for lower latency
-      pollInterval: 5          // Reduced from 10ms to 5ms for faster detection
-    }
-  });
+  // Ensure file exists before watching (fs.watch requires existing file)
+  const dir = path.dirname(screenshotPath);
+  const filename = path.basename(screenshotPath);
 
-  screenshotWatcher.on('add', (path) => {
-    console.log('[Server] Screenshot file added:', path);
-    sendScreenshotAsync();  // Use async version
-  });
-  screenshotWatcher.on('change', (path) => {
-    console.log('[Server] Screenshot file changed:', path);
-    sendScreenshotAsync();  // Use async version
-  });
-  screenshotWatcher.on('error', (error) => {
-    console.error('[Server] Screenshot watcher error:', error);
-  });
+  try {
+    // Watch the directory for changes to the screenshot file
+    screenshotWatcher = fs.watch(dir, { persistent: true }, (eventType, changedFile) => {
+      if (changedFile === filename) {
+        scheduleFrameSend();
+      }
+    });
+
+    screenshotWatcher.on('error', (error) => {
+      console.error('[Server] Screenshot watcher error:', error);
+    });
+  } catch (error) {
+    console.error('[Server] Failed to start file watcher, falling back to polling:', error.message);
+    // Fallback: poll every 33ms
+    screenshotWatcher = setInterval(() => scheduleFrameSend(), FRAME_MIN_INTERVAL);
+    screenshotWatcher._isInterval = true;
+  }
 }
 
-// Async version: Uses promises to avoid blocking event loop
+// Throttle frame sends to ~30fps max
+function scheduleFrameSend() {
+  const now = Date.now();
+  const elapsed = now - lastFrameSendTime;
+
+  if (elapsed >= FRAME_MIN_INTERVAL) {
+    // Send immediately
+    sendScreenshotAsync();
+  } else if (!pendingFrameTimeout) {
+    // Schedule send for when the throttle window opens
+    pendingFrameTimeout = setTimeout(() => {
+      pendingFrameTimeout = null;
+      sendScreenshotAsync();
+    }, FRAME_MIN_INTERVAL - elapsed);
+  }
+  // Otherwise a send is already scheduled, skip
+}
+
 async function sendScreenshotAsync() {
   try {
-    if (!fs.existsSync(screenshotPath)) {
-      return;
-    }
-
     const stats = await fs.promises.stat(screenshotPath);
 
     // Deduplicate based on modification time
     if (lastScreenshotMtime && stats.mtime.getTime() === lastScreenshotMtime) {
-      return; // Same file, skip sending
+      return;
     }
     lastScreenshotMtime = stats.mtime.getTime();
+    lastFrameSendTime = Date.now();
 
-    // Async file read (doesn't block event loop)
+    // Async file read
     const imageBuffer = await fs.promises.readFile(screenshotPath);
 
-    // Offload base64 encoding to next tick to spread CPU cost
-    const base64 = await new Promise((resolve) => {
-      setImmediate(() => resolve(imageBuffer.toString('base64')));
-    });
-
+    // Convert to base64 data URL so the client can use it directly as img.src
+    const base64 = imageBuffer.toString('base64');
     io.emit('game-frame', {
       image: `data:image/png;base64,${base64}`,
-      timestamp: Date.now(),
-      mtime: stats.mtime.toISOString()
+      timestamp: Date.now()
     });
-
-    console.log(`[Server] Screenshot sent: ${stats.size} bytes, modified: ${stats.mtime.toISOString()}`);
   } catch (error) {
-    console.error('[Server] Error sending screenshot:', error.message);
+    // File might not exist yet or be mid-write, silently skip
+    if (error.code !== 'ENOENT') {
+      console.error('[Server] Error sending screenshot:', error.message);
+    }
   }
 }
 
 function stopScreenshotStreaming() {
+  if (pendingFrameTimeout) {
+    clearTimeout(pendingFrameTimeout);
+    pendingFrameTimeout = null;
+  }
   if (screenshotWatcher) {
-    screenshotWatcher.close();
+    if (screenshotWatcher._isInterval) {
+      clearInterval(screenshotWatcher);
+    } else {
+      screenshotWatcher.close();
+    }
     screenshotWatcher = null;
-    lastScreenshotMtime = null;  // Reset on stop
+    lastScreenshotMtime = null;
+    lastFrameSendTime = 0;
     console.log('[Server] Stopped screenshot streaming');
   }
 }
@@ -132,7 +162,7 @@ const activeGames = new Map();
 
 // Start game endpoint (API key loaded from environment)
 app.post('/api/game/start', async (req, res) => {
-  const { gameId, levelId, model } = req.body;
+  const { gameId, levelId, model, strategy } = req.body;
 
   try {
     console.log(`[Server] Starting game ${gameId} (level ${levelId}) with model ${model}`);
@@ -173,7 +203,7 @@ app.post('/api/game/start', async (req, res) => {
     // Connect LLM client to GVGAI socket
     try {
       const gameName = resolveGameName(gameId);
-      await llmClient.connect(config.gvgai.socketPort, model, io, gameId, gameName);
+      await llmClient.connect(config.gvgai.socketPort, model, io, gameId, gameName, strategy);
       console.log('[Server] LLM client connected successfully');
     } catch (error) {
       console.error('[Server] Failed to connect LLM client:', error);

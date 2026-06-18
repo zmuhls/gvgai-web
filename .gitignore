@@ -67,6 +67,9 @@ src/rs/META-INF/MANIFEST.MF
 node_modules/
 .env
 
+# Web frontend entry point — must be tracked despite the global *.html ignore above
+!web/public/index.html
+
 # Runtime artifacts
 gameStateByBytes.png
 logs/

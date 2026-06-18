@@ -1,14 +1,16 @@
 const net = require('net');
 const config = require('../config.json');
-const { buildPrompt } = require('./state-converter');
-const { parseAction } = require('./response-parser');
+const { buildPrompt, computeAdherence, GameStateTracker } = require('./state-converter');
+const { parseStructured } = require('./response-parser');
+const { resolveModel } = require('./models');
 const promptStore = require('./prompt-store');
 
 class LLMClient {
   constructor() {
     this.socket = null;
-    // Load API key from environment (optional for local Ollama)
-    this.apiKey = process.env.OPENROUTER_API_KEY || null;
+    // Load API keys from environment (Ollama Cloud is primary, OpenRouter is fallback)
+    this.apiKey = process.env.OPENROUTER_API_KEY || null;          // OpenRouter (fallback)
+    this.ollamaApiKey = process.env.OLLAMA_API_KEY || null;        // Ollama Cloud (primary)
     this.model = config.openrouter.defaultModel;
     this.io = null;
     this.lastReceivedMessageId = null;  // Track the messageId from Java
@@ -22,6 +24,10 @@ class LLMClient {
     this.gameId = null;  // Game ID for prompt config lookup
     this.gameName = null;  // Resolved game name from CSV
     this.promptConfig = null;  // Resolved prompt config from dashboard
+    this.stateTracker = new GameStateTracker();  // Rolling history (was previously never instantiated)
+    this.sessionStrategy = null;  // Ephemeral per-session player directive (never persisted)
+    this.runLog = [];  // Per-decision log for the end-of-run summary: { tick, action, reason, scoreDelta }
+    this.runStartScore = null;  // Score at the first tick of the run
   }
 
   // Validate API key with OpenRouter (skipped for local Ollama)
@@ -49,12 +55,17 @@ class LLMClient {
     }
   }
 
-  async connect(port, model, io, gameId, gameName) {
+  async connect(port, model, io, gameId, gameName, sessionStrategy = null) {
     this.model = model;
     this.io = io;
     this.gameActive = true;
     this.gameId = gameId != null ? gameId : null;
     this.gameName = gameName || 'unknown';
+    // Runtime-only directive — lives on the instance, never reaches promptStore.saveGameConfig
+    this.sessionStrategy = (sessionStrategy || '').trim() || null;
+    this.stateTracker.reset();
+    this.runLog = [];
+    this.runStartScore = null;
     this.promptConfig = promptStore.resolveGamePromptConfig(this.gameId, 0);
     // Ensure gameName is set even when game config doesn't specify it
     if (this.promptConfig && !this.promptConfig.gameName) {
@@ -167,6 +178,9 @@ class LLMClient {
           // Parse game state and emit to frontend for UI updates
           try {
             const sso = JSON.parse(jsonPayload);
+            // Record every tick so history/loop-detection layers and run summary have data
+            this.stateTracker.recordTick(sso);
+            if (this.runStartScore === null) this.runStartScore = sso.gameScore || 0;
             if (this.io) {
               this.io.emit('game-state', {
                 score: sso.gameScore,
@@ -238,6 +252,54 @@ class LLMClient {
     this.sendMessageWithId(msgId, 'INIT_DONE#BOTH');
   }
 
+  // Call a single provider's OpenAI-compatible chat endpoint. Returns the response
+  // text, or throws on a non-OK status so the caller can trigger the fallback.
+  async callProvider(provider, modelId, messages, settings) {
+    let apiUrl;
+    const headers = { 'Content-Type': 'application/json' };
+
+    const body = {
+      model: modelId,
+      messages,
+      max_tokens: settings.maxTokens || 200,
+      temperature: settings.temperature !== undefined ? settings.temperature : 0.7
+    };
+
+    if (provider === 'ollama-cloud') {
+      apiUrl = config.ollamaCloud.apiUrl;
+      if (this.ollamaApiKey) headers['Authorization'] = `Bearer ${this.ollamaApiKey}`;
+      // Many Ollama Cloud models (e.g. gpt-oss) are reasoning models that burn the
+      // token budget on hidden reasoning, leaving content empty. Low effort keeps
+      // them fast (~876ms vs ~1460ms) and the visible answer non-empty.
+      body.reasoning_effort = 'low';
+    } else if (provider === 'ollama-local') {
+      apiUrl = config.ollama.apiUrl;
+    } else { // openrouter
+      apiUrl = config.openrouter.apiUrl;
+      if (this.apiKey) {
+        headers['Authorization'] = `Bearer ${this.apiKey}`;
+        headers['HTTP-Referer'] = 'https://github.com/yourusername/gvgai-llm';
+        headers['X-Title'] = 'GVGAI LLM Agent';
+      }
+    }
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`${provider} ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    const msg = data.choices?.[0]?.message || {};
+    // Fall back to the reasoning field if a reasoning model truncated before content
+    return msg.content || msg.reasoning || '';
+  }
+
   async startAsyncLLMCall(jsonPayload) {
     this.llmCallInProgress = true;
     this.lastLLMCallTime = Date.now();
@@ -246,8 +308,9 @@ class LLMClient {
       // Parse JSON (this is slow but happens async)
       const sso = JSON.parse(jsonPayload);
 
-      // Build prompt from game state using dashboard-configured layers (or legacy fallback)
-      const { systemMessage, userMessage } = buildPrompt(sso, this.promptConfig);
+      // Build prompt from game state using dashboard-configured layers (or legacy fallback),
+      // with rolling history and the ephemeral session strategy layered on top.
+      const { systemMessage, userMessage } = buildPrompt(sso, this.promptConfig, this.stateTracker, this.sessionStrategy);
       const prompt = userMessage; // For logging/broadcasting
 
       // Build messages array (system + user if dashboard config exists)
@@ -260,48 +323,52 @@ class LLMClient {
       // Use per-game LLM settings if configured, otherwise defaults
       const settings = this.promptConfig?.llmSettings || {};
 
-      // Call LLM API
+      // Resolve routing: try the primary provider, fall back to OpenRouter on failure
+      const resolved = resolveModel(this.model);
       const startTime = Date.now();
-      const headers = { 'Content-Type': 'application/json' };
-      if (this.apiKey) {
-        headers['Authorization'] = `Bearer ${this.apiKey}`;
-        headers['HTTP-Referer'] = 'https://github.com/yourusername/gvgai-llm';
-        headers['X-Title'] = 'GVGAI LLM Agent';
-      }
+      let llmResponse;
+      let usedProvider = resolved.provider;
+      let usedModel = resolved.id;
 
-      // Route to Ollama for local models (no slash), OpenRouter for cloud models (org/model)
-      const apiUrl = this.model.includes('/') ? config.openrouter.apiUrl : config.ollama.apiUrl;
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          model: this.model,
-          messages,
-          max_tokens: settings.maxTokens || 100,
-          temperature: settings.temperature !== undefined ? settings.temperature : 0.7
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        if (this.io) {
-          this.io.emit('llm-error', { status: response.status, message: errorText });
+      try {
+        llmResponse = await this.callProvider(resolved.provider, resolved.id, messages, settings);
+      } catch (primaryErr) {
+        console.warn(`[LLMClient] Primary ${resolved.provider}/${resolved.id} failed: ${primaryErr.message}`);
+        if (resolved.fallback) {
+          usedProvider = 'openrouter';
+          usedModel = resolved.fallback;
+          try {
+            llmResponse = await this.callProvider('openrouter', resolved.fallback, messages, settings);
+            console.log(`[LLMClient] Fell back to openrouter/${resolved.fallback}`);
+          } catch (fallbackErr) {
+            if (this.io) this.io.emit('llm-error', { status: 0, message: `primary + fallback failed: ${fallbackErr.message}` });
+            throw fallbackErr;
+          }
+        } else {
+          if (this.io) this.io.emit('llm-error', { status: 0, message: primaryErr.message });
+          throw primaryErr;
         }
-        throw new Error(`OpenRouter API error: ${response.status}: ${errorText}`);
       }
 
-      const data = await response.json();
-      const llmResponse = data.choices[0]?.message?.content || '';
       const elapsed = Date.now() - startTime;
 
-      // Parse action from LLM response
-      const action = parseAction(llmResponse);
+      // Parse action + rationale from LLM response (structured when narration is on)
+      const { action, reason } = parseStructured(llmResponse, sso.availableActions);
 
       // Store action for next tick
       this.pendingLLMAction = action;
 
-      console.log(`[LLMClient] LLM completed (${elapsed}ms): ${action}`);
+      // Record the decision: tracker (for history/loop deltas) + run log (for summary)
+      this.stateTracker.recordAction(action, sso.gameTick);
+      const lastDelta = this.stateTracker.actionHistory[this.stateTracker.actionHistory.length - 1];
+      this.runLog.push({
+        tick: sso.gameTick,
+        action,
+        reason,
+        scoreDelta: lastDelta ? lastDelta.scoreDelta : 0
+      });
+
+      console.log(`[LLMClient] LLM completed (${elapsed}ms): ${action}${reason ? ' — ' + reason : ''}`);
 
       // Broadcast to frontend
       if (this.io) {
@@ -309,8 +376,12 @@ class LLMClient {
           prompt,
           systemPrompt: systemMessage || null,
           response: llmResponse,
+          reason,
+          strategy: this.sessionStrategy,
           action,
           elapsed,
+          provider: usedProvider,
+          modelUsed: usedModel,
           gameState: {
             score: sso.gameScore,
             health: sso.avatarHealthPoints,
@@ -331,6 +402,9 @@ class LLMClient {
     console.log(`[LLMClient] Score: ${sso.gameScore}`);
     console.log(`[LLMClient] Winner: ${sso.gameWinner}`);
 
+    // Build the end-of-run summary BEFORE resetting run state
+    const summary = this.buildRunSummary(sso);
+
     // Reset LLM state for next level
     this.pendingLLMAction = null;
     this.llmCallInProgress = false;
@@ -344,10 +418,56 @@ class LLMClient {
         ticks: sso.gameTick,
         level: this.levelCount
       });
+      this.io.emit('run-summary', summary);
     }
+
+    // Reset run accumulation + history for the next level
+    this.runLog = [];
+    this.runStartScore = null;
+    this.stateTracker.reset();
 
     // Send acknowledgment
     this.sendMessageWithId(msgId, 'END_DONE');
+  }
+
+  // Aggregate the run log into a summary card payload: score, win/loss, the echoed
+  // strategy, a stated-adherence signal, and a few concrete highlight decisions.
+  buildRunSummary(sso) {
+    const won = sso.gameWinner === 'PLAYER_WINS' || sso.gameWinner === true;
+    const adherence = computeAdherence(this.sessionStrategy, this.runLog);
+
+    // Highlights: prefer score-gaining decisions; fall back to strategy-mentioning ones
+    let highlights = this.runLog
+      .filter(e => e.scoreDelta > 0)
+      .sort((a, b) => b.scoreDelta - a.scoreDelta)
+      .slice(0, 5);
+    if (highlights.length < 3 && adherence.keywords.length > 0) {
+      const seen = new Set(highlights.map(h => h.tick));
+      for (const e of this.runLog) {
+        if (seen.has(e.tick)) continue;
+        const r = (e.reason || '').toLowerCase();
+        if (adherence.keywords.some(k => r.includes(k))) {
+          highlights.push(e);
+          if (highlights.length >= 5) break;
+        }
+      }
+    }
+    highlights = highlights
+      .slice(0, 5)
+      .sort((a, b) => a.tick - b.tick)
+      .map(e => ({ tick: e.tick, action: e.action, reason: e.reason, scoreDelta: e.scoreDelta }));
+
+    return {
+      strategy: this.sessionStrategy,
+      finalScore: sso.gameScore || 0,
+      winner: sso.gameWinner,
+      won,
+      ticks: sso.gameTick || 0,
+      decisions: this.runLog.length,
+      level: this.levelCount,
+      adherence,
+      highlights
+    };
   }
 
   sendMessageWithId(msgId, msg) {

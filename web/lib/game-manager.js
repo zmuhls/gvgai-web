@@ -1,6 +1,17 @@
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 const config = require('../config.json');
+
+// Resolve a usable java binary + env, portable across machines (local box, Docker, Railway).
+// Prefer the configured javaPath when it exists, else fall back to `java` on PATH.
+const HOMEBREW_JDK11 = '/opt/homebrew/opt/openjdk@11';
+const JAVA_BIN = (config.gvgai.javaPath && fs.existsSync(config.gvgai.javaPath))
+  ? config.gvgai.javaPath
+  : 'java';
+const JAVA_ENV = fs.existsSync(HOMEBREW_JDK11)
+  ? { ...process.env, JAVA_HOME: HOMEBREW_JDK11, PATH: `${HOMEBREW_JDK11}/bin:${process.env.PATH}` }
+  : { ...process.env };
 
 class GameManager {
   constructor() {
@@ -26,15 +37,11 @@ class GameManager {
 
     console.log(`[GameManager] Starting game ${gameId} (level ${levelId})`);
     console.log(`[GameManager] Process ID: ${processId}`);
-    console.log(`[GameManager] Java command: ${config.gvgai.javaPath} ${args.join(' ')}`);
+    console.log(`[GameManager] Java command: ${JAVA_BIN} ${args.join(' ')}`);
 
-    const javaProcess = spawn(config.gvgai.javaPath, args, {
+    const javaProcess = spawn(JAVA_BIN, args, {
       cwd: config.gvgai.projectRoot,
-      env: {
-        ...process.env,
-        JAVA_HOME: '/usr/local/opt/openjdk@11',
-        PATH: `/usr/local/opt/openjdk@11/bin:${process.env.PATH}`
-      }
+      env: JAVA_ENV
     });
 
     console.log(`[GameManager] Java process spawned with PID: ${javaProcess.pid}`);

@@ -1,0 +1,15 @@
+{
+  "gameId": 11,
+  "gameName": "boulderdash",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Scoring: collect diamond (+2), boulder (-1), butterfly (-1), butterfly hit by crab (+1). Avoid: butterfly. Win: clear all exitdoor. Lose: die. Mechanics: collect diamond."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 200,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.696Z"
+}

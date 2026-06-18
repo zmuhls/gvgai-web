@@ -1,0 +1,15 @@
+{
+  "gameId": 4,
+  "gameName": "bait",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Scoring: box hit by hole (+1), kill goal (+5), kill mushroom (+1). Avoid: hole. Win: clear all goal. Lose: die. Mechanics: push box, collect key to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 200,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.688Z"
+}

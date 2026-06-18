@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GVGAI LLM Frontend</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Inference Arcade — GVGAI</h1>
+      <p>Give a language model a strategy, then watch how it plays</p>
+      <nav id="main-nav">
+        <button class="nav-link active" data-target="play-section">Arcade</button>
+        <button class="nav-link" data-target="prompt-dashboard">Prompts</button>
+      </nav>
+    </header>
+
+    <!-- Play Section (existing 3-step flow) -->
+    <div id="play-section" class="section active">
+
+    <!-- Step 1: Game Selection -->
+    <div id="game-selector" class="step active">
+      <h2>Step 1: Pick a Game</h2>
+      <div class="games-toolbar">
+        <span id="games-mode-label" class="games-mode-label">Featured games</span>
+        <button id="toggle-browse-all" class="btn-secondary btn-toggle">Browse all 122 →</button>
+      </div>
+      <input type="text" id="game-search" placeholder="Search all games..." class="hidden" />
+      <div id="games-grid"></div>
+    </div>
+
+    <!-- Step 2: Strategy + Agent -->
+    <div id="model-selector" class="step">
+      <h2>Step 2: Give it a Strategy</h2>
+      <button id="back-to-games" class="btn-secondary">← Back to Games</button>
+
+      <div class="selected-game-info">
+        <h3>Selected Game: <span id="selected-game-name"></span></h3>
+      </div>
+
+      <div class="form-group">
+        <label>Tap a strategy, then edit it in your own words:</label>
+        <div id="strategy-cards" class="strategy-cards"></div>
+        <textarea id="strategy-text" class="strategy-text" rows="3"
+          placeholder="e.g. Play defensively — dodge enemies and only shoot when one is directly in front of you."></textarea>
+        <small>The model is told to follow this and explain each move. Leave blank to let it play on its own.</small>
+      </div>
+
+      <div class="settings-row">
+        <div class="form-group">
+          <label for="model-select">Model:</label>
+          <select id="model-select"></select>
+        </div>
+        <div class="form-group">
+          <label for="level-select">Level:</label>
+          <select id="level-select"></select>
+        </div>
+      </div>
+
+      <button id="start-game" class="btn-primary btn-start">Start Playing</button>
+    </div>
+
+    <!-- Step 3: Game Viewer -->
+    <div id="game-viewer" class="step">
+      <h2>AI Playing: <span id="current-game-name"></span></h2>
+      <button id="stop-game" class="btn-danger">Stop Game</button>
+
+      <div class="game-container">
+        <div class="game-display">
+          <canvas id="game-canvas"></canvas>
+          <div class="game-overlay">
+            <div>Score: <span id="score">0</span></div>
+            <div>Health: <span id="health">0</span>/<span id="max-health">0</span></div>
+            <div>Tick: <span id="tick">0</span></div>
+          </div>
+        </div>
+
+        <div class="reasoning-panel">
+          <h3>Live Narration</h3>
+          <div id="strategy-active" class="strategy-active hidden"></div>
+          <div id="reasoning-log"></div>
+        </div>
+      </div>
+
+      <div id="game-end-message" class="hidden">
+        <h3 id="final-result">Game Over!</h3>
+        <p class="final-score-line">Final Score: <span id="final-score"></span></p>
+        <div id="summary-strategy" class="summary-strategy hidden"></div>
+        <div id="summary-adherence" class="summary-adherence hidden"></div>
+        <div id="summary-highlights" class="summary-highlights hidden"></div>
+        <button id="play-again" class="btn-primary">Play Again</button>
+      </div>
+    </div>
+
+    </div><!-- /play-section -->
+
+    <!-- Prompt Dashboard Section -->
+    <div id="prompt-dashboard" class="section">
+      <div class="dashboard-layout">
+        <!-- Left sidebar: game/template lists -->
+        <div class="dashboard-sidebar">
+          <div class="sidebar-tabs">
+            <button class="sidebar-tab active" data-tab="dashboard-games-tab">Game Prompts</button>
+            <button class="sidebar-tab" data-tab="dashboard-templates-tab">Templates</button>
+          </div>
+
+          <div id="dashboard-games-tab" class="sidebar-panel active">
+            <input type="text" id="dashboard-game-search" placeholder="Search games..." />
+            <div id="dashboard-games-list" class="sidebar-list"></div>
+          </div>
+
+          <div id="dashboard-templates-tab" class="sidebar-panel">
+            <button id="new-template-btn" class="btn-primary btn-sm">+ New Template</button>
+            <div id="dashboard-templates-list" class="sidebar-list"></div>
+          </div>
+        </div>
+
+        <!-- Right panel: editor -->
+        <div class="editor-panel">
+          <div id="editor-placeholder" class="editor-placeholder">
+            <p>Select a game or template from the sidebar to edit its prompt configuration.</p>
+          </div>
+
+          <!-- Game config editor -->
+          <div id="game-config-editor" class="hidden">
+            <h3>Prompt Config: <span id="editor-game-name"></span></h3>
+
+            <div class="editor-section">
+              <label>System Prompt Template</label>
+              <select id="editor-system-template"></select>
+            </div>
+
+            <div class="editor-section">
+              <label>Game Context</label>
+              <select id="editor-game-context-template">
+                <option value="">None (no game-specific context)</option>
+              </select>
+              <label class="sub-label">Custom Override (replaces template if set)</label>
+              <textarea id="editor-game-context-override" rows="6" placeholder="Enter game-specific context, rules, and strategies..."></textarea>
+            </div>
+
+            <div class="editor-section">
+              <label>Level Progression Contexts</label>
+              <div id="editor-level-contexts"></div>
+            </div>
+
+            <div class="editor-section">
+              <label>LLM Settings</label>
+              <div class="settings-row">
+                <div class="form-group">
+                  <label class="sub-label" for="editor-max-tokens">Max Tokens</label>
+                  <input type="number" id="editor-max-tokens" value="100" min="10" max="500" />
+                </div>
+                <div class="form-group">
+                  <label class="sub-label" for="editor-temperature">Temperature</label>
+                  <input type="number" id="editor-temperature" value="0.7" min="0" max="2" step="0.1" />
+                </div>
+              </div>
+            </div>
+
+            <div class="editor-actions">
+              <button id="preview-prompt-btn" class="btn-secondary">Preview Prompt</button>
+              <button id="save-game-config-btn" class="btn-primary">Save Config</button>
+            </div>
+
+            <div id="prompt-preview" class="prompt-preview hidden"></div>
+          </div>
+
+          <!-- Template editor -->
+          <div id="template-editor" class="hidden">
+            <h3 id="template-editor-title">Edit Template</h3>
+
+            <div class="editor-section">
+              <label for="editor-template-name">Name</label>
+              <input type="text" id="editor-template-name" placeholder="Template name" />
+            </div>
+
+            <div class="editor-section">
+              <div class="settings-row">
+                <div class="form-group">
+                  <label for="editor-template-layer">Layer</label>
+                  <select id="editor-template-layer">
+                    <option value="system">System</option>
+                    <option value="game">Game</option>
+                    <option value="progression">Progression</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="editor-template-category">Category</label>
+                  <input type="text" id="editor-template-category" placeholder="e.g., general, navigation" />
+                </div>
+              </div>
+            </div>
+
+            <div class="editor-section">
+              <label for="editor-template-content">Content</label>
+              <textarea id="editor-template-content" rows="12" placeholder="Template content with {{variable}} placeholders..."></textarea>
+              <div class="variable-hints">
+                Available: <code>{{gameName}}</code> <code>{{gameScore}}</code> <code>{{avatarHealthPoints}}</code> <code>{{gameTick}}</code> <code>{{availableActions}}</code> <code>{{avatarPosition}}</code>
+              </div>
+            </div>
+
+            <div class="editor-actions">
+              <button id="delete-template-btn" class="btn-danger">Delete</button>
+              <button id="save-template-btn" class="btn-primary">Save Template</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /prompt-dashboard -->
+
+  </div>
+
+  <script src="/js/app.js" type="module"></script>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

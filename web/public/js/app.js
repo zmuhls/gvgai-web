@@ -9,8 +9,18 @@ const state = {
   selectedGame: null,
   selectedModel: null,
   selectedLevel: 0,
-  processId: null
+  processId: null,
+  showingAllGames: false,
+  lastSummary: null
 };
+
+// Preset strategy cards — tap to pre-fill the editable text box
+const STRATEGY_PRESETS = [
+  { label: 'Play it safe', text: 'Play defensively. Keep your distance from enemies, avoid danger, and prioritize staying alive over scoring.' },
+  { label: 'Go for points', text: 'Be aggressive about scoring. Collect every resource and pursue points even if it means taking some risk.' },
+  { label: 'Hunt enemies', text: 'Seek out and attack enemies whenever you can. Move toward threats and use your attack to clear them.' },
+  { label: 'Solve the puzzle', text: 'Move deliberately and plan ahead. Work toward the exit or goal step by step without wasting moves.' }
+];
 
 // DOM Elements
 const gameSelector = document.getElementById('game-selector');
@@ -29,6 +39,16 @@ const gameCanvas = document.getElementById('game-canvas');
 const reasoningLog = document.getElementById('reasoning-log');
 const gameEndMessage = document.getElementById('game-end-message');
 
+// Arcade-specific elements
+const strategyCards = document.getElementById('strategy-cards');
+const strategyText = document.getElementById('strategy-text');
+const toggleBrowseAllBtn = document.getElementById('toggle-browse-all');
+const gamesModeLabel = document.getElementById('games-mode-label');
+const strategyActive = document.getElementById('strategy-active');
+const summaryStrategy = document.getElementById('summary-strategy');
+const summaryAdherence = document.getElementById('summary-adherence');
+const summaryHighlights = document.getElementById('summary-highlights');
+
 // Additional stat elements
 const scoreEl = document.getElementById('score');
 const healthEl = document.getElementById('health');
@@ -40,6 +60,7 @@ async function init() {
   console.log('[App] Initializing...');
   await loadGames();
   await loadModels();
+  renderStrategyCards();
   setupEventListeners();
   setupWebSocket();
 }
@@ -49,12 +70,36 @@ async function loadGames() {
   try {
     const response = await fetch('/api/games');
     state.games = await response.json();
-    console.log(`[App] Loaded ${state.games.length} games`);
-    renderGames(state.games);
+    const featuredCount = state.games.filter(g => g.featured).length;
+    console.log(`[App] Loaded ${state.games.length} games (${featuredCount} featured)`);
+    renderCurrentGameList();
   } catch (error) {
     console.error('[App] Failed to load games:', error);
     alert('Failed to load games. Please refresh the page.');
   }
+}
+
+// Render featured-only or all games depending on the current toggle
+function renderCurrentGameList() {
+  const featured = state.games.filter(g => g.featured);
+  // Show featured first when there are any; otherwise fall back to all
+  renderGames(state.showingAllGames || featured.length === 0 ? state.games : featured);
+}
+
+// Render the preset strategy cards
+function renderStrategyCards() {
+  if (!strategyCards) return;
+  strategyCards.innerHTML = STRATEGY_PRESETS.map((p, i) => `
+    <button type="button" class="strategy-card" data-strategy-idx="${i}">${escapeHtml(p.label)}</button>
+  `).join('');
+  strategyCards.querySelectorAll('.strategy-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const preset = STRATEGY_PRESETS[parseInt(card.dataset.strategyIdx)];
+      strategyText.value = preset.text;
+      strategyCards.querySelectorAll('.strategy-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+    });
+  });
 }
 
 // Load models from API
@@ -72,24 +117,26 @@ async function loadModels() {
 // Render games grid
 function renderGames(games) {
   gamesGrid.innerHTML = games.map(game => `
-    <div class="game-card" data-game-id="${game.id}">
-      <span class="category">${game.category}</span>
-      <h3>${game.name}</h3>
+    <div class="game-card${game.featured ? ' featured' : ''}" data-game-id="${game.id}">
+      ${game.featured ? '<span class="featured-star">★ Featured</span>' : `<span class="category">${escapeHtml(game.category)}</span>`}
+      <h3>${escapeHtml(game.name)}</h3>
       <p class="levels">${game.levels.length} levels</p>
     </div>
   `).join('');
 
   // Add click handlers
-  document.querySelectorAll('.game-card').forEach(card => {
+  gamesGrid.querySelectorAll('.game-card').forEach(card => {
     card.addEventListener('click', () => selectGame(parseInt(card.dataset.gameId)));
   });
 }
 
-// Render models dropdown
+// Render models dropdown (featured frontier models first, one selected by default)
 function renderModels(models) {
   modelSelect.innerHTML = models.map(model => `
-    <option value="${model.id}">${model.name} - ${model.description}</option>
+    <option value="${escapeHtml(model.id)}">${escapeHtml(model.name)}${model.featured ? ' ★' : ''} — ${escapeHtml(model.description)}</option>
   `).join('');
+  const defaultModel = models.find(m => m.featured) || models[0];
+  if (defaultModel) modelSelect.value = defaultModel.id;
 }
 
 // Select a game
@@ -124,11 +171,13 @@ async function startGame() {
 
   const model = modelSelect.value;
   const level = parseInt(levelSelect.value);
+  const strategy = (strategyText?.value || '').trim();
 
   console.log('[App] Starting game:', {
     game: state.selectedGame.name,
     model,
-    level
+    level,
+    strategy: strategy || '(none)'
   });
 
   try {
@@ -141,7 +190,8 @@ async function startGame() {
       body: JSON.stringify({
         gameId: state.selectedGame.id,
         levelId: level,
-        model
+        model,
+        strategy
       })
     });
 
@@ -152,20 +202,31 @@ async function startGame() {
     }
     state.processId = data.processId;
     state.selectedModel = model;
+    state.activeStrategy = strategy;
 
     console.log('[App] Game started:', data);
 
     // Show game viewer
     document.getElementById('current-game-name').textContent = state.selectedGame.name;
     reasoningLog.innerHTML = '';
+    state.lastSummary = null;
     gameEndMessage.classList.add('hidden');
+
+    // Show the active strategy banner above the narration log
+    if (strategy) {
+      strategyActive.textContent = `Strategy: "${strategy}"`;
+      strategyActive.classList.remove('hidden');
+    } else {
+      strategyActive.classList.add('hidden');
+    }
+
     showStep(gameViewer);
   } catch (error) {
     console.error('[App] Error starting game:', error);
     alert('Failed to start game: ' + error.message);
   } finally {
     startGameBtn.disabled = false;
-    startGameBtn.textContent = 'Start Game';
+    startGameBtn.textContent = 'Start Playing';
   }
 }
 
@@ -198,10 +259,31 @@ function showStep(step) {
 function setupEventListeners() {
   gameSearch.addEventListener('input', (e) => {
     const search = e.target.value.toLowerCase();
+    if (!search) {
+      renderCurrentGameList();
+      return;
+    }
+    // Searching always spans all 122 games
     const filtered = state.games.filter(g =>
       g.name.toLowerCase().includes(search)
     );
     renderGames(filtered);
+  });
+
+  // Toggle between featured-only and the full browsable list
+  toggleBrowseAllBtn.addEventListener('click', () => {
+    state.showingAllGames = !state.showingAllGames;
+    if (state.showingAllGames) {
+      gamesModeLabel.textContent = 'All 122 games';
+      toggleBrowseAllBtn.textContent = '★ Show featured only';
+      gameSearch.classList.remove('hidden');
+    } else {
+      gamesModeLabel.textContent = 'Featured games';
+      toggleBrowseAllBtn.textContent = 'Browse all 122 →';
+      gameSearch.classList.add('hidden');
+      gameSearch.value = '';
+    }
+    renderCurrentGameList();
   });
 
   startGameBtn.addEventListener('click', startGame);
@@ -237,16 +319,24 @@ function setupWebSocket() {
     if (healthEl) healthEl.textContent = data.gameState?.health || 0;
     if (tickEl) tickEl.textContent = data.gameState?.tick || 0;
 
-    // Add reasoning entry
+    // Add narration entry: clean rationale up top, raw details collapsible
     const entry = document.createElement('div');
     entry.className = 'reasoning-entry';
 
-    const timing = data.elapsed > 50 ? 'timeout' : (data.elapsed > 40 ? 'slow' : 'fast');
+    const timing = data.elapsed > 800 ? 'slow' : 'fast';
+    const narration = data.reason || data.response || '(no rationale)';
+    const followsBadge = sharesStrategyKeyword(data.reason, data.strategy)
+      ? '<span class="strategy-badge">↳ following your strategy</span>'
+      : '';
 
     entry.innerHTML = `
-      <div class="prompt">${escapeHtml(data.prompt.substring(0, 200))}...</div>
-      <div class="response">${escapeHtml(data.response || '(timeout)')}</div>
-      <div class="action ${timing}">→ ${data.action} (${data.elapsed}ms)</div>
+      <div class="narration">${escapeHtml(narration)}</div>
+      ${followsBadge}
+      <div class="action ${timing}">→ ${escapeHtml(data.action)} (${data.elapsed}ms${data.provider ? ' · ' + escapeHtml(data.provider) : ''})</div>
+      <details class="raw-toggle">
+        <summary>details</summary>
+        <div class="response">${escapeHtml(data.response || '(no response)')}</div>
+      </details>
     `;
 
     reasoningLog.insertBefore(entry, reasoningLog.firstChild);
@@ -306,16 +396,27 @@ function setupWebSocket() {
     state.lastLevelData = data;
   });
 
+  // End-of-run summary card (fires on level end, carries adherence + highlights)
+  socket.on('run-summary', (data) => {
+    console.log('[App] Run summary:', data);
+    state.lastSummary = data;
+    renderRunSummary(data);
+    gameEndMessage.classList.remove('hidden');
+  });
+
   // Full session end (all levels done)
   socket.on('session-end', (data) => {
     console.log('[App] Session ended:', data);
 
-    const lastData = state.lastLevelData || {};
-    document.getElementById('final-score').textContent = lastData.score || 0;
-    document.getElementById('final-result').textContent =
-      lastData.winner === 'PLAYER_WINS' ? 'Victory!' :
-      lastData.winner === 'PLAYER_LOSES' ? 'Defeat' :
-      data.levelsPlayed ? `${data.levelsPlayed} levels played` : 'Done';
+    // If a run-summary already populated the card, leave it as-is
+    if (!state.lastSummary) {
+      const lastData = state.lastLevelData || {};
+      document.getElementById('final-score').textContent = lastData.score || 0;
+      document.getElementById('final-result').textContent =
+        lastData.winner === 'PLAYER_WINS' ? 'Victory!' :
+        lastData.winner === 'PLAYER_LOSES' ? 'Defeat' :
+        data.levelsPlayed ? `${data.levelsPlayed} levels played` : 'Done';
+    }
 
     gameEndMessage.classList.remove('hidden');
   });
@@ -333,10 +434,60 @@ function setupWebSocket() {
   });
 }
 
+// Populate the end-of-run summary card from the run-summary payload
+function renderRunSummary(s) {
+  const resultEl = document.getElementById('final-result');
+  resultEl.textContent = s.won ? 'Victory!' :
+    (s.winner === 'PLAYER_LOSES' ? 'Defeat' : 'Time up');
+  document.getElementById('final-score').textContent = s.finalScore != null ? s.finalScore : 0;
+
+  // Echo the strategy
+  if (s.strategy) {
+    summaryStrategy.textContent = `Your strategy: "${s.strategy}"`;
+    summaryStrategy.classList.remove('hidden');
+  } else {
+    summaryStrategy.classList.add('hidden');
+  }
+
+  // Stated-adherence signal — honest wording: the model SAID it followed
+  if (s.strategy && s.adherence && s.adherence.total > 0) {
+    const a = s.adherence;
+    summaryAdherence.innerHTML =
+      `<span class="adherence-label adherence-${a.label.split(' ')[0].toLowerCase()}">${escapeHtml(a.label)}</span>` +
+      `<span class="adherence-detail">The model referenced your strategy in ${a.mentioned}/${a.total} of its explained moves.</span>`;
+    summaryAdherence.classList.remove('hidden');
+  } else {
+    summaryAdherence.classList.add('hidden');
+  }
+
+  // Highlight decisions
+  if (s.highlights && s.highlights.length > 0) {
+    const items = s.highlights.map(h => {
+      const delta = h.scoreDelta ? ` <span class="hl-score">+${h.scoreDelta}</span>` : '';
+      return `<li><span class="hl-action">${escapeHtml(h.action)}</span> — ${escapeHtml(h.reason || '')}${delta}</li>`;
+    }).join('');
+    summaryHighlights.innerHTML = `<h4>Key moves</h4><ul>${items}</ul>`;
+    summaryHighlights.classList.remove('hidden');
+  } else {
+    summaryHighlights.classList.add('hidden');
+  }
+}
+
+// Light client-side check for the per-move "following your strategy" badge.
+// Honest: only shows when the model's rationale literally echoes a strategy word.
+const BADGE_STOPWORDS = new Set(['the','and','for','with','your','you','this','that','play','playing','try','keep','make','get','move','moving','action','when','from','are','will','can','should','need','want','take','use','using','only','even','some','over','it','to','of','in','on','as','be','do','go']);
+function sharesStrategyKeyword(reason, strategy) {
+  if (!reason || !strategy) return false;
+  const r = reason.toLowerCase();
+  const words = (strategy.toLowerCase().match(/[a-z]+/g) || [])
+    .filter(w => w.length >= 4 && !BADGE_STOPWORDS.has(w));
+  return words.some(w => r.includes(w));
+}
+
 // Utility function
 function escapeHtml(text) {
   const div = document.createElement('div');
-  div.textContent = text;
+  div.textContent = text == null ? '' : text;
   return div.innerHTML;
 }
 
