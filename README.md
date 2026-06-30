@@ -1,48 +1,77 @@
-gvgai
+Web-Based LLM Game Evaluation
 =====
 
-This is an expanded version of the [original GVGAI repository](https://github.com/GAIGResearch/GVGAI), extended with a web-based LLM agent integration layer. The original framework provides the Java game engine and competition infrastructure; this fork adds a Node.js server, browser dashboard, and LLM connectivity so that language models can play the 122+ supported games in real time.
+Watch language models play classic video games in real time, and read the reasoning behind each move.
 
-Note: The Learning track code is not in this repository, but here: https://github.com/rubenrtorrado/GVGAI_GYM
+This is an expanded fork of the [original GVGAI repository](https://github.com/GAIGResearch/GVGAI). The upstream project supplies a Java engine that runs 122+ 2D grid games written in VGDL. This fork adds a layer under `web/`: a Node.js server that connects an LLM to the engine over a TCP socket, plus a browser frontend that shows the game, the model's per-move reasoning, and an end-of-run summary.
 
+It is part of the CUNY AI Lab's Inference Arcade initiative, which fosters critical play with large language models by retrofitting them to the design grammar of classic and novel interactive games. The point is to make a model's decision-making legible: you hand it a strategy in plain language, watch it act under real-time pressure, and see where it follows the plan and where it breaks.
 
-This is the framework for the General Video Game Competition, used for the Planning and PCG Tracks - http://www.gvgai.net/
+The Learning track code is not in this repository. It lives at https://github.com/rubenrtorrado/GVGAI_GYM.
 
-Google group - https://groups.google.com/forum/#!forum/the-general-video-game-competition
+## How it works
 
-## FAQs / Troubleshooting
+The browser talks to the Node server over HTTP and WebSocket. The Node server spawns the Java engine and talks to it over a TCP socket, one message per game tick. Each tick, the server sends the model the current board as an ASCII grid plus spatial context, score, and recent history; the model replies with one action and a one-sentence reason.
 
-**3. Where are the Test methods? Due to the explosion of GVGAI competition tracks, we have distributed the main methods in different classes across the code hierarchy:
+The engine demands an action within 40ms per tick, but a model takes 200-2000ms to answer. The server resolves this by answering each tick immediately with the previous decision while the next one computes in the background. So decisions land a few ticks late. That lag is the reason the showcase favors slower puzzle games over twitch games.
 
- - Single Player Planning track: tracks.singlePlayer.Test.java
- - 2-Player Planning track: tracks.multiPlayer.TestMultiPlayer.java
- - Level Generation track: tracks.levelGeneration.TestLevelGeneration.java
- - Rule Generation track: tracks.ruleGeneration.TestRuleGeneration.java
+## Quick start
 
+Requires Node.js 16+ and Java 11 (OpenJDK).
 
-**2. How do I upload my controller? What files or folder structure do I need? 
-First of all, your controller ```Agent.java``` and any auxiliary files you create should be in a single package folder with your username. For example, if your username is "abc", you should have a package folder named "abc" in the project. Your entire project layout should look something like this:
+Compile the engine from the project root:
 
-```groovy
-- abc
-	|- Agent.java
-	|- MyAdditionalFile1.java
-	|- MyAdditionalFile2.java
-- tracks
-- core
-- ontology
-- tools
+```bash
+export PATH="/opt/homebrew/opt/openjdk@11/bin:/usr/bin:$PATH"
+export JAVA_HOME="/opt/homebrew/opt/openjdk@11"
+/usr/bin/find src -name "*.java" > sources.txt
+javac -cp "gson-2.6.2.jar" -d out @sources.txt
 ```
 
-Then, all you need to do is to zip and upload the "abc" folder. No other folders/files are necessary.
+Add API keys to a `.env` file in the project root (see `.env.example`):
 
+```
+OLLAMA_API_KEY=...        # primary inference provider (Ollama Cloud)
+OPENROUTER_API_KEY=...    # per-call fallback
+```
 
-**3. I am getting the error `javac1.8 class not found` when running Eclipse and ANT on build.xml**
-This is likely because the ANT version that is installed with your version of Eclipse is old. You can easily fix this problem by doing the following:
+Start the server:
 
-- Download the archive of the [latest version of ANT](http://ant.apache.org/bindownload.cgi) (Tested with  Ant 1.9.4)
-- Extract the archive onto a local folder on your computer (e.g., /Users/gvgai/ant/apache-ant-1.9.4/)
-- In Eclipse, go to Eclipse -> Preferences -> Ant -> Runtime
-- Click on "Ant Home'' button on the right.
-- Select the folder, which you extracted ANT into (e.g., /Users/gvgai/ant/apache-ant-1.9.4/)
+```bash
+cd web
+npm install
+npm start          # http://localhost:3000
+```
 
+Open `http://localhost:3000`. Pick a game, choose a strategy, and watch. The server starts and stops the Java process for you.
+
+## The arcade flow
+
+Pick a game, tap a strategy card to drop a plain-language directive into an editable box, then watch. A live panel shows each decision: the action, the model's stated reason, and which provider answered. When the run ends, a summary card reports the score, echoes the strategy, and rates how closely the model stuck to it.
+
+A separate Prompt Dashboard lets you edit the per-game prompt layers directly. Your in-session strategy never overwrites that saved config; it layers on top at runtime and is discarded when the run ends.
+
+## Model routing
+
+Ollama Cloud is the primary provider; OpenRouter is the fallback. Each model in the catalog (`web/lib/models.js`) declares a provider and a fallback slug. The server calls the primary, and on any error retries the fallback through OpenRouter. The frontend reports whichever provider actually answered. All providers use the OpenAI-compatible chat-completions format.
+
+## Telemetry and evaluation
+
+The server records events (runs, decisions, frontend interactions) and flushes them to Supabase in batches, falling back to a local JSONL log when Supabase is not configured. Both are optional and off by default.
+
+An offline eval harness runs game-by-model-by-strategy batches to compare prompts and models without a person at the keyboard. Start with a dry run:
+
+```bash
+cd web
+npm test               # full suite (Node's built-in runner)
+npm run eval:arcade    # dry-run an arcade eval plan
+```
+
+## Pointers
+
+- Game index: `examples/all_games_sp.csv` (line number is the game id)
+- VGDL definitions: `examples/gridphysics/{game}.txt`, levels at `{game}_lvl{0-4}.txt`
+- Per-game prompt config: `web/data/games/{id}.json`
+- Architecture and internals: `CLAUDE.md`
+
+The upstream framework also supports the Planning and PCG competition tracks. See http://www.gvgai.net/.
