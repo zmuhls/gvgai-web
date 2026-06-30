@@ -1,34 +1,145 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const config = require('../config.json');
+const { getConfig } = require('./runtime-config');
+const { resolveScreenshotPath } = require('./screenshot-path');
+const config = getConfig();
+const MAX_COMPLETED_PROCESSES = 20;
 
-// Resolve a usable java binary + env, portable across machines (local box, Docker, Railway).
-// Prefer the configured javaPath when it exists, else fall back to `java` on PATH.
-const HOMEBREW_JDK11 = '/opt/homebrew/opt/openjdk@11';
-const JAVA_BIN = (config.gvgai.javaPath && fs.existsSync(config.gvgai.javaPath))
-  ? config.gvgai.javaPath
-  : 'java';
-const JAVA_ENV = fs.existsSync(HOMEBREW_JDK11)
-  ? { ...process.env, JAVA_HOME: HOMEBREW_JDK11, PATH: `${HOMEBREW_JDK11}/bin:${process.env.PATH}` }
-  : { ...process.env };
+function resolveJavaBinary(gvgaiConfig, baseEnv = process.env, exists = fs.existsSync) {
+  if (baseEnv.GVGAI_JAVA_BIN) {
+    return { javaBin: baseEnv.GVGAI_JAVA_BIN, javaEnv: { ...baseEnv } };
+  }
+
+  if (gvgaiConfig.javaPath && exists(gvgaiConfig.javaPath)) {
+    return { javaBin: gvgaiConfig.javaPath, javaEnv: { ...baseEnv } };
+  }
+
+  if (exists('/usr/bin/java')) {
+    return { javaBin: '/usr/bin/java', javaEnv: { ...baseEnv } };
+  }
+
+  const homebrewJdk11 = [
+    '/opt/homebrew/opt/openjdk@11',
+    '/usr/local/opt/openjdk@11'
+  ].find(candidate => exists(candidate));
+
+  if (homebrewJdk11) {
+    return {
+      javaBin: path.join(homebrewJdk11, 'bin', 'java'),
+      javaEnv: {
+        ...baseEnv,
+        JAVA_HOME: homebrewJdk11,
+        PATH: `${homebrewJdk11}/bin:${baseEnv.PATH || ''}`
+      }
+    };
+  }
+
+  return { javaBin: 'java', javaEnv: { ...baseEnv } };
+}
+
+const { javaBin: JAVA_BIN, javaEnv: JAVA_ENV } = resolveJavaBinary(config.gvgai);
+const DEFAULT_RUNTIME_ROOT = path.resolve(__dirname, '..', '.gvgai-runtime');
+const RUNTIME_ROOT = path.resolve(process.env.GVGAI_RUNTIME_ROOT || config.gvgai.runtimeRoot || DEFAULT_RUNTIME_ROOT);
+const RUNTIME_SOURCE_ROOT = path.join(RUNTIME_ROOT, 'source');
+const RUNTIME_CLASSES_ROOT = path.join(RUNTIME_ROOT, 'classes');
+const RUNTIME_GSON = path.join(RUNTIME_SOURCE_ROOT, 'gson-2.6.2.jar');
+const RUNTIME_MANIFEST = path.join(RUNTIME_ROOT, 'runtime.json');
+
+function preparedRuntimeExists() {
+  return fs.existsSync(RUNTIME_MANIFEST) &&
+    fs.existsSync(RUNTIME_CLASSES_ROOT) &&
+    fs.existsSync(RUNTIME_GSON) &&
+    fs.existsSync(path.join(RUNTIME_SOURCE_ROOT, 'examples', 'gridphysics', 'aliens.txt'));
+}
+
+function prepareRuntime() {
+  if (preparedRuntimeExists()) return Promise.resolve(true);
+
+  const scriptPath = path.resolve(__dirname, '..', 'scripts', 'prepare-java-runtime.js');
+  console.log(`[GameManager] Preparing hydrated GVGAI runtime at ${RUNTIME_ROOT}`);
+  const prepProcess = spawn(process.execPath, [scriptPath], {
+    cwd: path.resolve(__dirname, '..', '..'),
+    env: { ...process.env, GVGAI_RUNTIME_ROOT: RUNTIME_ROOT },
+    stdio: 'inherit'
+  });
+
+  return new Promise((resolve) => {
+    prepProcess.on('close', code => {
+      if (code !== 0) {
+        console.error(`[GameManager] Java runtime preparation failed with status ${code}`);
+        resolve(false);
+        return;
+      }
+      resolve(preparedRuntimeExists());
+    });
+    prepProcess.on('error', error => {
+      console.error('[GameManager] Java runtime preparation could not start:', error.message);
+      resolve(false);
+    });
+  });
+}
+
+async function resolveEngineRuntime() {
+  const prepared = preparedRuntimeExists() || await prepareRuntime();
+  if (prepared) {
+    return {
+      classpath: [RUNTIME_CLASSES_ROOT, RUNTIME_GSON].join(path.delimiter),
+      gamesDir: RUNTIME_SOURCE_ROOT,
+      cwd: RUNTIME_SOURCE_ROOT,
+      hydrated: true
+    };
+  }
+
+  return {
+    classpath: config.gvgai.classpath,
+    gamesDir: null,
+    cwd: config.gvgai.projectRoot,
+    hydrated: false
+  };
+}
+
+function prepareScreenshotTarget(filePath) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  try {
+    fs.unlinkSync(filePath);
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+}
+
+function buildJavaArgs(runtime, gameId, levelId, screenshotPath) {
+  const args = [
+    '-Djava.awt.headless=true',
+    '-cp', runtime.classpath,
+    config.gvgai.mainClass,
+    '-gameId', gameId.toString(),
+    '-levelId', levelId.toString(),
+    '-clientType', 'java',
+    '-imgPath', screenshotPath
+  ];
+
+  if (runtime.gamesDir) {
+    args.push('-gamesDir', runtime.gamesDir);
+  }
+
+  return args;
+}
 
 class GameManager {
   constructor() {
     this.activeProcesses = new Map();
+    this.completedProcesses = new Map();
   }
 
-  startGame(gameId, levelId = 0, visuals = false) {
+  async startGame(gameId, levelId = 0, visuals = false) {
     const processId = `game_${Date.now()}`;
     const startTime = Date.now();
+    const runtime = await resolveEngineRuntime();
+    const screenshotPath = resolveScreenshotPath(config.gvgai);
+    prepareScreenshotTarget(screenshotPath);
 
-    const args = [
-      '-Djava.awt.headless=true',
-      '-cp', config.gvgai.classpath,
-      config.gvgai.mainClass,
-      '-gameId', gameId.toString(),
-      '-clientType', 'java'
-    ];
+    const args = buildJavaArgs(runtime, gameId, levelId, screenshotPath);
 
     // Never use visuals - run headless and rely on screenshot generation
     // if (visuals) {
@@ -37,10 +148,11 @@ class GameManager {
 
     console.log(`[GameManager] Starting game ${gameId} (level ${levelId})`);
     console.log(`[GameManager] Process ID: ${processId}`);
+    console.log(`[GameManager] Runtime: ${runtime.hydrated ? runtime.cwd : 'configured project tree'}`);
     console.log(`[GameManager] Java command: ${JAVA_BIN} ${args.join(' ')}`);
 
     const javaProcess = spawn(JAVA_BIN, args, {
-      cwd: config.gvgai.projectRoot,
+      cwd: runtime.cwd,
       env: JAVA_ENV
     });
 
@@ -76,11 +188,18 @@ class GameManager {
         console.error(`[GameManager] Process exited abnormally with code ${code}`);
       }
 
+      if (processData) {
+        this.rememberCompletedProcess(processId, processData);
+      }
       this.activeProcesses.delete(processId);
     });
 
     javaProcess.on('error', (error) => {
       console.error(`[GameManager] Failed to start game:`, error);
+      const processData = this.activeProcesses.get(processId);
+      if (processData) {
+        this.rememberCompletedProcess(processId, processData);
+      }
       this.activeProcesses.delete(processId);
     });
 
@@ -140,6 +259,29 @@ class GameManager {
     });
   }
 
+  rememberCompletedProcess(processId, processData) {
+    this.completedProcesses.set(processId, {
+      stdoutChunks: [...processData.stdoutChunks],
+      stderrChunks: [...processData.stderrChunks],
+      startTime: processData.startTime,
+      completedAt: Date.now()
+    });
+
+    while (this.completedProcesses.size > MAX_COMPLETED_PROCESSES) {
+      const oldestProcessId = this.completedProcesses.keys().next().value;
+      this.completedProcesses.delete(oldestProcessId);
+    }
+  }
+
+  getProcessOutput(processId) {
+    const processData = this.activeProcesses.get(processId) || this.completedProcesses.get(processId);
+    if (!processData) return { stdout: '', stderr: '' };
+    return {
+      stdout: processData.stdoutChunks.join(''),
+      stderr: processData.stderrChunks.join('')
+    };
+  }
+
   stopGame(processId) {
     const processData = this.activeProcesses.get(processId);
     if (processData) {
@@ -152,17 +294,19 @@ class GameManager {
       process.kill('SIGTERM');
 
       // Force-kill after 2 seconds if still running
-      setTimeout(() => {
+      const forceKillTimer = setTimeout(() => {
         try {
-          process.kill(0); // Check if still alive
-          console.log(`[GameManager] Process ${processId} still alive, sending SIGKILL`);
-          process.kill('SIGKILL');
+          if (process.exitCode === null && process.signalCode === null) {
+            process.kill(0); // Check if still alive
+            console.log(`[GameManager] Process ${processId} still alive, sending SIGKILL`);
+            process.kill('SIGKILL');
+          }
         } catch (e) {
           // Process already dead, ignore
         }
       }, 2000);
 
-      this.activeProcesses.delete(processId);
+      process.once('close', () => clearTimeout(forceKillTimer));
 
       console.log(`[GameManager] SIGTERM sent to process ${processId}`);
       return true;
@@ -183,3 +327,8 @@ class GameManager {
 }
 
 module.exports = new GameManager();
+module.exports.GameManager = GameManager;
+module.exports.resolveJavaRuntime = resolveJavaBinary;
+module.exports.resolveEngineRuntime = resolveEngineRuntime;
+module.exports.buildJavaArgs = buildJavaArgs;
+module.exports.prepareScreenshotTarget = prepareScreenshotTarget;

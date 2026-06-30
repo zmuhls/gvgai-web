@@ -1,0 +1,15 @@
+{
+  "gameId": 45,
+  "gameName": "garbagecollector",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: playerWall (-1), kill garbage (+2). Avoid: playerWall. Win: clear all garbage. Lose: die; timeout."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.713Z"
+}

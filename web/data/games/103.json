@@ -1,0 +1,15 @@
+{
+  "gameId": 103,
+  "gameName": "wildgunman",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|SHOOT|WAIT\nScoring: enemy hit by bullet (+2), niceGuy hit by city (+2). Win: clear all goalObjects and portal. Lose: city count reaches 0; all death gone."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.734Z"
+}

@@ -1,0 +1,15 @@
+{
+  "gameId": 34,
+  "gameName": "eggomania",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: LEFT|RIGHT|SHOOT|WAIT\nScoring: egg (+1), chicken hit by sam (+100). Win: survive until timeout; clear all chicken. Lose: all brokenegg gone."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.708Z"
+}

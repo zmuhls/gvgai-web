@@ -1,0 +1,15 @@
+{
+  "gameId": 49,
+  "gameName": "gymkhana",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|USE|WAIT\nScoring: kill catapult (+1). Avoid: water. Win: clear all goal. Lose: die; timeout. Mechanics: collect wall to transform, ride on logR, ride on landingpad, collect westfacing to transform, collect eastfacing to transform, collect southfacing to transform, collect northfacing to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.714Z"
+}

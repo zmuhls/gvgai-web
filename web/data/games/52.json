@@ -1,0 +1,15 @@
+{
+  "gameId": 52,
+  "gameName": "ikaruga",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: LEFT|RIGHT|USE|WAIT\nScoring: alien (-1), bomb (-1), blackAlien hit by blackBullet (+1), whiteAlien hit by whiteBullet (+1). Avoid: alien, bomb. Win: clear all portal and alien. Lose: die. Mechanics: collect whiteChanger to transform, collect blackChanger to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.716Z"
+}

@@ -1,12 +1,14 @@
 const net = require('net');
-const config = require('../config.json');
+const { getConfig } = require('./runtime-config');
+const config = getConfig();
 const { buildPrompt, computeAdherence, GameStateTracker } = require('./state-converter');
 const { parseStructured } = require('./response-parser');
 const { resolveModel } = require('./models');
 const promptStore = require('./prompt-store');
+const telemetry = require('./telemetry-store');
 
 class LLMClient {
-  constructor() {
+  constructor(options = {}) {
     this.socket = null;
     // Load API keys from environment (Ollama Cloud is primary, OpenRouter is fallback)
     this.apiKey = process.env.OPENROUTER_API_KEY || null;          // OpenRouter (fallback)
@@ -28,6 +30,22 @@ class LLMClient {
     this.sessionStrategy = null;  // Ephemeral per-session player directive (never persisted)
     this.runLog = [];  // Per-decision log for the end-of-run summary: { tick, action, reason, scoreDelta }
     this.runStartScore = null;  // Score at the first tick of the run
+    this.lastProvider = null;
+    this.lastModelUsed = null;
+    this.lastSso = null;
+    this.summaryEmitted = false;
+    this.synchronousActions = !!options.synchronousActions;
+    this.actionTimeoutMs = options.actionTimeoutMs || 12000;
+    this.maxActions = options.maxActions || null;
+    this.initResponseType = options.initResponseType || (this.synchronousActions ? 'JSON' : 'BOTH');
+    this.actResponseType = options.actResponseType || (this.synchronousActions ? 'JSON' : 'BOTH');
+    this.runId = options.runId || null;
+    this.promptConfigOptions = options.promptConfigOptions || {};
+    this.lastTraceTickLogged = null;
+    this.lastTraceScoreLogged = null;
+    this.lastPolicyDecisionTickLogged = null;
+    this.lastPolicyDecisionActionLogged = null;
+    this.lastPolicyDecisionScoreLogged = null;
   }
 
   // Validate API key with OpenRouter (skipped for local Ollama)
@@ -66,7 +84,17 @@ class LLMClient {
     this.stateTracker.reset();
     this.runLog = [];
     this.runStartScore = null;
-    this.promptConfig = promptStore.resolveGamePromptConfig(this.gameId, 0);
+    this.lastProvider = null;
+    this.lastModelUsed = null;
+    this.lastSso = null;
+    this.summaryEmitted = false;
+    this.runId = this.runId || telemetry.createRunId(`game-${this.gameId ?? 'unknown'}`);
+    this.lastTraceTickLogged = null;
+    this.lastTraceScoreLogged = null;
+    this.lastPolicyDecisionTickLogged = null;
+    this.lastPolicyDecisionActionLogged = null;
+    this.lastPolicyDecisionScoreLogged = null;
+    this.promptConfig = promptStore.resolveGamePromptConfig(this.gameId, 0, this.promptConfigOptions);
     // Ensure gameName is set even when game config doesn't specify it
     if (this.promptConfig && !this.promptConfig.gameName) {
       this.promptConfig.gameName = this.gameName;
@@ -89,6 +117,7 @@ class LLMClient {
 
       this.socket.on('close', () => {
         console.log('[LLMClient] Socket closed');
+        this.emitCloseSummary();
         this.gameActive = false;
         this._triggerSessionEnd();
       });
@@ -96,6 +125,20 @@ class LLMClient {
       // Connect AFTER event handlers are set up
       this.socket.connect(port, 'localhost', () => {
         console.log(`[LLMClient] Connected to GVGAI socket on port ${port}`);
+        telemetry.track({
+          eventFamily: 'model_telemetry',
+          eventType: 'llm_session_started',
+          source: 'llm-client',
+          runId: this.runId,
+          gameId: this.gameId,
+          levelId: this.levelCount,
+          modelId: this.model,
+          payload: {
+            gameName: this.gameName,
+            synchronousActions: this.synchronousActions,
+            strategy_present: Boolean(this.sessionStrategy)
+          }
+        });
         resolve();
       });
     });
@@ -143,6 +186,17 @@ class LLMClient {
       if (jsonPayload === 'FINISH') {
         console.log(`[LLMClient] Received msgId=${msgId}, type: FINISH`);
         this.gameActive = false;
+        telemetry.track({
+          eventFamily: 'evaluation',
+          eventType: 'session_finished',
+          source: 'llm-client',
+          runId: this.runId,
+          gameId: this.gameId,
+          modelId: this.model,
+          payload: {
+            levelsPlayed: this.levelCount
+          }
+        });
         if (this.io) {
           this.io.emit('session-end', {
             reason: 'finished',
@@ -169,30 +223,56 @@ class LLMClient {
       }
 
       if (isACT) {
+        if (this.synchronousActions) {
+          if (this.maxActions && this.runLog.length >= this.maxActions) {
+            console.log(`[LLMClient] Max actions reached (${this.maxActions}); ending Java eval case`);
+            this.sendMessageWithId(msgId, `ABORT#${this.actResponseType}`);
+            return;
+          }
+          const directPolicy = this.resolveAuthoritativePolicy(jsonPayload);
+          if (directPolicy) {
+            const sso = this.recordActState(jsonPayload, directPolicy.action);
+            if (sso) {
+              this.pendingLLMAction = directPolicy.action;
+              this.recordActionDecision(directPolicy.action, sso.gameTick || 0, directPolicy.reason);
+              this.emitPolicyDecision(directPolicy, sso);
+            }
+            this.sendMessageWithId(msgId, `${directPolicy.action}#${this.actResponseType}`);
+            return;
+          }
+          const sso = this.recordActState(jsonPayload, null);
+          try {
+            const decision = await this.requestLLMAction(jsonPayload);
+            this.sendMessageWithId(msgId, `${decision.action}#${this.actResponseType}`);
+          } catch (error) {
+            console.error('[LLMClient] Error in synchronous LLM action:', error.message);
+            this.recordActionDecision('ACTION_NIL', sso ? sso.gameTick : 0, error.message);
+            this.sendMessageWithId(msgId, `ACTION_NIL#${this.actResponseType}`);
+          }
+          return;
+        }
+
+        const directPolicy = this.resolveAuthoritativePolicy(jsonPayload);
+        if (directPolicy) {
+          this.sendMessageWithId(msgId, `${directPolicy.action}#${this.actResponseType}`);
+          setImmediate(() => {
+            const sso = this.recordActState(jsonPayload, directPolicy.action);
+            if (sso) {
+              this.pendingLLMAction = directPolicy.action;
+              this.recordActionDecision(directPolicy.action, sso.gameTick || 0, directPolicy.reason);
+              this.emitPolicyDecision(directPolicy, sso);
+            }
+          });
+          return;
+        }
+
         // CRITICAL: Respond IMMEDIATELY with the specific message ID
         const actionToSend = this.pendingLLMAction || 'ACTION_NIL';
-        this.sendMessageWithId(msgId, `${actionToSend}#IMAGE`);
+        this.sendMessageWithId(msgId, `${actionToSend}#${this.actResponseType}`);
 
         // Async processing after response sent (don't block)
         setImmediate(() => {
-          // Parse game state and emit to frontend for UI updates
-          try {
-            const sso = JSON.parse(jsonPayload);
-            // Record every tick so history/loop-detection layers and run summary have data
-            this.stateTracker.recordTick(sso);
-            if (this.runStartScore === null) this.runStartScore = sso.gameScore || 0;
-            if (this.io) {
-              this.io.emit('game-state', {
-                score: sso.gameScore,
-                health: sso.avatarHealthPoints,
-                maxHealth: sso.avatarMaxHealthPoints,
-                tick: sso.gameTick,
-                action: actionToSend
-              });
-            }
-          } catch (error) {
-            console.error('[LLMClient] Error parsing game state for UI update:', error.message);
-          }
+          this.recordActState(jsonPayload, actionToSend);
 
           // Start async LLM call every 400ms minimum (time-based, not tick-based)
           const now = Date.now();
@@ -207,7 +287,9 @@ class LLMClient {
       // For non-ACT phases, parse JSON and handle
       if (isINIT) {
         try {
-          JSON.parse(jsonPayload);  // Validate JSON
+          const sso = JSON.parse(jsonPayload);
+          this.lastSso = sso;
+          if (this.runStartScore === null) this.runStartScore = sso.gameScore || 0;
           console.log(`[LLMClient] Received msgId=${msgId}, phase: INIT`);
           await this.handleInit(msgId);
         } catch (err) {
@@ -233,7 +315,7 @@ class LLMClient {
     } catch (error) {
       console.error('[LLMClient] Error processing message:', error);
       if (msgId) {
-        this.sendMessageWithId(msgId, 'ACTION_NIL#IMAGE');
+        this.sendMessageWithId(msgId, `ACTION_NIL#${this.actResponseType}`);
       }
     }
   }
@@ -242,14 +324,185 @@ class LLMClient {
     console.log('[LLMClient] Game initializing...');
     // Reload prompt config for current level (picks up level-specific progression context)
     if (this.gameId != null) {
-      this.promptConfig = promptStore.resolveGamePromptConfig(this.gameId, this.levelCount);
+      this.promptConfig = promptStore.resolveGamePromptConfig(this.gameId, this.levelCount, this.promptConfigOptions);
       if (this.promptConfig && !this.promptConfig.gameName) {
         this.promptConfig.gameName = this.gameName;
       }
     }
-    // Send INIT_DONE with BOTH type to enable screenshots
-    // Format: messageId#INIT_DONE#BOTH
-    this.sendMessageWithId(msgId, 'INIT_DONE#BOTH');
+    telemetry.track({
+      eventFamily: 'trace',
+      eventType: 'level_initialized',
+      source: 'llm-client',
+      runId: this.runId,
+      gameId: this.gameId,
+      levelId: this.levelCount,
+      modelId: this.model
+    });
+    this.sendMessageWithId(msgId, `INIT_DONE#${this.initResponseType}`);
+  }
+
+  recordActState(jsonPayload, actionToSend) {
+    try {
+      const sso = JSON.parse(jsonPayload);
+      this.lastSso = sso;
+      this.stateTracker.recordTick(sso);
+      if (this.runStartScore === null) this.runStartScore = sso.gameScore || 0;
+      this.recordStateTrace(sso, actionToSend);
+      if (this.io) {
+        this.io.emit('game-state', {
+          score: sso.gameScore,
+          health: sso.avatarHealthPoints,
+          maxHealth: sso.avatarMaxHealthPoints,
+          tick: sso.gameTick,
+          action: actionToSend
+        });
+      }
+      return sso;
+    } catch (error) {
+      console.error('[LLMClient] Error parsing game state for UI update:', error.message);
+      return null;
+    }
+  }
+
+  resolveAuthoritativePolicy(jsonPayload) {
+    if (!this.promptConfig?.codeProtocol?.enabled) return null;
+
+    let sso;
+    try {
+      sso = JSON.parse(jsonPayload);
+    } catch (error) {
+      console.error('[LLMClient] Error parsing game state for policy action:', error.message);
+      return null;
+    }
+
+    const promptDecision = buildPrompt(sso, this.promptConfig, this.stateTracker, this.sessionStrategy);
+    if (
+      promptDecision.responseMode !== 'code' ||
+      promptDecision.policyAuthoritative !== true ||
+      !promptDecision.fallbackAction ||
+      !(sso.availableActions || []).includes(promptDecision.fallbackAction)
+    ) {
+      return null;
+    }
+
+    return {
+      action: promptDecision.fallbackAction,
+      reason: promptDecision.policyReason || `encoded best action ${promptDecision.fallbackActionCode || ''}`.trim(),
+      decisionSource: 'policy-direct',
+      fallbackAction: promptDecision.fallbackAction,
+      fallbackActionCode: promptDecision.fallbackActionCode,
+      policyAuthoritative: true,
+      prompt: promptDecision.userMessage,
+      systemPrompt: promptDecision.systemMessage || null,
+      actionCodeMap: promptDecision.actionCodeMap || null,
+      responseMode: promptDecision.responseMode
+    };
+  }
+
+  emitPolicyDecision(decision, sso) {
+    const tick = Number.isInteger(sso.gameTick) ? sso.gameTick : 0;
+    const score = Number.isFinite(sso.gameScore) ? sso.gameScore : 0;
+    const shouldEmit =
+      this.lastPolicyDecisionTickLogged === null ||
+      this.lastPolicyDecisionActionLogged !== decision.action ||
+      this.lastPolicyDecisionScoreLogged !== score ||
+      tick - this.lastPolicyDecisionTickLogged >= 10;
+
+    this.lastProvider = 'encoded-policy';
+    this.lastModelUsed = this.model;
+    if (!shouldEmit) return;
+
+    this.lastPolicyDecisionTickLogged = tick;
+    this.lastPolicyDecisionActionLogged = decision.action;
+    this.lastPolicyDecisionScoreLogged = score;
+    const prompt = decision.prompt || '';
+
+    telemetry.track({
+      eventFamily: 'model_telemetry',
+      eventType: 'llm_decision',
+      source: 'llm-client',
+      runId: this.runId,
+      gameId: this.gameId,
+      levelId: this.levelCount,
+      modelId: this.model,
+      provider: 'encoded-policy',
+      latencyMs: 0,
+      payload: {
+        action: decision.action,
+        reason: decision.reason,
+        decisionSource: decision.decisionSource,
+        parsedAction: decision.action,
+        policyAuthoritative: true,
+        fallbackAction: decision.fallbackAction,
+        fallbackActionCode: decision.fallbackActionCode,
+        modelUsed: this.model,
+        responseMode: decision.responseMode,
+        strategy_present: Boolean(this.sessionStrategy)
+      },
+      metrics: {
+        prompt_chars: prompt.length,
+        system_prompt_chars: decision.systemPrompt ? decision.systemPrompt.length : 0,
+        action_code_count: decision.actionCodeMap ? Object.keys(decision.actionCodeMap).length : 0,
+        parse_valid: 1,
+        response_chars: 0,
+        tick,
+        score
+      }
+    });
+
+    if (this.io) {
+      this.io.emit('llm-reasoning', {
+        prompt,
+        systemPrompt: decision.systemPrompt,
+        response: '',
+        reason: decision.reason,
+        decisionSource: decision.decisionSource,
+        parsedAction: decision.action,
+        policyAuthoritative: true,
+        fallbackAction: decision.fallbackAction,
+        fallbackActionCode: decision.fallbackActionCode,
+        strategy: this.sessionStrategy,
+        action: decision.action,
+        elapsed: 0,
+        provider: 'encoded-policy',
+        modelUsed: this.model,
+        gameState: {
+          score: sso.gameScore,
+          health: sso.avatarHealthPoints,
+          tick: sso.gameTick
+        }
+      });
+    }
+  }
+
+  recordStateTrace(sso, actionToSend) {
+    const tick = Number.isInteger(sso.gameTick) ? sso.gameTick : 0;
+    const score = Number.isFinite(sso.gameScore) ? sso.gameScore : 0;
+    const scoreChanged = this.lastTraceScoreLogged !== null && score !== this.lastTraceScoreLogged;
+    const tickDelta = this.lastTraceTickLogged === null ? Infinity : tick - this.lastTraceTickLogged;
+    if (tickDelta < 10 && !scoreChanged) return;
+
+    this.lastTraceTickLogged = tick;
+    this.lastTraceScoreLogged = score;
+    telemetry.track({
+      eventFamily: 'trace',
+      eventType: 'game_state_tick',
+      source: 'llm-client',
+      runId: this.runId,
+      gameId: this.gameId,
+      levelId: this.levelCount,
+      modelId: this.model,
+      payload: {
+        action: actionToSend || null,
+        winner: sso.gameWinner || null
+      },
+      metrics: {
+        tick,
+        score,
+        health: sso.avatarHealthPoints || 0,
+        max_health: sso.avatarMaxHealthPoints || 0
+      }
+    });
   }
 
   // Call a single provider's OpenAI-compatible chat endpoint. Returns the response
@@ -283,11 +536,24 @@ class LLMClient {
       }
     }
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body)
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.actionTimeoutMs);
+    let response;
+    try {
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal
+      });
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error(`${provider} timed out after ${this.actionTimeoutMs}ms`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -300,95 +566,192 @@ class LLMClient {
     return msg.content || msg.reasoning || '';
   }
 
+  async requestLLMAction(jsonPayload) {
+    const sso = JSON.parse(jsonPayload);
+    const {
+      systemMessage,
+      userMessage,
+      actionCodeMap,
+      responseMode,
+      fallbackAction,
+      fallbackActionCode,
+      policyAuthoritative
+    } = buildPrompt(sso, this.promptConfig, this.stateTracker, this.sessionStrategy);
+    const prompt = userMessage;
+
+    const messages = [];
+    if (systemMessage) {
+      messages.push({ role: 'system', content: systemMessage });
+    }
+    messages.push({ role: 'user', content: userMessage });
+
+    const settings = this.promptConfig?.llmSettings || {};
+    const resolved = resolveModel(this.model);
+    const startTime = Date.now();
+    let llmResponse;
+    let usedProvider = resolved.provider;
+    let usedModel = resolved.id;
+
+    try {
+      llmResponse = await this.callProvider(resolved.provider, resolved.id, messages, settings);
+    } catch (primaryErr) {
+      console.warn(`[LLMClient] Primary ${resolved.provider}/${resolved.id} failed: ${primaryErr.message}`);
+      telemetry.track({
+        eventFamily: 'model_telemetry',
+        eventType: 'provider_error',
+        source: 'llm-client',
+        runId: this.runId,
+        gameId: this.gameId,
+        levelId: this.levelCount,
+        modelId: resolved.id,
+        provider: resolved.provider,
+        payload: {
+          message: primaryErr.message,
+          fallback: resolved.fallback || null
+        }
+      });
+      if (resolved.fallback) {
+        usedProvider = 'openrouter';
+        usedModel = resolved.fallback;
+        try {
+          llmResponse = await this.callProvider('openrouter', resolved.fallback, messages, settings);
+          console.log(`[LLMClient] Fell back to openrouter/${resolved.fallback}`);
+        } catch (fallbackErr) {
+          if (this.io) this.io.emit('llm-error', { status: 0, message: `primary + fallback failed: ${fallbackErr.message}` });
+          telemetry.track({
+            eventFamily: 'model_telemetry',
+            eventType: 'provider_error',
+            source: 'llm-client',
+            runId: this.runId,
+            gameId: this.gameId,
+            levelId: this.levelCount,
+            modelId: resolved.fallback,
+            provider: 'openrouter',
+            payload: {
+              message: fallbackErr.message,
+              stage: 'fallback'
+            }
+          });
+          throw fallbackErr;
+        }
+      } else {
+        if (this.io) this.io.emit('llm-error', { status: 0, message: primaryErr.message });
+        throw primaryErr;
+      }
+    }
+
+    const elapsed = Date.now() - startTime;
+    const parsed = parseStructured(llmResponse, sso.availableActions, actionCodeMap);
+    let { action, reason } = parsed;
+    let decisionSource = parsed.source || 'unknown';
+    if (
+      responseMode === 'code' &&
+      policyAuthoritative &&
+      fallbackAction &&
+      (sso.availableActions || []).includes(fallbackAction)
+    ) {
+      action = fallbackAction;
+      reason = `encoded best action ${fallbackActionCode || ''}`.trim();
+      decisionSource = parsed.valid === false ? 'policy-fallback' : 'policy-override';
+    } else if (
+      responseMode === 'code' &&
+      parsed.valid === false &&
+      fallbackAction &&
+      (sso.availableActions || []).includes(fallbackAction)
+    ) {
+      action = fallbackAction;
+      reason = `encoded best action ${fallbackActionCode || ''}`.trim();
+      decisionSource = 'policy-fallback';
+    }
+    this.lastProvider = usedProvider;
+    this.lastModelUsed = usedModel;
+    this.pendingLLMAction = action;
+
+    this.recordActionDecision(action, sso.gameTick, reason);
+
+    console.log(`[LLMClient] LLM completed (${elapsed}ms): ${action}${reason ? ' — ' + reason : ''}`);
+
+    const storeRawText = process.env.TELEMETRY_STORE_PROMPTS === 'true';
+    telemetry.track({
+      eventFamily: 'model_telemetry',
+      eventType: 'llm_decision',
+      source: 'llm-client',
+      runId: this.runId,
+      gameId: this.gameId,
+      levelId: this.levelCount,
+      modelId: this.model,
+      provider: usedProvider,
+      latencyMs: elapsed,
+      payload: {
+        action,
+        reason,
+        decisionSource,
+        parsedAction: parsed.action,
+        policyAuthoritative: Boolean(policyAuthoritative),
+        fallbackAction,
+        fallbackActionCode,
+        modelUsed: usedModel,
+        responseMode: responseMode || 'text',
+        strategy_present: Boolean(this.sessionStrategy),
+        prompt: storeRawText ? prompt : undefined,
+        systemPrompt: storeRawText ? systemMessage || null : undefined,
+        response: storeRawText ? llmResponse : undefined
+      },
+      metrics: {
+        prompt_chars: prompt.length,
+        system_prompt_chars: systemMessage ? systemMessage.length : 0,
+        action_code_count: actionCodeMap ? Object.keys(actionCodeMap).length : 0,
+        parse_valid: parsed.valid === false ? 0 : 1,
+        response_chars: llmResponse.length,
+        tick: sso.gameTick || 0,
+        score: sso.gameScore || 0
+      }
+    });
+
+    if (this.io) {
+      this.io.emit('llm-reasoning', {
+        prompt,
+        systemPrompt: systemMessage || null,
+        response: llmResponse,
+        reason,
+        decisionSource,
+        parsedAction: parsed.action,
+        policyAuthoritative: Boolean(policyAuthoritative),
+        fallbackAction,
+        fallbackActionCode,
+        strategy: this.sessionStrategy,
+        action,
+        elapsed,
+        provider: usedProvider,
+        modelUsed: usedModel,
+        gameState: {
+          score: sso.gameScore,
+          health: sso.avatarHealthPoints,
+          tick: sso.gameTick
+        }
+      });
+    }
+
+    return { action, reason, decisionSource, elapsed, provider: usedProvider, modelUsed: usedModel };
+  }
+
+  recordActionDecision(action, tick, reason = '') {
+    this.stateTracker.recordAction(action, tick);
+    const lastDelta = this.stateTracker.actionHistory[this.stateTracker.actionHistory.length - 1];
+    this.runLog.push({
+      tick,
+      action,
+      reason,
+      scoreDelta: lastDelta ? lastDelta.scoreDelta : 0
+    });
+  }
+
   async startAsyncLLMCall(jsonPayload) {
     this.llmCallInProgress = true;
     this.lastLLMCallTime = Date.now();
 
     try {
-      // Parse JSON (this is slow but happens async)
-      const sso = JSON.parse(jsonPayload);
-
-      // Build prompt from game state using dashboard-configured layers (or legacy fallback),
-      // with rolling history and the ephemeral session strategy layered on top.
-      const { systemMessage, userMessage } = buildPrompt(sso, this.promptConfig, this.stateTracker, this.sessionStrategy);
-      const prompt = userMessage; // For logging/broadcasting
-
-      // Build messages array (system + user if dashboard config exists)
-      const messages = [];
-      if (systemMessage) {
-        messages.push({ role: 'system', content: systemMessage });
-      }
-      messages.push({ role: 'user', content: userMessage });
-
-      // Use per-game LLM settings if configured, otherwise defaults
-      const settings = this.promptConfig?.llmSettings || {};
-
-      // Resolve routing: try the primary provider, fall back to OpenRouter on failure
-      const resolved = resolveModel(this.model);
-      const startTime = Date.now();
-      let llmResponse;
-      let usedProvider = resolved.provider;
-      let usedModel = resolved.id;
-
-      try {
-        llmResponse = await this.callProvider(resolved.provider, resolved.id, messages, settings);
-      } catch (primaryErr) {
-        console.warn(`[LLMClient] Primary ${resolved.provider}/${resolved.id} failed: ${primaryErr.message}`);
-        if (resolved.fallback) {
-          usedProvider = 'openrouter';
-          usedModel = resolved.fallback;
-          try {
-            llmResponse = await this.callProvider('openrouter', resolved.fallback, messages, settings);
-            console.log(`[LLMClient] Fell back to openrouter/${resolved.fallback}`);
-          } catch (fallbackErr) {
-            if (this.io) this.io.emit('llm-error', { status: 0, message: `primary + fallback failed: ${fallbackErr.message}` });
-            throw fallbackErr;
-          }
-        } else {
-          if (this.io) this.io.emit('llm-error', { status: 0, message: primaryErr.message });
-          throw primaryErr;
-        }
-      }
-
-      const elapsed = Date.now() - startTime;
-
-      // Parse action + rationale from LLM response (structured when narration is on)
-      const { action, reason } = parseStructured(llmResponse, sso.availableActions);
-
-      // Store action for next tick
-      this.pendingLLMAction = action;
-
-      // Record the decision: tracker (for history/loop deltas) + run log (for summary)
-      this.stateTracker.recordAction(action, sso.gameTick);
-      const lastDelta = this.stateTracker.actionHistory[this.stateTracker.actionHistory.length - 1];
-      this.runLog.push({
-        tick: sso.gameTick,
-        action,
-        reason,
-        scoreDelta: lastDelta ? lastDelta.scoreDelta : 0
-      });
-
-      console.log(`[LLMClient] LLM completed (${elapsed}ms): ${action}${reason ? ' — ' + reason : ''}`);
-
-      // Broadcast to frontend
-      if (this.io) {
-        this.io.emit('llm-reasoning', {
-          prompt,
-          systemPrompt: systemMessage || null,
-          response: llmResponse,
-          reason,
-          strategy: this.sessionStrategy,
-          action,
-          elapsed,
-          provider: usedProvider,
-          modelUsed: usedModel,
-          gameState: {
-            score: sso.gameScore,
-            health: sso.avatarHealthPoints,
-            tick: sso.gameTick
-          }
-        });
-      }
+      await this.requestLLMAction(jsonPayload);
     } catch (error) {
       console.error('[LLMClient] Error in async LLM call:', error);
     } finally {
@@ -418,8 +781,25 @@ class LLMClient {
         ticks: sso.gameTick,
         level: this.levelCount
       });
-      this.io.emit('run-summary', summary);
+      this.emitRunSummary(summary);
     }
+    telemetry.track({
+      eventFamily: 'evaluation',
+      eventType: 'level_ended',
+      source: 'llm-client',
+      runId: this.runId,
+      gameId: this.gameId,
+      levelId: this.levelCount,
+      modelId: this.model,
+      provider: this.lastProvider,
+      payload: {
+        score: sso.gameScore,
+        winner: sso.gameWinner
+      },
+      metrics: {
+        ticks: sso.gameTick || 0
+      }
+    });
 
     // Reset run accumulation + history for the next level
     this.runLog = [];
@@ -459,15 +839,61 @@ class LLMClient {
 
     return {
       strategy: this.sessionStrategy,
+      provider: this.lastProvider,
+      modelUsed: this.lastModelUsed || this.model,
       finalScore: sso.gameScore || 0,
       winner: sso.gameWinner,
       won,
       ticks: sso.gameTick || 0,
       decisions: this.runLog.length,
+      actions: this.runLog.map(entry => entry.action),
       level: this.levelCount,
       adherence,
       highlights
     };
+  }
+
+  emitRunSummary(summary) {
+    if (this.io && !this.summaryEmitted) {
+      this.summaryEmitted = true;
+      this.io.emit('run-summary', summary);
+      telemetry.track({
+        eventFamily: 'evaluation',
+        eventType: 'run_summary',
+        source: 'llm-client',
+        runId: this.runId,
+        gameId: this.gameId,
+        levelId: summary.level,
+        modelId: this.model,
+        provider: summary.provider,
+        payload: {
+          strategy_present: Boolean(summary.strategy),
+          winner: summary.winner,
+          won: summary.won,
+          actions: summary.actions,
+          adherence: summary.adherence,
+          highlights: summary.highlights
+        },
+        metrics: {
+          final_score: summary.finalScore,
+          ticks: summary.ticks,
+          decisions: summary.decisions
+        }
+      });
+    }
+  }
+
+  emitCloseSummary() {
+    if (this.summaryEmitted || (!this.lastSso && this.runLog.length === 0)) return;
+    const sso = this.lastSso || {};
+    const summary = this.buildRunSummary({
+      ...sso,
+      gameWinner: sso.gameWinner || 'ABORTED',
+      gameTick: sso.gameTick || this.runLog.length,
+      gameScore: sso.gameScore || this.runStartScore || 0
+    });
+    summary.endedBy = 'socket-close';
+    this.emitRunSummary(summary);
   }
 
   sendMessageWithId(msgId, msg) {

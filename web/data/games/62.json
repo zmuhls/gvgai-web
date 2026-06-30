@@ -1,0 +1,15 @@
+{
+  "gameId": 62,
+  "gameName": "lemmings",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|DIG|WAIT\nScoring: hole (-5), lemming hit by exit (+2). Avoid: hole. Win: clear all entrance and lemming. Lose: die."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.719Z"
+}

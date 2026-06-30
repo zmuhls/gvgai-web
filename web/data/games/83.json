@@ -1,0 +1,15 @@
+{
+  "gameId": 83,
+  "gameName": "seaquest",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|SHOOT|WAIT\nScoring: fish hit by torpedo (+1), saved hit by sky (+1000). Avoid: fish. Win: survive until timeout. Lose: die."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.727Z"
+}

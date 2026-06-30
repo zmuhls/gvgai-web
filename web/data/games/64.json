@@ -1,0 +1,15 @@
+{
+  "gameId": 64,
+  "gameName": "mirrors",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|SHOOT|WAIT\nScoring: redcode hit by boulder (+1), redcode hit by boulder (+1), redcode hit by boulder (+1), bluecode hit by boulder (+1), bluecode hit by boulder (+1), bluecode hit by boulder (+1), greencode hit by boulder (+1), greencode hit by boulder (+1), greencode hit by boulder (+1). Avoid: cliff. Lose: die; timeout. Mechanics: push mirror."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.720Z"
+}

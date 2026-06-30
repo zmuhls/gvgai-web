@@ -1,5 +1,6 @@
 // Convert GVGAI SerializableStateObservation to LLM prompt
 const { renderAsciiGrid, detectBackgroundItypes, DEFAULT_LEGEND } = require('./grid-renderer');
+const { buildCodePrompt } = require('./code-protocol');
 
 // Rolling game state tracker for iterative, context-aware prompts
 class GameStateTracker {
@@ -111,15 +112,84 @@ class GameStateTracker {
   }
 }
 
+function readPositiveInteger(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? Math.round(number) : null;
+}
+
+function readCoordinate(position, key, index) {
+  if (!position) return null;
+  if (Array.isArray(position)) return position[index] ?? null;
+  return position[key] ?? position[index] ?? null;
+}
+
+function positionToGrid(position, blockSize) {
+  const x = readCoordinate(position, 'x', 0);
+  const y = readCoordinate(position, 'y', 1);
+  if (x === null || y === null) return null;
+  return [Math.round(x / blockSize), Math.round(y / blockSize)];
+}
+
+function getObservationDimensions(sso) {
+  const explicitW = readPositiveInteger(sso.observationGridNum);
+  const explicitH = readPositiveInteger(sso.observationGridMaxRow);
+  if (explicitW || explicitH) {
+    return [explicitW, explicitH];
+  }
+
+  if (!Array.isArray(sso.observationGrid) || sso.observationGrid.length === 0) {
+    return [null, null];
+  }
+
+  const inferredH = sso.observationGrid.reduce((max, column) => (
+    Array.isArray(column) ? Math.max(max, column.length) : max
+  ), 0);
+  return [sso.observationGrid.length, inferredH || null];
+}
+
+function getGridDimensions(sso) {
+  const [observedW, observedH] = getObservationDimensions(sso);
+  if (observedW || observedH) {
+    return [observedW, observedH];
+  }
+
+  if (!sso.worldDimension) {
+    return [null, null];
+  }
+
+  const rawW = readPositiveInteger(sso.worldDimension[0]);
+  const rawH = readPositiveInteger(sso.worldDimension[1]);
+  if (!rawW || !rawH) {
+    return [rawW, rawH];
+  }
+
+  const blockSize = readPositiveInteger(sso.blockSize) || 1;
+  if (blockSize <= 1) {
+    return [rawW, rawH];
+  }
+
+  const dividedW = Math.round(rawW / blockSize);
+  const dividedH = Math.round(rawH / blockSize);
+  const playerPos = positionToGrid(sso.avatarPosition, blockSize);
+  const dividedGridCannotContainPlayer = playerPos && (
+    playerPos[0] >= dividedW || playerPos[1] >= dividedH
+  );
+
+  if (dividedGridCannotContainPlayer || rawW <= 80 || rawH <= 80) {
+    return [rawW, rawH];
+  }
+
+  return [dividedW, dividedH];
+}
+
 // Extract compact spatial context from full SSO (called only during LLM prompt build)
 function extractSpatialContext(sso) {
   const blockSize = sso.blockSize || 1;
-  const toGrid = (pos) => pos ? [Math.round(pos[0] / blockSize), Math.round(pos[1] / blockSize)] : null;
+  const toGrid = (pos) => positionToGrid(pos, blockSize);
 
   // Player position in grid coords
   const playerPos = toGrid(sso.avatarPosition);
-  const gridW = sso.worldDimension ? Math.round(sso.worldDimension[0] / blockSize) : null;
-  const gridH = sso.worldDimension ? Math.round(sso.worldDimension[1] / blockSize) : null;
+  const [gridW, gridH] = getGridDimensions(sso);
 
   const parts = [];
 
@@ -162,7 +232,7 @@ function extractSpatialContext(sso) {
       for (let j = 0; j < groups[i].length; j++) {
         const obs = groups[i][j];
         if (obs && obs.position) {
-          const gp = toGrid([obs.position.x || obs.position[0], obs.position.y || obs.position[1]]);
+          const gp = toGrid(obs.position);
           if (gp) {
             const dx = gp[0] - playerPos[0];
             const dy = gp[1] - playerPos[1];
@@ -180,6 +250,11 @@ function extractSpatialContext(sso) {
   const npcs = nearest(sso.NPCPositions, sso.NPCPositionsNum, 3);
   if (npcs.length > 0) {
     parts.push(`Threats: ${npcs.map(n => n.label).join('; ')}`);
+  }
+
+  const movables = nearest(sso.movablePositions, sso.movablePositionsNum, 2);
+  if (movables.length > 0) {
+    parts.push(`Moving hazards: ${movables.map(n => n.label).join('; ')}`);
   }
 
   // Nearest goals (collectible resources + portals/exits)
@@ -224,8 +299,9 @@ function resolveTemplate(templateContent, sso, extraVars) {
   const gridPos = sso.avatarPosition
     ? `(${Math.round(sso.avatarPosition[0] / blockSize)}, ${Math.round(sso.avatarPosition[1] / blockSize)})`
     : '(0, 0)';
-  const gridW = sso.worldDimension ? Math.round(sso.worldDimension[0] / blockSize) : '?';
-  const gridH = sso.worldDimension ? Math.round(sso.worldDimension[1] / blockSize) : '?';
+  const [resolvedGridW, resolvedGridH] = getGridDimensions(sso);
+  const gridW = resolvedGridW || '?';
+  const gridH = resolvedGridH || '?';
 
   // Compute blocked directions
   let blockedDirs = 'NONE';
@@ -268,6 +344,10 @@ function buildPrompt(sso, promptConfig, stateTracker, sessionStrategy) {
   if (!promptConfig) {
     // Fallback to legacy single-message prompt
     return { systemMessage: null, userMessage: buildDescriptivePrompt(sso) };
+  }
+
+  if (promptConfig.codeProtocol?.enabled) {
+    return buildCodePrompt(sso, promptConfig, stateTracker, sessionStrategy);
   }
 
   // Detect background itypes on first call per level

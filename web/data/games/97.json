@@ -1,0 +1,15 @@
+{
+  "gameId": 97,
+  "gameName": "towerdefense",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|ATTACK|WAIT\nScoring: collect turretSpotH (+1), collect turretSpotV (+1), normal hit by tower (+9). Win: survive until timeout. Lose: tower count reaches 0. Mechanics: collect turretSpotH to transform, collect turretSpotV to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.732Z"
+}

@@ -19,6 +19,7 @@ public class JavaServer {
     public static void main(String[] args) throws Exception {
         /** Init params */
         int gameIdx = 0;
+        int levelIdx = 0;
         String clientType = "java"; //"python"; // Type of client to test against (Python/Java)
         String shDir = "src/tracks/singleLearning/utils";
         String clientDir = ".";
@@ -49,6 +50,12 @@ public class JavaServer {
         if (params.containsKey("gameId")) {
             gameIdx = Integer.parseInt(params.get("gameId").get(0));
         }
+        if (params.containsKey("levelId")) {
+            levelIdx = Integer.parseInt(params.get("levelId").get(0));
+            if (levelIdx < 0 || levelIdx > 4) {
+                levelIdx = 0;
+            }
+        }
         if (params.containsKey("clientType")) {
             clientType = params.get("clientType").get(0);
         }
@@ -62,9 +69,11 @@ public class JavaServer {
             gamesDir = params.get("gamesDir").get(0);
             IMG_PATH = gamesDir + "/" + IMG_PATH;
         }
-        if (params.containsKey("imgDir")) {
+        if (params.containsKey("imgPath")) {
+            CompetitionParameters.SCREENSHOT_FILENAME = params.get("imgPath").get(0);
+        } else if (params.containsKey("imgDir")) {
             String imgDir = params.get("imgDir").get(0);
-            IMG_PATH = imgDir + "/" + IMG_PATH;
+            CompetitionParameters.SCREENSHOT_FILENAME = imgDir + "/" + CompetitionParameters.SCREENSHOT_FILENAME;
         }
         if (params.containsKey("visuals")) {
             visuals = true;
@@ -127,9 +136,14 @@ public class JavaServer {
         for (int i = 0; i <= 4; i++){
             level_files[i] = gamesPath + games[gameIdx] + "_lvl" + i +".txt";
         }
-        // This plays a training round for a specified game.
-        System.out.println("[GAME] Game idx:" + gameIdx + " game name " + games[gameIdx]);
-        LearningMachine.runMultipleGames(game, level_files, cmd, new String[]{null}, visuals);
+        if (levelIdx != 0) {
+            String selectedLevel = level_files[levelIdx];
+            level_files[levelIdx] = level_files[0];
+            level_files[0] = selectedLevel;
+        }
+        // This plays one selected level for a batch-eval case.
+        System.out.println("[GAME] Game idx:" + gameIdx + " game name " + games[gameIdx] + " first level " + levelIdx);
+        LearningMachine.runOneGame(game, level_files[0], visuals, cmd, null, 0);
 
 
 

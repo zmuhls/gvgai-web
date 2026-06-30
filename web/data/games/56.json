@@ -1,0 +1,15 @@
+{
+  "gameId": 56,
+  "gameName": "jaws",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|SHOOT|WAIT\nScoring: whale hit by torpedo (+1), piranha hit by torpedo (+1), collect sharkFang (+1000), collect shell (+1). Avoid: whale. Win: survive until timeout. Lose: die. Mechanics: collect sharkFang, collect shell."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.717Z"
+}

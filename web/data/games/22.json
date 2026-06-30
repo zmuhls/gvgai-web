@@ -1,0 +1,15 @@
+{
+  "gameId": 22,
+  "gameName": "clusters",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: hole (-1), bluebox hit by blueblock (+1), redbox hit by redblock (+1), greenbox hit by greenblock (+1). Avoid: hole. Win: clear all box. Lose: die; all brokenBox gone; timeout. Mechanics: push box."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.704Z"
+}

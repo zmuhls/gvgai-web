@@ -37,7 +37,7 @@ const MODELS = [
     speed: 'medium', cost: 'mid', featured: false
   },
   {
-    id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash',
+    id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash',
     provider: 'openrouter', fallback: null,
     description: 'Frontier · fast (OpenRouter)',
     speed: 'fast', cost: 'low', featured: false
@@ -51,6 +51,16 @@ const MODELS = [
   // --- Local Ollama (no key) ---
   {
     id: 'gemma3:1b', name: 'Gemma 3 1B (Local)',
+    provider: 'ollama-local', fallback: null,
+    description: 'Local Ollama model', speed: 'fast', cost: 'free', featured: false
+  },
+  {
+    id: 'qwen2.5:0.5b', name: 'Qwen 2.5 0.5B (Local)',
+    provider: 'ollama-local', fallback: null,
+    description: 'Local Ollama model', speed: 'fast', cost: 'free', featured: false
+  },
+  {
+    id: 'smollm2:135m', name: 'SmolLM2 135M (Local)',
     provider: 'ollama-local', fallback: null,
     description: 'Local Ollama model', speed: 'fast', cost: 'free', featured: false
   }

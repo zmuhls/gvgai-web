@@ -1,45 +1,37 @@
-// Load environment variables from parent directory
-require('dotenv').config({ path: '../.env' });
-
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 const fs = require('fs');
-const config = require('./config.json');
+const { loadRootEnv } = require('./scripts/load-root-env');
+const { getConfig, getConfigLoadStatus } = require('./lib/runtime-config');
+const { resolveScreenshotPath } = require('./lib/screenshot-path');
+const config = getConfig();
 
-// Derive the GVGAI project root from this file's location (web/ lives at <root>/web)
-// so the app is portable across machines, Docker, and Railway. An explicit
-// projectRoot in config is honored only when it actually exists on disk.
-// Mutating the shared (cached) config object propagates this to game-manager too.
-if (!config.gvgai.projectRoot || !fs.existsSync(config.gvgai.projectRoot)) {
-  config.gvgai.projectRoot = path.resolve(__dirname, '..');
+const telemetry = require('./lib/telemetry-store');
+
+let gameManager = null;
+let LLMClient = null;
+
+function loadRuntimeModules() {
+  if (!gameManager) gameManager = require('./lib/game-manager');
+  if (!LLMClient) LLMClient = require('./lib/llm-client');
+  return { gameManager, LLMClient };
 }
-
-const gameManager = require('./lib/game-manager');
-const LLMClient = require('./lib/llm-client');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// Validate API key on startup (non-fatal for local Ollama usage)
-const validationClient = new LLMClient();
-validationClient.validateApiKey().then(valid => {
-  if (!valid) {
-    console.warn('[Server] Invalid OpenRouter API key. LLM calls to OpenRouter will fail.');
-  } else {
-    console.log('[Server] LLM backend ready');
-  }
-});
-
 // Screenshot streaming — native fs.watch for low-latency macOS FSEvents
 let screenshotWatcher = null;
-let lastScreenshotMtime = null;
+let lastScreenshotSignature = null;
 let lastFrameSendTime = 0;
 let pendingFrameTimeout = null;
+let frameReadInFlight = false;
+let frameReadQueued = false;
 const FRAME_MIN_INTERVAL = 33;  // ~30fps cap
-const screenshotPath = path.join(config.gvgai.projectRoot, config.gvgai.screenshotPath);
+const screenshotPath = resolveScreenshotPath(config.gvgai);
 
 function startScreenshotStreaming() {
   stopScreenshotStreaming();
@@ -88,14 +80,21 @@ function scheduleFrameSend() {
 }
 
 async function sendScreenshotAsync() {
+  if (frameReadInFlight) {
+    frameReadQueued = true;
+    return;
+  }
+
+  frameReadInFlight = true;
   try {
     const stats = await fs.promises.stat(screenshotPath);
+    const signature = `${stats.mtimeMs}:${stats.size}`;
 
-    // Deduplicate based on modification time
-    if (lastScreenshotMtime && stats.mtime.getTime() === lastScreenshotMtime) {
+    // Deduplicate by timestamp and size
+    if (lastScreenshotSignature === signature) {
       return;
     }
-    lastScreenshotMtime = stats.mtime.getTime();
+    lastScreenshotSignature = signature;
     lastFrameSendTime = Date.now();
 
     // Async file read
@@ -112,6 +111,12 @@ async function sendScreenshotAsync() {
     if (error.code !== 'ENOENT') {
       console.error('[Server] Error sending screenshot:', error.message);
     }
+  } finally {
+    frameReadInFlight = false;
+    if (frameReadQueued) {
+      frameReadQueued = false;
+      scheduleFrameSend();
+    }
   }
 }
 
@@ -127,15 +132,43 @@ function stopScreenshotStreaming() {
       screenshotWatcher.close();
     }
     screenshotWatcher = null;
-    lastScreenshotMtime = null;
+    lastScreenshotSignature = null;
     lastFrameSendTime = 0;
+    frameReadInFlight = false;
+    frameReadQueued = false;
     console.log('[Server] Stopped screenshot streaming');
   }
 }
 
 // Middleware
 app.use(express.json());
+app.use(express.static('public-local'));
 app.use(express.static('public'));
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api/') || req.path.startsWith('/api/telemetry')) {
+    next();
+    return;
+  }
+
+  const start = Date.now();
+  res.on('finish', () => {
+    telemetry.track({
+      eventFamily: 'user_experience',
+      eventType: 'api_request',
+      source: 'server',
+      latencyMs: Date.now() - start,
+      payload: {
+        method: req.method,
+        path: req.path,
+        status: res.statusCode
+      },
+      metrics: {
+        status: res.statusCode
+      }
+    });
+  });
+  next();
+});
 
 // Resolve game name from CSV registry by index
 function resolveGameName(gameId) {
@@ -153,9 +186,11 @@ function resolveGameName(gameId) {
 }
 
 // API Routes
-app.use('/api/games', require('./routes/games'));
-app.use('/api/models', require('./routes/models'));
-app.use('/api/prompts', require('./routes/prompts'));
+app.use('/api/games', require('./routes/games-local'));
+app.use('/api/models', require('./routes/models-local'));
+app.use('/api/prompts', require('./routes/prompts-local'));
+app.use('/api/evals', require('./routes/evals'));
+app.use('/api/telemetry', require('./routes/telemetry'));
 
 // Active game instances
 const activeGames = new Map();
@@ -165,24 +200,38 @@ app.post('/api/game/start', async (req, res) => {
   const { gameId, levelId, model, strategy } = req.body;
 
   try {
+    const runtime = loadRuntimeModules();
     console.log(`[Server] Starting game ${gameId} (level ${levelId}) with model ${model}`);
+    const runId = telemetry.createRunId(`game-${gameId}`);
+    telemetry.track({
+      eventFamily: 'evaluation',
+      eventType: 'game_start_requested',
+      source: 'server',
+      runId,
+      gameId,
+      levelId: levelId || 0,
+      modelId: model,
+      payload: {
+        strategy_present: Boolean(strategy)
+      }
+    });
 
     // Kill any existing games first to free port 8080
     for (const [pid, game] of activeGames) {
       console.log(`[Server] Cleaning up previous game ${pid}`);
       game.llmClient.disconnect();
-      gameManager.stopGame(pid);
+      runtime.gameManager.stopGame(pid);
       activeGames.delete(pid);
     }
     stopScreenshotStreaming();
 
     // Start Java game process (no visuals - headless)
-    const gameProcess = gameManager.startGame(gameId, levelId || 0, false);
+    const gameProcess = await runtime.gameManager.startGame(gameId, levelId || 0, false);
 
     // Wait for Java to report socket is listening (via stdout)
-    const socketReady = await gameManager.waitForReady(gameProcess.processId, 10000);
+    const socketReady = await runtime.gameManager.waitForReady(gameProcess.processId, 10000);
     if (!socketReady) {
-      gameManager.stopGame(gameProcess.processId);
+      runtime.gameManager.stopGame(gameProcess.processId);
       return res.status(500).json({ error: 'Java game process failed to start' });
     }
 
@@ -190,14 +239,14 @@ app.post('/api/game/start', async (req, res) => {
     startScreenshotStreaming();
 
     // Create and connect LLM client
-    const llmClient = new LLMClient();
+    const llmClient = new runtime.LLMClient({ runId });
 
     // Wire session-end cleanup
     llmClient.onSessionEnd = () => {
       console.log(`[Server] Session ended for ${gameProcess.processId}, cleaning up`);
       activeGames.delete(gameProcess.processId);
       stopScreenshotStreaming();
-      gameManager.stopGame(gameProcess.processId);
+      runtime.gameManager.stopGame(gameProcess.processId);
     };
 
     // Connect LLM client to GVGAI socket
@@ -205,9 +254,35 @@ app.post('/api/game/start', async (req, res) => {
       const gameName = resolveGameName(gameId);
       await llmClient.connect(config.gvgai.socketPort, model, io, gameId, gameName, strategy);
       console.log('[Server] LLM client connected successfully');
+      telemetry.track({
+        eventFamily: 'evaluation',
+        eventType: 'run_started',
+        source: 'server',
+        runId,
+        gameId,
+        levelId: levelId || 0,
+        modelId: model,
+        payload: {
+          gameName,
+          processId: gameProcess.processId,
+          strategy_present: Boolean(strategy)
+        }
+      });
     } catch (error) {
       console.error('[Server] Failed to connect LLM client:', error);
-      gameManager.stopGame(gameProcess.processId);
+      telemetry.track({
+        eventFamily: 'evaluation',
+        eventType: 'run_start_failed',
+        source: 'server',
+        runId,
+        gameId,
+        levelId: levelId || 0,
+        modelId: model,
+        payload: {
+          message: error.message
+        }
+      });
+      runtime.gameManager.stopGame(gameProcess.processId);
       stopScreenshotStreaming();
       return res.status(500).json({ error: 'Failed to connect to game socket' });
     }
@@ -221,10 +296,22 @@ app.post('/api/game/start', async (req, res) => {
       status: 'started',
       processId: gameProcess.processId,
       gameId,
-      model
+      model,
+      runId
     });
   } catch (error) {
     console.error('[Server] Error starting game:', error);
+    telemetry.track({
+      eventFamily: 'evaluation',
+      eventType: 'game_start_error',
+      source: 'server',
+      gameId,
+      levelId: levelId || 0,
+      modelId: model,
+      payload: {
+        message: error.message
+      }
+    });
     stopScreenshotStreaming();
     res.status(500).json({ error: error.message });
   }
@@ -237,9 +324,18 @@ app.post('/api/game/stop', (req, res) => {
   const game = activeGames.get(processId);
   if (game) {
     game.llmClient.disconnect();
-    gameManager.stopGame(processId);
+    if (gameManager) gameManager.stopGame(processId);
     activeGames.delete(processId);
     stopScreenshotStreaming();
+    telemetry.track({
+      eventFamily: 'evaluation',
+      eventType: 'run_stopped',
+      source: 'server',
+      runId: game.llmClient.runId,
+      gameId: game.llmClient.gameId,
+      modelId: game.llmClient.model,
+      payload: { processId }
+    });
 
     res.json({ status: 'stopped', processId });
   } else {
@@ -251,10 +347,29 @@ app.post('/api/game/stop', (req, res) => {
 io.on('connection', (socket) => {
   console.log('[Server] Frontend connected:', socket.id);
   console.log('[Server] Active connections:', io.engine.clientsCount);
+  telemetry.track({
+    eventFamily: 'user_experience',
+    eventType: 'socket_connected',
+    source: 'socket',
+    sessionId: socket.id,
+    payload: {
+      clients: io.engine.clientsCount
+    }
+  });
 
   socket.on('disconnect', (reason) => {
     console.log('[Server] Frontend disconnected:', socket.id, 'reason:', reason);
     console.log('[Server] Remaining connections:', io.engine.clientsCount);
+    telemetry.track({
+      eventFamily: 'user_experience',
+      eventType: 'socket_disconnected',
+      source: 'socket',
+      sessionId: socket.id,
+      payload: {
+        reason,
+        clients: io.engine.clientsCount
+      }
+    });
   });
 
   socket.on('error', (error) => {
@@ -269,18 +384,82 @@ process.on('SIGINT', () => {
   // Stop all games
   for (const [processId, game] of activeGames) {
     game.llmClient.disconnect();
-    gameManager.stopGame(processId);
+    if (gameManager) gameManager.stopGame(processId);
   }
 
   activeGames.clear();
   stopScreenshotStreaming();
-  process.exit(0);
+  telemetry.track({
+    eventFamily: 'system',
+    eventType: 'server_stopped',
+    source: 'server'
+  });
+  telemetry.flush().finally(() => process.exit(0));
 });
 
-// Start server
-const PORT = config.server.port;
-server.listen(PORT, () => {
-  console.log(`[Server] Running on http://localhost:${PORT}`);
-  console.log(`[Server] GVGAI project root: ${config.gvgai.projectRoot}`);
-  console.log(`[Server] OpenRouter API key loaded from .env`);
-});
+const PORT = Number.parseInt(process.env.PORT || config.server.port || 3000, 10);
+
+async function startServer() {
+  const envLoad = await loadRootEnv();
+  if (envLoad.timedOut) {
+    console.warn(`[Server] skipped root .env after ${envLoad.timeoutMs}ms; using process environment`);
+  }
+  const configStatus = getConfigLoadStatus();
+  if (configStatus.fallback) {
+    console.warn(`[Server] using runtime config defaults because config.json did not load within ${configStatus.timeoutMs}ms`);
+  }
+
+  telemetry.configure({
+    io,
+    fallbackPath: path.resolve(__dirname, 'data', 'telemetry-events.jsonl')
+  });
+  telemetry.track({
+    eventFamily: 'system',
+    eventType: 'server_started',
+    source: 'server',
+    payload: {
+      port: config.server.port,
+      supabase: telemetry.getStorageStatus().state
+    }
+  });
+
+  if (process.env.VALIDATE_LLM_ON_STARTUP === 'true') {
+    try {
+      const runtime = loadRuntimeModules();
+      const validationClient = new runtime.LLMClient();
+      validationClient.validateApiKey().then(valid => {
+        if (!valid) {
+          console.warn('[Server] Invalid OpenRouter API key. LLM calls to OpenRouter will fail.');
+        } else {
+          console.log('[Server] LLM backend ready');
+        }
+      });
+    } catch (error) {
+      console.warn('[Server] LLM validation skipped:', error.message);
+    }
+  } else {
+    console.log('[Server] LLM validation deferred until a run starts');
+  }
+
+  return new Promise(resolve => {
+    server.listen(PORT, () => {
+      console.log(`[Server] Running on http://localhost:${PORT}`);
+      console.log(`[Server] GVGAI project root: ${config.gvgai.projectRoot}`);
+      console.log(`[Server] OpenRouter API key loaded from environment`);
+      resolve(server);
+    });
+  });
+}
+
+if (require.main === module) {
+  startServer().catch(error => {
+    console.error('[Server] failed to start:', error);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  app,
+  server,
+  startServer
+};

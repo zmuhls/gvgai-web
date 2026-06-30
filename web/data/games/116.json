@@ -1,0 +1,15 @@
+{
+  "gameId": 116,
+  "gameName": "jumper",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: LEFT|RIGHT|USE|WAIT\nScoring: kill coin (+1). Win: clear all winnerNPC. Lose: die. Mechanics: collect goal to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.738Z"
+}

@@ -1,0 +1,15 @@
+{
+  "gameId": 61,
+  "gameName": "lasers2",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|SHOOT|WAIT\nScoring: kill goal (+5). Win: clear all goal. Lose: die. Mechanics: push box, push mirror."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.719Z"
+}

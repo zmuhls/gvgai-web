@@ -1,0 +1,15 @@
+{
+  "gameId": 46,
+  "gameName": "ghostbuster",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|SHOOT|WAIT\nScoring: ghost hit by missile (+10), ghost (-100), collect fleeing (+1). Avoid: ghost. Win: clear all ghostspawn and ghost. Lose: die; civilian count reaches 0. Mechanics: collect fleeing to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.713Z"
+}

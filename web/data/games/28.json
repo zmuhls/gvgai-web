@@ -1,0 +1,15 @@
+{
+  "gameId": 28,
+  "gameName": "defender",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|SHOOT|WAIT\nScoring: alien hit by sam (+2). Win: survive until timeout. Lose: die; city count reaches 0."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.706Z"
+}

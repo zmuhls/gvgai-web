@@ -1,0 +1,15 @@
+{
+  "gameId": 114,
+  "gameName": "bubble",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: LEFT|RIGHT|SHOOT|WAIT\nScoring: bullet hit by bubble3 (+1), bullet hit by bubble2 (+1), bullet hit by bubble1 (+1). Avoid: bubble. Win: clear all bubble. Lose: die."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.737Z"
+}

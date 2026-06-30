@@ -8,14 +8,51 @@
   },
   "progressionContexts": {},
   "llmSettings": {
-    "maxTokens": 200,
-    "temperature": 0.8
+    "maxTokens": 8,
+    "temperature": 0.1
   },
   "actionAliases": {
     "ACTION_USE": "SHOOT",
     "ACTION_NIL": "WAIT",
     "ACTION_LEFT": "LEFT",
     "ACTION_RIGHT": "RIGHT"
+  },
+  "codeProtocol": {
+    "enabled": true,
+    "id": "GV1",
+    "actionCodes": {
+      "N": "ACTION_NIL",
+      "L": "ACTION_LEFT",
+      "R": "ACTION_RIGHT",
+      "U": "ACTION_USE"
+    },
+    "entityCodes": {
+      "npc": "a",
+      "movable": "b",
+      "portal": "p",
+      "static": "x"
+    },
+    "policyId": "aliens-opening-move",
+    "movementCodes": [
+      "R",
+      "L"
+    ],
+    "movementIntervalTicks": 6,
+    "objectiveCodes": [
+      "KILL_ALL",
+      "AVOID_HAZARD"
+    ],
+    "ruleCodes": [
+      "ALIGN_SHOOT",
+      "DODGE_NEAR",
+      "CLEAR_LOW"
+    ],
+    "forceActionCode": "U",
+    "authoritative": true,
+    "preferFire": true,
+    "dodgeLookaheadRows": 3,
+    "entityLimit": 5,
+    "hazardLimit": 4
   },
   "updatedAt": "2026-02-03T04:29:07.354Z"
 }

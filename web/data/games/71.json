@@ -1,0 +1,15 @@
+{
+  "gameId": 71,
+  "gameName": "plants",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|DIG|WAIT\nScoring: zombie hit by pea (+1). Win: survive until timeout. Lose: all eatenBrains gone; die."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.722Z"
+}

@@ -1,0 +1,15 @@
+{
+  "gameId": 23,
+  "gameName": "colourescape",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: hole (-1), kill exit (+1). Avoid: hole. Win: clear all exit. Lose: die; timeout. Mechanics: push greenbox, push redbox, push bluebox, push box, collect normalSwitch to transform, collect redSwitch to transform, collect blueSwitch to transform, collect greenSwitch to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.704Z"
+}

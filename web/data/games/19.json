@@ -1,0 +1,15 @@
+{
+  "gameId": 19,
+  "gameName": "chipschallenge",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: water hit by crate (+1), gate (+4), collect chip (+1), collect boots (+3), reddoor (+2), greendoor (+2), bluedoor (+2), yellowdoor (+2), kill exit (+5). Win: clear all exit. Lose: die. Mechanics: push crate, collect chip, collect key, collect boots."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.700Z"
+}

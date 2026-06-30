@@ -1,0 +1,15 @@
+{
+  "gameId": 67,
+  "gameName": "overload",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|ATTACK|WAIT\nScoring: collect weapon (+2), marsh hit by sword (+1), collect gold (+1). Win: clear all goal. Lose: die. Mechanics: collect weapon, collect gold."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.721Z"
+}

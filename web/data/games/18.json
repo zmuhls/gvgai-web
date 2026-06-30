@@ -8,8 +8,48 @@
   },
   "progressionContexts": {},
   "llmSettings": {
-    "maxTokens": 200,
-    "temperature": 0.5
+    "maxTokens": 8,
+    "temperature": 0.1
+  },
+  "codeProtocol": {
+    "enabled": true,
+    "id": "GV1",
+    "policyId": "grid-target",
+    "authoritative": true,
+    "actionCodes": {
+      "U": "ACTION_UP",
+      "D": "ACTION_DOWN",
+      "L": "ACTION_LEFT",
+      "R": "ACTION_RIGHT"
+    },
+    "entityCodes": {
+      "npc": "g",
+      "static": "x"
+    },
+    "objectiveCodes": [
+      "COLLECT_SCARED"
+    ],
+    "ruleCodes": [
+      "PATH_TO_NEAREST_SCARED",
+      "AVOID_ANGRY"
+    ],
+    "targetSources": [
+      "npc"
+    ],
+    "targetItypes": [
+      6
+    ],
+    "wallSources": [
+      "immovable"
+    ],
+    "wallItypes": [
+      0
+    ],
+    "dangerSources": [
+      "npc"
+    ],
+    "dangerNonTargets": true,
+    "dangerRadius": 1
   },
   "updatedAt": "2026-02-02T03:11:55.700Z"
 }

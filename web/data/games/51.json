@@ -1,0 +1,15 @@
+{
+  "gameId": 51,
+  "gameName": "iceandfire",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: kill exit (+1), trap (-1), kill chip (+1), collect feetwear (+3). Avoid: trap. Win: clear all exit. Lose: timeout; die. Mechanics: collect feetwear."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.715Z"
+}

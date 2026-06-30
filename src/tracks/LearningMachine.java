@@ -34,14 +34,14 @@ public class LearningMachine {
      */
     public static double[] runOneGame(String game_file, String level_file, boolean visuals,
                                       String[] cmd, String actionFile, int randomSeed) throws IOException {
-        VGDLFactory.GetInstance().init(); //This always first thing to do.
-        VGDLRegistry.GetInstance().init();
-        CompetitionParameters.IS_LEARNING = true;
-
         System.out.println(" ** Playing game " + game_file + ", level " + level_file + " **");
 
         //1. Create the player.
         LearningPlayer player = LearningMachine.createPlayer(cmd);
+
+        VGDLFactory.GetInstance().init(); //This always first thing to do.
+        VGDLRegistry.GetInstance().init();
+        CompetitionParameters.IS_LEARNING = true;
 //
         //2. Play the training games.
         double[] finalScore = playOnce(player, actionFile, game_file, level_file, visuals, randomSeed);
@@ -60,11 +60,12 @@ public class LearningMachine {
      */
     public static void runMultipleGames(String game_file, String[] level_files,
                                         String cmd[], String[] actionFiles, boolean visuals) throws IOException {
+        //Create the player.
+        LearningPlayer player = LearningMachine.createPlayer(cmd);
+
         VGDLFactory.GetInstance().init(); //This always first thing to do.
         VGDLRegistry.GetInstance().init();
         CompetitionParameters.IS_LEARNING = true;
-        //Create the player.
-        LearningPlayer player = LearningMachine.createPlayer(cmd);
 
         // Play the training games.
         runGames(game_file, level_files, 1, player, actionFiles, visuals);
@@ -102,7 +103,9 @@ public class LearningMachine {
         if (visuals)
             score = toPlay.playGame(players, randomSeed, true, 0);
         else
-            score = toPlay.runGame(players, randomSeed);
+            score = toPlay.playOnlineGame(players, randomSeed, false, 0);
+
+        player.result(toPlay.getObservation());
 
         //Finally, when the game is over, we need to tear the player down.
         LearningMachine.tearPlayerDown(player, toPlay);
@@ -124,6 +127,14 @@ public class LearningMachine {
     public static StatSummary performance;
     public static void runGames(String game_file, String[] level_files, int level_times,
                                 LearningPlayer player, String[] actionFiles, boolean visual) throws IOException {
+        // Open the learning socket before VGDL class loading so web clients can
+        // complete the handshake while the game engine initializes.
+        LearningPlayer[] players = new LearningPlayer[]{player};
+        boolean initSuccesful = players[0].startPlayerCommunication();
+        if (!initSuccesful) {
+            return;
+        }
+
         VGDLFactory.GetInstance().init(); //This always first thing to do.
         VGDLRegistry.GetInstance().init();
         CompetitionParameters.IS_LEARNING = true;
@@ -144,14 +155,6 @@ public class LearningMachine {
         scores[0] = new StatSummary();
         performance = new StatSummary();
 
-        // Player array to hold the single player
-        LearningPlayer[] players = new LearningPlayer[]{player};
-
-        // Initialize the player
-        boolean initSuccesful = players[0].startPlayerCommunication();
-        if (!initSuccesful) {
-            return;
-        }
         // Establish the training and validation levels.
         boolean keepPlaying = true;
         String[] trainingLevels = new String[Types.NUM_TRAINING_LEVELS];

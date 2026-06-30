@@ -1,0 +1,15 @@
+{
+  "gameId": 53,
+  "gameName": "infection",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|ATTACK|WAIT\nScoring: doctor hit by sword (+2), doctor (-1), collect host (+2). Win: clear all host. Mechanics: collect doctor to transform, collect host to transform, collect infected to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.716Z"
+}

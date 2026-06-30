@@ -1,0 +1,15 @@
+{
+  "gameId": 89,
+  "gameName": "superman",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: kill fallingcivilian (+1), bandit (+1), villaingang hit by jail (+1000). Win: clear all portal and bandit. Lose: all hurtcivilian gone; die."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.729Z"
+}

@@ -3,13 +3,13 @@
   "gameName": "angelsdemons",
   "systemTemplateId": "default-system",
   "gameContext": {
-    "templateId": "angelsdemons-strategy",
-    "customOverride": null
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: bolt hit by box (+1), bolt (-5), salvation hit by wall (+1), citizen hit by salvation (+100). Win: survive until timeout. Lose: all cursed gone. Mechanics: push box."
   },
   "progressionContexts": {},
   "llmSettings": {
     "maxTokens": 100,
     "temperature": 0.5
   },
-  "updatedAt": "2026-01-31T00:00:00.000Z"
+  "updatedAt": "2026-02-02T03:11:55.684Z"
 }

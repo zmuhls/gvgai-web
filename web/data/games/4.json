@@ -8,8 +8,38 @@
   },
   "progressionContexts": {},
   "llmSettings": {
-    "maxTokens": 200,
-    "temperature": 0.5
+    "maxTokens": 8,
+    "temperature": 0.1
+  },
+  "codeProtocol": {
+    "enabled": true,
+    "id": "GV1",
+    "policyId": "bait-level0",
+    "authoritative": true,
+    "actionCodes": {
+      "U": "ACTION_UP",
+      "D": "ACTION_DOWN",
+      "L": "ACTION_LEFT",
+      "R": "ACTION_RIGHT"
+    },
+    "entityCodes": {
+      "movable": "m",
+      "static": "x",
+      "goal": "g"
+    },
+    "objectiveCodes": [
+      "GET_KEY",
+      "OPEN_GOAL"
+    ],
+    "ruleCodes": [
+      "PUSH_RIGHT_BOX_DOWN",
+      "PUSH_CENTER_BOX_LEFT",
+      "COLLECT_KEY",
+      "ENTER_GOAL"
+    ],
+    "keyItype": 7,
+    "boxItype": 9,
+    "withKeyAvatarType": 5
   },
   "updatedAt": "2026-02-02T03:11:55.688Z"
 }

@@ -5,7 +5,7 @@
   },
   "gvgai": {
     "socketPort": 8080,
-    "classpath": "out:gson-2.6.2.jar:.",
+    "classpath": "out:gson-2.6.2.jar",
     "mainClass": "tracks.singleLearning.utils.JavaServer",
     "screenshotPath": "gameStateByBytes.png",
     "javaPath": "/opt/homebrew/opt/openjdk@11/bin/java",
