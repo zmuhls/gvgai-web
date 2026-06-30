@@ -1,0 +1,15 @@
+{
+  "gameId": 99,
+  "gameName": "waitforbreakfast",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: collect tablewb (+1). Win: clear all emptytable and tablewb. Lose: all leavingavatar gone; exit count reaches 0; timeout. Mechanics: collect tablewb to transform, collect ground to transform, collect singlefront to transform, collect singleback to transform, collect singleleft to transform, collect singleright to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.732Z"
+}

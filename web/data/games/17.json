@@ -1,0 +1,15 @@
+{
+  "gameId": 17,
+  "gameName": "chainreaction",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: boulderm hit by goal (+2), hole (-10). Avoid: hole. Win: clear all targetBoulder. Lose: die; master count reaches 0; timeout. Mechanics: collect masterBoulder to transform, push box."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.699Z"
+}

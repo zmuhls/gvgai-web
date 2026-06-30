@@ -1,0 +1,15 @@
+{
+  "gameId": 84,
+  "gameName": "sheriff",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|SHOOT|WAIT\nScoring: bandit hit by bullet (+1), missile (-1). Avoid: missile. Win: clear all bandit; survive until timeout. Lose: die."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.727Z"
+}

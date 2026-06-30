@@ -1,0 +1,15 @@
+{
+  "gameId": 63,
+  "gameName": "link",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|SHOOT|WAIT\nScoring: timebonus_start hit by timebonus (+35000), kill gold (+500), collect pickaxe (+100), enemy hit by pro (+250), breakableWall hit by tank (+10), kill goal (+2000), enemy (-15), kill coin (+2). Avoid: enemy. Win: clear all goal. Lose: die. Mechanics: collect pickaxe."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.719Z"
+}

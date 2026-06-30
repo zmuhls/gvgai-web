@@ -1,0 +1,15 @@
+{
+  "gameId": 85,
+  "gameName": "shipwreck",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: whirlpool (-10), t10 (+10), t10 (+10), t10 (+10), t5 (+5), t5 (+5), t5 (+5), t1 (+1), t1 (+1), t1 (+1). Avoid: whirlpool. Win: survive until timeout. Lose: die. Mechanics: collect good."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.728Z"
+}

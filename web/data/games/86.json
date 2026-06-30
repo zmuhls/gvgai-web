@@ -1,0 +1,15 @@
+{
+  "gameId": 86,
+  "gameName": "slide",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|USE|WAIT\nWin: clear all winner. Lose: avatar1 count reaches 0; timeout. Mechanics: collect wall to transform, collect up to transform, collect down to transform, collect left to transform, collect right to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.728Z"
+}

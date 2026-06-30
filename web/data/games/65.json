@@ -1,0 +1,15 @@
+{
+  "gameId": 65,
+  "gameName": "missilecommand",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|ATTACK|WAIT\nScoring: incoming hit by explosion (+2). Win: clear all incoming. Lose: city count reaches 0."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.720Z"
+}

@@ -1,0 +1,15 @@
+{
+  "gameId": 7,
+  "gameName": "boloadventures",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: boulderm hit by hole (+1), kill goal (+5). Win: clear all goal. Lose: die. Mechanics: push box, collect boulder to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.689Z"
+}

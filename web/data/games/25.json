@@ -1,0 +1,15 @@
+{
+  "gameId": 25,
+  "gameName": "cops",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: greentrans (+2), yellowtrans (+5), redtrans (+100), kill boss (+100). Win: clear all boss. Lose: timeout. Mechanics: collect key."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.705Z"
+}

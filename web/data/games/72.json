@@ -1,0 +1,15 @@
+{
+  "gameId": 72,
+  "gameName": "plaqueattack",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|SHOOT|WAIT\nScoring: food hit by fluor (+2), collect deadMolarInf (+1), collect deadMolarSup (+1). Win: clear all holes and food. Lose: fullMolar count reaches 0. Mechanics: collect deadMolarInf to transform, collect deadMolarSup to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.722Z"
+}

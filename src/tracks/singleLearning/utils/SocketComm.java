@@ -41,7 +41,12 @@ public class SocketComm extends Comm {
             //Accepting the socket connection.
             while (socket == null) {
                 ServerSocket serverSocket = new ServerSocket(port);
-                socket = serverSocket.accept();
+                System.out.println("[SocketComm] ServerSocket listening on port " + port);
+                try {
+                    socket = serverSocket.accept();
+                } finally {
+                    serverSocket.close();
+                }
             }
 
 

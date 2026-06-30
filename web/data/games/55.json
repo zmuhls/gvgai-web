@@ -1,0 +1,15 @@
+{
+  "gameId": 55,
+  "gameName": "islands",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|DIG|WAIT\nScoring: kill treasure (+100), kill goal (+1). Avoid: fireEnd, whirlpool. Win: clear all goal. Lose: die; timeout. Mechanics: collect sand, collect water to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.717Z"
+}

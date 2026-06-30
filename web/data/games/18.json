@@ -1,0 +1,55 @@
+{
+  "gameId": 18,
+  "gameName": "chase",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Scoring: angry (-1), collect scared (+1). Avoid: angry. Win: clear all scared. Lose: die. Mechanics: collect scared to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 8,
+    "temperature": 0.1
+  },
+  "codeProtocol": {
+    "enabled": true,
+    "id": "GV1",
+    "policyId": "grid-target",
+    "authoritative": true,
+    "actionCodes": {
+      "U": "ACTION_UP",
+      "D": "ACTION_DOWN",
+      "L": "ACTION_LEFT",
+      "R": "ACTION_RIGHT"
+    },
+    "entityCodes": {
+      "npc": "g",
+      "static": "x"
+    },
+    "objectiveCodes": [
+      "COLLECT_SCARED"
+    ],
+    "ruleCodes": [
+      "PATH_TO_NEAREST_SCARED",
+      "AVOID_ANGRY"
+    ],
+    "targetSources": [
+      "npc"
+    ],
+    "targetItypes": [
+      6
+    ],
+    "wallSources": [
+      "immovable"
+    ],
+    "wallItypes": [
+      0
+    ],
+    "dangerSources": [
+      "npc"
+    ],
+    "dangerNonTargets": true,
+    "dangerRadius": 1
+  },
+  "updatedAt": "2026-02-02T03:11:55.700Z"
+}

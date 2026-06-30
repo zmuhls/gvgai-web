@@ -1,0 +1,15 @@
+{
+  "gameId": 119,
+  "gameName": "pong",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|WAIT\nWin: clear all othergoal. Lose: mygoal count reaches 0."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.739Z"
+}

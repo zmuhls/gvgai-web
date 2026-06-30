@@ -9,6 +9,7 @@ A web-based interface for watching AI language models play GVGAI games in real-t
 - Watch AI agents play games with real-time visual output
 - See LLM reasoning and decision-making process
 - View game statistics and performance metrics
+- Stream telemetry to Supabase with a local dashboard and JSONL fallback
 
 ## Prerequisites
 
@@ -143,6 +144,7 @@ The AI will play until the game ends (win, lose, or timeout).
 - **Model Selector**: LLM configuration interface
 - **Game Viewer**: Live game display with WebSocket streaming
 - **Reasoning Display**: Shows LLM prompts/responses in real-time
+- **Telemetry Stream**: Shows eval, UX, clickthrough, model, and trace events
 
 ## Configuration
 
@@ -209,6 +211,15 @@ This allows the game to run smoothly while still benefiting from LLM decision-ma
 - `GET /api/models` - List available LLM models
 - `POST /api/game/start` - Start a game session
 - `POST /api/game/stop` - Stop a game session
+- `GET /api/evals/arcade` - Build the default arcade prompt-evaluation plan
+- `POST /api/evals/arcade/run` - Run selected prompt cases and compare results
+- `GET /api/telemetry/summary` - Read dashboard rollups and recent telemetry
+- `POST /api/telemetry/events` - Log browser UX and clickthrough events through the server
+- `POST /api/telemetry/flush` - Flush pending telemetry writes
+
+Supabase setup is documented in [`SUPABASE_TELEMETRY.md`](./SUPABASE_TELEMETRY.md).
+Use `npm run telemetry:check` after adding Supabase credentials to verify the cloud insert path and rollup view.
+Use `npm run telemetry:backfill` to upload local JSONL fallback events captured before credentials were available.
 
 ## WebSocket Events
 
@@ -223,6 +234,50 @@ This allows the game to run smoothly while still benefiting from LLM decision-ma
 
 ```bash
 npm run dev
+```
+
+### Run batch prompt evaluations:
+
+```bash
+/usr/local/bin/node web/scripts/run-arcade-eval.js --game-count 1 --model gpt-oss:120b --limit 3
+```
+
+The default batch runs the first featured game, one model, and three prompt strategies. Results are written to `web/data/eval-runs/*.json` with per-run score, winner, ticks, actions, adherence, and a comparison block that marks whether prompt variants produced a meaningful difference.
+
+Prepare the hydrated Java runtime when macOS cloud-backed files block the GVGAI tree:
+
+```bash
+/usr/local/bin/node web/scripts/prepare-java-runtime.js
+```
+
+Run a Java-backed local-model prompt check against real GVGAI:
+
+```bash
+/usr/local/bin/node web/scripts/run-arcade-eval.js --game-count 1 --model qwen2.5:0.5b --limit 3 --max-actions 12
+```
+
+This starts the Java `tracks.singleLearning.utils.JavaServer`, plays the selected GVGAI level through the socket protocol, and caps each case after the requested number of model actions so prompt comparisons finish quickly.
+
+Run the local offline prompt-policy check when provider keys or GVGAI Java startup are unavailable:
+
+```bash
+/usr/local/bin/node web/scripts/run-arcade-eval.js --offline --game-count 1 --model local-prompt-policy --limit 3
+```
+
+This uses the same eval plan and comparison code, but runs a small deterministic game locally so prompt differences can be verified without OpenRouter, Ollama Cloud, or the Java engine.
+
+Run the local Ollama check to make an installed model choose each move:
+
+```bash
+/usr/local/bin/node web/scripts/run-arcade-eval.js --ollama-offline --game-count 1 --model qwen2.5:0.5b --ollama-model qwen2.5:0.5b --limit 3
+```
+
+The Ollama mode uses the same local game and comparison output, while calling the configured Ollama model for every action.
+
+Preview the selected cases without launching Java or calling a model:
+
+```bash
+/usr/local/bin/node web/scripts/run-arcade-eval.js --dry-run --game-count 1 --model gpt-oss:120b --limit 3
 ```
 
 ### Project Structure

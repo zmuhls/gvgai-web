@@ -1,0 +1,15 @@
+{
+  "gameId": 37,
+  "gameName": "escape",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: hole (-1), kill exit (+1). Avoid: hole. Win: clear all exit. Lose: die; timeout. Mechanics: push box."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.710Z"
+}

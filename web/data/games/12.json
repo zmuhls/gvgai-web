@@ -1,0 +1,15 @@
+{
+  "gameId": 12,
+  "gameName": "brainman",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: door hit by keym (+4), kill green (+1), kill blue (+2), kill red (+5), kill exit (+10). Win: clear all exit. Lose: die. Mechanics: push boulder, collect key to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.697Z"
+}

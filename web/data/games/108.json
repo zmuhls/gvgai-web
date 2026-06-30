@@ -1,0 +1,15 @@
+{
+  "gameId": 108,
+  "gameName": "zelda",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|ATTACK|WAIT\nScoring: kill goal (+1), enemy hit by sword (+2), enemy (-1), collect key (+1). Avoid: enemy. Win: clear all goal. Lose: die. Mechanics: collect key to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.736Z"
+}

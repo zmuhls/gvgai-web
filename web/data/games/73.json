@@ -1,0 +1,15 @@
+{
+  "gameId": 73,
+  "gameName": "pokemon",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|ATTACK|WAIT\nWin: clear all boss. Lose: pokemon count reaches 0; timeout."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.723Z"
+}

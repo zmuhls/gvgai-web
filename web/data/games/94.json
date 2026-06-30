@@ -1,0 +1,15 @@
+{
+  "gameId": 94,
+  "gameName": "themole",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: overgroundEnemy (-1), undergroundEnemy (-1), overgroundGem (+1), undergroundGem (+1). Avoid: overgroundEnemy, undergroundEnemy. Win: clear all gem. Lose: die. Mechanics: collect holedown to transform, collect holeup to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.731Z"
+}

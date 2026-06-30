@@ -1,0 +1,15 @@
+{
+  "gameId": 10,
+  "gameName": "boulderchase",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|ATTACK|WAIT\nScoring: collect diamond (+2), boulder (-1), butterfly (-1), enemy hit by boulder (+5), butterfly hit by crab (+1). Avoid: butterfly. Win: clear all exitdoor. Lose: die. Mechanics: collect diamond."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.691Z"
+}

@@ -1,0 +1,15 @@
+{
+  "gameId": 5,
+  "gameName": "beltmanager",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: passenger hit by suitcase (+1). Win: clear all passenger. Lose: suitcase count reaches 0."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.688Z"
+}

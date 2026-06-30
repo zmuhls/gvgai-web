@@ -1,111 +1,174 @@
-// Load environment variables from parent directory
-require('dotenv').config({ path: '../.env' });
-
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 const fs = require('fs');
-const chokidar = require('chokidar');
-const config = require('./config.json');
-const gameManager = require('./lib/game-manager');
-const LLMClient = require('./lib/llm-client');
+const { loadRootEnv } = require('./scripts/load-root-env');
+const { getConfig, getConfigLoadStatus } = require('./lib/runtime-config');
+const { resolveScreenshotPath } = require('./lib/screenshot-path');
+const config = getConfig();
+
+const telemetry = require('./lib/telemetry-store');
+
+let gameManager = null;
+let LLMClient = null;
+
+function loadRuntimeModules() {
+  if (!gameManager) gameManager = require('./lib/game-manager');
+  if (!LLMClient) LLMClient = require('./lib/llm-client');
+  return { gameManager, LLMClient };
+}
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// Validate API key on startup (non-fatal for local Ollama usage)
-const validationClient = new LLMClient();
-validationClient.validateApiKey().then(valid => {
-  if (!valid) {
-    console.warn('[Server] Invalid OpenRouter API key. LLM calls to OpenRouter will fail.');
-  } else {
-    console.log('[Server] LLM backend ready');
-  }
-});
-
-// Screenshot streaming
+// Screenshot streaming — native fs.watch for low-latency macOS FSEvents
 let screenshotWatcher = null;
-let lastScreenshotMtime = null;  // Track last modification time to deduplicate
-const screenshotPath = path.join(config.gvgai.projectRoot, config.gvgai.screenshotPath);
+let lastScreenshotSignature = null;
+let lastFrameSendTime = 0;
+let pendingFrameTimeout = null;
+let frameReadInFlight = false;
+let frameReadQueued = false;
+const FRAME_MIN_INTERVAL = 33;  // ~30fps cap
+const screenshotPath = resolveScreenshotPath(config.gvgai);
 
 function startScreenshotStreaming() {
-  if (screenshotWatcher) {
-    screenshotWatcher.close();
-  }
+  stopScreenshotStreaming();
 
   console.log('[Server] Starting screenshot streaming from:', screenshotPath);
 
-  screenshotWatcher = chokidar.watch(screenshotPath, {
-    persistent: true,
-    ignoreInitial: false,
-    awaitWriteFinish: {
-      stabilityThreshold: 10,  // Reduced from 50ms to 10ms for lower latency
-      pollInterval: 5          // Reduced from 10ms to 5ms for faster detection
-    }
-  });
+  // Ensure file exists before watching (fs.watch requires existing file)
+  const dir = path.dirname(screenshotPath);
+  const filename = path.basename(screenshotPath);
 
-  screenshotWatcher.on('add', (path) => {
-    console.log('[Server] Screenshot file added:', path);
-    sendScreenshotAsync();  // Use async version
-  });
-  screenshotWatcher.on('change', (path) => {
-    console.log('[Server] Screenshot file changed:', path);
-    sendScreenshotAsync();  // Use async version
-  });
-  screenshotWatcher.on('error', (error) => {
-    console.error('[Server] Screenshot watcher error:', error);
-  });
+  try {
+    // Watch the directory for changes to the screenshot file
+    screenshotWatcher = fs.watch(dir, { persistent: true }, (eventType, changedFile) => {
+      if (changedFile === filename) {
+        scheduleFrameSend();
+      }
+    });
+
+    screenshotWatcher.on('error', (error) => {
+      console.error('[Server] Screenshot watcher error:', error);
+    });
+  } catch (error) {
+    console.error('[Server] Failed to start file watcher, falling back to polling:', error.message);
+    // Fallback: poll every 33ms
+    screenshotWatcher = setInterval(() => scheduleFrameSend(), FRAME_MIN_INTERVAL);
+    screenshotWatcher._isInterval = true;
+  }
 }
 
-// Async version: Uses promises to avoid blocking event loop
+// Throttle frame sends to ~30fps max
+function scheduleFrameSend() {
+  const now = Date.now();
+  const elapsed = now - lastFrameSendTime;
+
+  if (elapsed >= FRAME_MIN_INTERVAL) {
+    // Send immediately
+    sendScreenshotAsync();
+  } else if (!pendingFrameTimeout) {
+    // Schedule send for when the throttle window opens
+    pendingFrameTimeout = setTimeout(() => {
+      pendingFrameTimeout = null;
+      sendScreenshotAsync();
+    }, FRAME_MIN_INTERVAL - elapsed);
+  }
+  // Otherwise a send is already scheduled, skip
+}
+
 async function sendScreenshotAsync() {
+  if (frameReadInFlight) {
+    frameReadQueued = true;
+    return;
+  }
+
+  frameReadInFlight = true;
   try {
-    if (!fs.existsSync(screenshotPath)) {
+    const stats = await fs.promises.stat(screenshotPath);
+    const signature = `${stats.mtimeMs}:${stats.size}`;
+
+    // Deduplicate by timestamp and size
+    if (lastScreenshotSignature === signature) {
       return;
     }
+    lastScreenshotSignature = signature;
+    lastFrameSendTime = Date.now();
 
-    const stats = await fs.promises.stat(screenshotPath);
-
-    // Deduplicate based on modification time
-    if (lastScreenshotMtime && stats.mtime.getTime() === lastScreenshotMtime) {
-      return; // Same file, skip sending
-    }
-    lastScreenshotMtime = stats.mtime.getTime();
-
-    // Async file read (doesn't block event loop)
+    // Async file read
     const imageBuffer = await fs.promises.readFile(screenshotPath);
 
-    // Offload base64 encoding to next tick to spread CPU cost
-    const base64 = await new Promise((resolve) => {
-      setImmediate(() => resolve(imageBuffer.toString('base64')));
-    });
-
+    // Convert to base64 data URL so the client can use it directly as img.src
+    const base64 = imageBuffer.toString('base64');
     io.emit('game-frame', {
       image: `data:image/png;base64,${base64}`,
-      timestamp: Date.now(),
-      mtime: stats.mtime.toISOString()
+      timestamp: Date.now()
     });
-
-    console.log(`[Server] Screenshot sent: ${stats.size} bytes, modified: ${stats.mtime.toISOString()}`);
   } catch (error) {
-    console.error('[Server] Error sending screenshot:', error.message);
+    // File might not exist yet or be mid-write, silently skip
+    if (error.code !== 'ENOENT') {
+      console.error('[Server] Error sending screenshot:', error.message);
+    }
+  } finally {
+    frameReadInFlight = false;
+    if (frameReadQueued) {
+      frameReadQueued = false;
+      scheduleFrameSend();
+    }
   }
 }
 
 function stopScreenshotStreaming() {
+  if (pendingFrameTimeout) {
+    clearTimeout(pendingFrameTimeout);
+    pendingFrameTimeout = null;
+  }
   if (screenshotWatcher) {
-    screenshotWatcher.close();
+    if (screenshotWatcher._isInterval) {
+      clearInterval(screenshotWatcher);
+    } else {
+      screenshotWatcher.close();
+    }
     screenshotWatcher = null;
-    lastScreenshotMtime = null;  // Reset on stop
+    lastScreenshotSignature = null;
+    lastFrameSendTime = 0;
+    frameReadInFlight = false;
+    frameReadQueued = false;
     console.log('[Server] Stopped screenshot streaming');
   }
 }
 
 // Middleware
 app.use(express.json());
+app.use(express.static('public-local'));
 app.use(express.static('public'));
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api/') || req.path.startsWith('/api/telemetry')) {
+    next();
+    return;
+  }
+
+  const start = Date.now();
+  res.on('finish', () => {
+    telemetry.track({
+      eventFamily: 'user_experience',
+      eventType: 'api_request',
+      source: 'server',
+      latencyMs: Date.now() - start,
+      payload: {
+        method: req.method,
+        path: req.path,
+        status: res.statusCode
+      },
+      metrics: {
+        status: res.statusCode
+      }
+    });
+  });
+  next();
+});
 
 // Resolve game name from CSV registry by index
 function resolveGameName(gameId) {
@@ -123,36 +186,52 @@ function resolveGameName(gameId) {
 }
 
 // API Routes
-app.use('/api/games', require('./routes/games'));
-app.use('/api/models', require('./routes/models'));
-app.use('/api/prompts', require('./routes/prompts'));
+app.use('/api/games', require('./routes/games-local'));
+app.use('/api/models', require('./routes/models-local'));
+app.use('/api/prompts', require('./routes/prompts-local'));
+app.use('/api/evals', require('./routes/evals'));
+app.use('/api/telemetry', require('./routes/telemetry'));
 
 // Active game instances
 const activeGames = new Map();
 
 // Start game endpoint (API key loaded from environment)
 app.post('/api/game/start', async (req, res) => {
-  const { gameId, levelId, model } = req.body;
+  const { gameId, levelId, model, strategy } = req.body;
 
   try {
+    const runtime = loadRuntimeModules();
     console.log(`[Server] Starting game ${gameId} (level ${levelId}) with model ${model}`);
+    const runId = telemetry.createRunId(`game-${gameId}`);
+    telemetry.track({
+      eventFamily: 'evaluation',
+      eventType: 'game_start_requested',
+      source: 'server',
+      runId,
+      gameId,
+      levelId: levelId || 0,
+      modelId: model,
+      payload: {
+        strategy_present: Boolean(strategy)
+      }
+    });
 
     // Kill any existing games first to free port 8080
     for (const [pid, game] of activeGames) {
       console.log(`[Server] Cleaning up previous game ${pid}`);
       game.llmClient.disconnect();
-      gameManager.stopGame(pid);
+      runtime.gameManager.stopGame(pid);
       activeGames.delete(pid);
     }
     stopScreenshotStreaming();
 
     // Start Java game process (no visuals - headless)
-    const gameProcess = gameManager.startGame(gameId, levelId || 0, false);
+    const gameProcess = await runtime.gameManager.startGame(gameId, levelId || 0, false);
 
     // Wait for Java to report socket is listening (via stdout)
-    const socketReady = await gameManager.waitForReady(gameProcess.processId, 10000);
+    const socketReady = await runtime.gameManager.waitForReady(gameProcess.processId, 10000);
     if (!socketReady) {
-      gameManager.stopGame(gameProcess.processId);
+      runtime.gameManager.stopGame(gameProcess.processId);
       return res.status(500).json({ error: 'Java game process failed to start' });
     }
 
@@ -160,24 +239,50 @@ app.post('/api/game/start', async (req, res) => {
     startScreenshotStreaming();
 
     // Create and connect LLM client
-    const llmClient = new LLMClient();
+    const llmClient = new runtime.LLMClient({ runId });
 
     // Wire session-end cleanup
     llmClient.onSessionEnd = () => {
       console.log(`[Server] Session ended for ${gameProcess.processId}, cleaning up`);
       activeGames.delete(gameProcess.processId);
       stopScreenshotStreaming();
-      gameManager.stopGame(gameProcess.processId);
+      runtime.gameManager.stopGame(gameProcess.processId);
     };
 
     // Connect LLM client to GVGAI socket
     try {
       const gameName = resolveGameName(gameId);
-      await llmClient.connect(config.gvgai.socketPort, model, io, gameId, gameName);
+      await llmClient.connect(config.gvgai.socketPort, model, io, gameId, gameName, strategy);
       console.log('[Server] LLM client connected successfully');
+      telemetry.track({
+        eventFamily: 'evaluation',
+        eventType: 'run_started',
+        source: 'server',
+        runId,
+        gameId,
+        levelId: levelId || 0,
+        modelId: model,
+        payload: {
+          gameName,
+          processId: gameProcess.processId,
+          strategy_present: Boolean(strategy)
+        }
+      });
     } catch (error) {
       console.error('[Server] Failed to connect LLM client:', error);
-      gameManager.stopGame(gameProcess.processId);
+      telemetry.track({
+        eventFamily: 'evaluation',
+        eventType: 'run_start_failed',
+        source: 'server',
+        runId,
+        gameId,
+        levelId: levelId || 0,
+        modelId: model,
+        payload: {
+          message: error.message
+        }
+      });
+      runtime.gameManager.stopGame(gameProcess.processId);
       stopScreenshotStreaming();
       return res.status(500).json({ error: 'Failed to connect to game socket' });
     }
@@ -191,10 +296,22 @@ app.post('/api/game/start', async (req, res) => {
       status: 'started',
       processId: gameProcess.processId,
       gameId,
-      model
+      model,
+      runId
     });
   } catch (error) {
     console.error('[Server] Error starting game:', error);
+    telemetry.track({
+      eventFamily: 'evaluation',
+      eventType: 'game_start_error',
+      source: 'server',
+      gameId,
+      levelId: levelId || 0,
+      modelId: model,
+      payload: {
+        message: error.message
+      }
+    });
     stopScreenshotStreaming();
     res.status(500).json({ error: error.message });
   }
@@ -207,9 +324,18 @@ app.post('/api/game/stop', (req, res) => {
   const game = activeGames.get(processId);
   if (game) {
     game.llmClient.disconnect();
-    gameManager.stopGame(processId);
+    if (gameManager) gameManager.stopGame(processId);
     activeGames.delete(processId);
     stopScreenshotStreaming();
+    telemetry.track({
+      eventFamily: 'evaluation',
+      eventType: 'run_stopped',
+      source: 'server',
+      runId: game.llmClient.runId,
+      gameId: game.llmClient.gameId,
+      modelId: game.llmClient.model,
+      payload: { processId }
+    });
 
     res.json({ status: 'stopped', processId });
   } else {
@@ -221,10 +347,29 @@ app.post('/api/game/stop', (req, res) => {
 io.on('connection', (socket) => {
   console.log('[Server] Frontend connected:', socket.id);
   console.log('[Server] Active connections:', io.engine.clientsCount);
+  telemetry.track({
+    eventFamily: 'user_experience',
+    eventType: 'socket_connected',
+    source: 'socket',
+    sessionId: socket.id,
+    payload: {
+      clients: io.engine.clientsCount
+    }
+  });
 
   socket.on('disconnect', (reason) => {
     console.log('[Server] Frontend disconnected:', socket.id, 'reason:', reason);
     console.log('[Server] Remaining connections:', io.engine.clientsCount);
+    telemetry.track({
+      eventFamily: 'user_experience',
+      eventType: 'socket_disconnected',
+      source: 'socket',
+      sessionId: socket.id,
+      payload: {
+        reason,
+        clients: io.engine.clientsCount
+      }
+    });
   });
 
   socket.on('error', (error) => {
@@ -239,18 +384,82 @@ process.on('SIGINT', () => {
   // Stop all games
   for (const [processId, game] of activeGames) {
     game.llmClient.disconnect();
-    gameManager.stopGame(processId);
+    if (gameManager) gameManager.stopGame(processId);
   }
 
   activeGames.clear();
   stopScreenshotStreaming();
-  process.exit(0);
+  telemetry.track({
+    eventFamily: 'system',
+    eventType: 'server_stopped',
+    source: 'server'
+  });
+  telemetry.flush().finally(() => process.exit(0));
 });
 
-// Start server
-const PORT = config.server.port;
-server.listen(PORT, () => {
-  console.log(`[Server] Running on http://localhost:${PORT}`);
-  console.log(`[Server] GVGAI project root: ${config.gvgai.projectRoot}`);
-  console.log(`[Server] OpenRouter API key loaded from .env`);
-});
+const PORT = Number.parseInt(process.env.PORT || config.server.port || 3000, 10);
+
+async function startServer() {
+  const envLoad = await loadRootEnv();
+  if (envLoad.timedOut) {
+    console.warn(`[Server] skipped root .env after ${envLoad.timeoutMs}ms; using process environment`);
+  }
+  const configStatus = getConfigLoadStatus();
+  if (configStatus.fallback) {
+    console.warn(`[Server] using runtime config defaults because config.json did not load within ${configStatus.timeoutMs}ms`);
+  }
+
+  telemetry.configure({
+    io,
+    fallbackPath: path.resolve(__dirname, 'data', 'telemetry-events.jsonl')
+  });
+  telemetry.track({
+    eventFamily: 'system',
+    eventType: 'server_started',
+    source: 'server',
+    payload: {
+      port: config.server.port,
+      supabase: telemetry.getStorageStatus().state
+    }
+  });
+
+  if (process.env.VALIDATE_LLM_ON_STARTUP === 'true') {
+    try {
+      const runtime = loadRuntimeModules();
+      const validationClient = new runtime.LLMClient();
+      validationClient.validateApiKey().then(valid => {
+        if (!valid) {
+          console.warn('[Server] Invalid OpenRouter API key. LLM calls to OpenRouter will fail.');
+        } else {
+          console.log('[Server] LLM backend ready');
+        }
+      });
+    } catch (error) {
+      console.warn('[Server] LLM validation skipped:', error.message);
+    }
+  } else {
+    console.log('[Server] LLM validation deferred until a run starts');
+  }
+
+  return new Promise(resolve => {
+    server.listen(PORT, () => {
+      console.log(`[Server] Running on http://localhost:${PORT}`);
+      console.log(`[Server] GVGAI project root: ${config.gvgai.projectRoot}`);
+      console.log(`[Server] OpenRouter API key loaded from environment`);
+      resolve(server);
+    });
+  });
+}
+
+if (require.main === module) {
+  startServer().catch(error => {
+    console.error('[Server] failed to start:', error);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  app,
+  server,
+  startServer
+};

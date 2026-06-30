@@ -1,0 +1,39 @@
+{
+  "gameId": 15,
+  "gameName": "camelRace",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: collect goal (+1). Win: clear all winnerPlayer. Lose: all winnerNPC gone. Mechanics: collect goal to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 8,
+    "temperature": 0.1
+  },
+  "codeProtocol": {
+    "enabled": true,
+    "id": "GV1",
+    "policyId": "fixed-code",
+    "authoritative": true,
+    "fixedActionCode": "R",
+    "actionCodes": {
+      "U": "ACTION_UP",
+      "D": "ACTION_DOWN",
+      "L": "ACTION_LEFT",
+      "R": "ACTION_RIGHT"
+    },
+    "entityCodes": {
+      "npc": "c",
+      "portal": "g",
+      "static": "x"
+    },
+    "objectiveCodes": [
+      "RACE_GOAL"
+    ],
+    "ruleCodes": [
+      "MOVE_RIGHT_TO_GOAL"
+    ]
+  },
+  "updatedAt": "2026-02-02T03:11:55.699Z"
+}

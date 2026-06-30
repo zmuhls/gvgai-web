@@ -3,13 +3,13 @@
   "gameName": "avoidgeorge",
   "systemTemplateId": "default-system",
   "gameContext": {
-    "templateId": "avoidgeorge-strategy",
-    "customOverride": null
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|ATTACK|WAIT\nScoring: george (-1), annoyed hit by cigarette (+1). Avoid: george. Win: survive until timeout. Lose: die; quiet count reaches 0."
   },
   "progressionContexts": {},
   "llmSettings": {
     "maxTokens": 100,
     "temperature": 0.5
   },
-  "updatedAt": "2026-01-31T00:00:00.000Z"
+  "updatedAt": "2026-02-02T03:11:55.687Z"
 }

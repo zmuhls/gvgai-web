@@ -1,0 +1,4 @@
+{
+  "_comment": "Featured games for the Inference Arcade showcase. Order = display order. Curation is data — edit freely up to event day, no redeploy. Finalize via the empirical eval (run each candidate x frontier models x contrasting strategies; keep games where the model survives >50 ticks without ACTION_NIL looping AND two strategies yield visibly different play).",
+  "featured": [0, 32, 4, 11, 18]
+}

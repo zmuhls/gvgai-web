@@ -1,0 +1,49 @@
+{
+  "gameId": 13,
+  "gameName": "butterflies",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: kill butterfly (+2). Win: clear all butterfly. Lose: cocoon count reaches 0."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 8,
+    "temperature": 0.1
+  },
+  "codeProtocol": {
+    "enabled": true,
+    "id": "GV1",
+    "policyId": "grid-target",
+    "authoritative": true,
+    "actionCodes": {
+      "U": "ACTION_UP",
+      "D": "ACTION_DOWN",
+      "L": "ACTION_LEFT",
+      "R": "ACTION_RIGHT"
+    },
+    "entityCodes": {
+      "npc": "b",
+      "static": "x"
+    },
+    "objectiveCodes": [
+      "CLEAR_BUTTERFLIES"
+    ],
+    "ruleCodes": [
+      "PATH_TO_NEAREST_BUTTERFLY"
+    ],
+    "targetSources": [
+      "npc"
+    ],
+    "targetItypes": [
+      5
+    ],
+    "wallSources": [
+      "immovable"
+    ],
+    "wallItypes": [
+      0
+    ]
+  },
+  "updatedAt": "2026-02-02T03:11:55.698Z"
+}

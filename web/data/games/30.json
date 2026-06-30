@@ -1,0 +1,15 @@
+{
+  "gameId": 30,
+  "gameName": "digdug",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|DIG|WAIT\nScoring: kill gem (+1), monster (-1), monster hit by boulder (+2). Avoid: monster. Win: clear all goodies and monster. Lose: die."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.707Z"
+}

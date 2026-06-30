@@ -1,0 +1,15 @@
+{
+  "gameId": 98,
+  "gameName": "vortex",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|USE|WAIT\nScoring: box hit by hiddenvortex (+1), kill treasure (+10). Win: clear all exit. Lose: die; timeout. Mechanics: push box, collect water to transform, collect vortex to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.732Z"
+}

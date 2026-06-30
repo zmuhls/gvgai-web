@@ -1,0 +1,15 @@
+{
+  "gameId": 75,
+  "gameName": "racebet",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nWin: clear all winA and betA; clear all winB and betB; clear all winC and betC; clear all winD and betD. Lose: all winA gone; all winB gone; all winC gone; all winD gone. Mechanics: collect arena to transform, collect pitA to transform, collect pitB to transform, collect pitC to transform, collect pitD to transform."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.723Z"
+}

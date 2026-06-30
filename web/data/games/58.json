@@ -1,0 +1,15 @@
+{
+  "gameId": 58,
+  "gameName": "labyrinth",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: kill exit (+1), trap (-1). Avoid: trap. Win: clear all exit. Lose: die; timeout."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.718Z"
+}

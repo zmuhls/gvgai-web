@@ -3,34 +3,13 @@
   "gameName": "assemblyline",
   "systemTemplateId": "default-system",
   "gameContext": {
-    "templateId": "assemblyline-strategy",
-    "customOverride": null
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|ATTACK|WAIT\nScoring: potato hit by assembly1 (+1), potatoeyes hit by assembly2 (+2), potatoeyesnose hit by assembly3 (+4). Win: clear all victory. Lose: timeout. Mechanics: push vortex."
   },
-  "progressionContexts": {
-    "0": {
-      "templateId": null,
-      "customOverride": "Level 1: Simple layout. Focus on learning the cannon rotation mechanic. One or two cannons may need adjusting to complete the path."
-    },
-    "1": {
-      "templateId": null,
-      "customOverride": "Level 2: More cannons to manage. Plan your route between cannons efficiently."
-    },
-    "2": {
-      "templateId": null,
-      "customOverride": "Level 3: Complex layout with multiple path branches. Prioritize cannons closest to the portal first."
-    },
-    "3": {
-      "templateId": null,
-      "customOverride": "Level 4: Tight timing. Products move quickly - adjust cannons before the next potato spawns."
-    },
-    "4": {
-      "templateId": null,
-      "customOverride": "Level 5: Most complex layout. You may need to rotate some cannons multiple times to get the correct direction."
-    }
-  },
+  "progressionContexts": {},
   "llmSettings": {
-    "maxTokens": 150,
+    "maxTokens": 100,
     "temperature": 0.5
   },
-  "updatedAt": "2026-01-31T02:23:25.345Z"
+  "updatedAt": "2026-02-02T03:11:55.686Z"
 }

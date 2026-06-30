@@ -1,0 +1,15 @@
+{
+  "gameId": 14,
+  "gameName": "cakybaky",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: chef (-1), collect inc1 (+1), inc2 (+1), inc3 (+1), inc4 (+1), inc5 (+1), inc6 (+1). Avoid: chef. Win: clear all inc6. Lose: timeout; die. Mechanics: collect inc1."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.698Z"
+}

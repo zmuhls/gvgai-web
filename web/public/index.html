@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inference Arcade</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div id="app">
+    <header class="site-header">
+      <div class="brand-lockup">
+        <p class="eyebrow">GVGAI</p>
+        <h1 data-text="Inference Arcade">Inference Arcade</h1>
+        <p>Play small games against model reasoning.</p>
+      </div>
+      <nav id="main-nav">
+        <button class="nav-link active" data-target="play-section">Arcade</button>
+        <button class="nav-link" data-target="prompt-dashboard">Prompts</button>
+        <button class="nav-link" data-target="telemetry-dashboard">Telemetry</button>
+      </nav>
+    </header>
+
+    <!-- Play Section (existing 3-step flow) -->
+    <div id="play-section" class="section active">
+
+    <!-- Step 1: Game Selection -->
+    <div id="game-selector" class="step active">
+      <p class="step-label">1 / cabinet</p>
+      <h2>Choose a Game</h2>
+      <p class="step-note">Prompt open-weight language models to play your favorite arcade games.</p>
+      <div class="games-toolbar">
+        <span id="games-mode-label" class="games-mode-label">Featured cabinets</span>
+        <button id="toggle-browse-all" class="btn-secondary btn-toggle">Browse all 122 →</button>
+      </div>
+      <input type="text" id="game-search" placeholder="Search all games..." class="hidden" />
+      <div id="games-grid">
+        <div class="game-card featured" data-game-id="0">
+          <div class="game-card-meta">
+            <span>000</span>
+            <span>gridphysics</span>
+          </div>
+          <h3>aliens</h3>
+          <p class="levels">5 levels</p>
+        </div>
+        <div class="game-card featured" data-game-id="32">
+          <div class="game-card-meta">
+            <span>032</span>
+            <span>gridphysics</span>
+          </div>
+          <h3>doorkoban</h3>
+          <p class="levels">5 levels</p>
+        </div>
+        <div class="game-card featured" data-game-id="4">
+          <div class="game-card-meta">
+            <span>004</span>
+            <span>gridphysics</span>
+          </div>
+          <h3>bait</h3>
+          <p class="levels">5 levels</p>
+        </div>
+        <div class="game-card featured" data-game-id="11">
+          <div class="game-card-meta">
+            <span>011</span>
+            <span>gridphysics</span>
+          </div>
+          <h3>boulderdash</h3>
+          <p class="levels">5 levels</p>
+        </div>
+        <div class="game-card featured" data-game-id="18">
+          <div class="game-card-meta">
+            <span>018</span>
+            <span>gridphysics</span>
+          </div>
+          <h3>chase</h3>
+          <p class="levels">5 levels</p>
+        </div>
+      </div>
+
+      <section class="companion-games" aria-labelledby="companion-games-title">
+        <p class="companion-kicker">More AI-layered games</p>
+        <h3 id="companion-games-title">Other inference arcade rooms</h3>
+        <div class="companion-list">
+          <a class="game-card companion-link room-cloze" href="https://reader.inference-arcade.com" target="_blank" rel="noopener noreferrer">
+            <span class="game-card-meta"><span>reader</span><span>cloze</span></span>
+            <h3>Cloze Reader</h3>
+            <p class="levels companion-url">reader.inference-arcade.com</p>
+          </a>
+          <a class="game-card companion-link room-jeopardy" href="https://jeopardy.inference-arcade.com" target="_blank" rel="noopener noreferrer">
+            <span class="game-card-meta"><span>board</span><span>jeopardy</span></span>
+            <h3>Jeopardy LM</h3>
+            <p class="levels companion-url">jeopardy.inference-arcade.com</p>
+          </a>
+        </div>
+      </section>
+    </div>
+
+    <!-- Step 2: Strategy + Agent -->
+    <div id="model-selector" class="step">
+      <p class="step-label">2 / instruction</p>
+      <h2>Give It a Tactic</h2>
+      <button id="back-to-games" class="btn-secondary">← Back to Games</button>
+
+      <div class="selected-game-info">
+        <h3>Cabinet: <span id="selected-game-name"></span></h3>
+      </div>
+
+      <div class="form-group">
+        <label>Choose a tactic, then rewrite it:</label>
+        <div id="strategy-cards" class="strategy-cards"></div>
+        <textarea id="strategy-text" class="strategy-text" rows="3"
+          placeholder="e.g. Play defensively — dodge enemies and only shoot when one is directly in front of you."></textarea>
+        <small>Treat the model's explanation as a claim you can compare with the move.</small>
+      </div>
+
+      <div class="settings-row">
+        <div class="form-group">
+          <label for="model-select">Model:</label>
+          <select id="model-select"></select>
+        </div>
+        <div class="form-group">
+          <label for="level-select">Level:</label>
+          <select id="level-select"></select>
+        </div>
+      </div>
+
+      <button id="start-game" class="btn-primary btn-start">Run the Cabinet</button>
+    </div>
+
+    <!-- Step 3: Game Viewer -->
+    <div id="game-viewer" class="step">
+      <p class="step-label">3 / trace</p>
+      <h2>Run: <span id="current-game-name"></span></h2>
+      <button id="stop-game" class="btn-danger">Stop Game</button>
+
+      <div class="game-container">
+        <div class="game-display">
+          <canvas id="game-canvas"></canvas>
+          <div id="frame-status" class="frame-status" aria-live="polite">Waiting for frame</div>
+          <div class="game-overlay">
+            <div><span>Score</span><strong id="score">0</strong></div>
+            <div><span>Health</span><strong><span id="health">0</span>/<span id="max-health">0</span></strong></div>
+            <div><span>Tick</span><strong id="tick">0</strong></div>
+          </div>
+        </div>
+
+        <div class="reasoning-panel">
+          <h3>Move Trace</h3>
+          <p class="panel-note">Compare each reason with the chosen action.</p>
+          <div id="strategy-active" class="strategy-active hidden"></div>
+          <div id="reasoning-log"></div>
+        </div>
+      </div>
+
+      <div id="game-end-message" class="hidden">
+        <h3 id="final-result">Game Over!</h3>
+        <p class="final-score-line">Final Score: <span id="final-score"></span></p>
+        <div id="summary-strategy" class="summary-strategy hidden"></div>
+        <div id="summary-adherence" class="summary-adherence hidden"></div>
+        <div id="summary-highlights" class="summary-highlights hidden"></div>
+        <button id="play-again" class="btn-primary">Play Again</button>
+      </div>
+    </div>
+
+    </div><!-- /play-section -->
+
+    <!-- Prompt Dashboard Section -->
+    <div id="prompt-dashboard" class="section">
+      <div class="dashboard-heading">
+        <p class="step-label">prompt workbench</p>
+        <h2>Prompt Workbench</h2>
+        <p>Edit the prompt layers that shape play.</p>
+      </div>
+      <div class="dashboard-layout">
+        <!-- Left sidebar: game/template lists -->
+        <div class="dashboard-sidebar">
+          <div class="sidebar-tabs">
+            <button class="sidebar-tab active" data-tab="dashboard-games-tab">Game Prompts</button>
+            <button class="sidebar-tab" data-tab="dashboard-templates-tab">Templates</button>
+          </div>
+
+          <div id="dashboard-games-tab" class="sidebar-panel active">
+            <input type="text" id="dashboard-game-search" placeholder="Search games..." />
+            <div id="dashboard-games-list" class="sidebar-list"></div>
+          </div>
+
+          <div id="dashboard-templates-tab" class="sidebar-panel">
+            <button id="new-template-btn" class="btn-primary btn-sm">+ New Template</button>
+            <div id="dashboard-templates-list" class="sidebar-list"></div>
+          </div>
+        </div>
+
+        <!-- Right panel: editor -->
+        <div class="editor-panel">
+          <div id="editor-placeholder" class="editor-placeholder">
+            <p>Select a game or template from the sidebar to edit its prompt configuration.</p>
+          </div>
+
+          <!-- Game config editor -->
+          <div id="game-config-editor" class="hidden">
+            <h3>Prompt Config: <span id="editor-game-name"></span></h3>
+
+            <div class="editor-section">
+              <label>System Prompt Template</label>
+              <select id="editor-system-template"></select>
+            </div>
+
+            <div class="editor-section">
+              <label>Game Context</label>
+              <select id="editor-game-context-template">
+                <option value="">None (no game-specific context)</option>
+              </select>
+              <label class="sub-label">Custom Override (replaces template if set)</label>
+              <textarea id="editor-game-context-override" rows="6" placeholder="Enter game-specific context, rules, and strategies..."></textarea>
+            </div>
+
+            <div class="editor-section">
+              <label>Level Progression Contexts</label>
+              <div id="editor-level-contexts"></div>
+            </div>
+
+            <div class="editor-section">
+              <label>LLM Settings</label>
+              <div class="settings-row">
+                <div class="form-group">
+                  <label class="sub-label" for="editor-max-tokens">Max Tokens</label>
+                  <input type="number" id="editor-max-tokens" value="100" min="10" max="500" />
+                </div>
+                <div class="form-group">
+                  <label class="sub-label" for="editor-temperature">Temperature</label>
+                  <input type="number" id="editor-temperature" value="0.7" min="0" max="2" step="0.1" />
+                </div>
+              </div>
+            </div>
+
+            <div class="editor-actions">
+              <button id="preview-prompt-btn" class="btn-secondary">Preview Prompt</button>
+              <button id="save-game-config-btn" class="btn-primary">Save Config</button>
+            </div>
+
+            <div id="prompt-preview" class="prompt-preview hidden"></div>
+          </div>
+
+          <!-- Template editor -->
+          <div id="template-editor" class="hidden">
+            <h3 id="template-editor-title">Edit Template</h3>
+
+            <div class="editor-section">
+              <label for="editor-template-name">Name</label>
+              <input type="text" id="editor-template-name" placeholder="Template name" />
+            </div>
+
+            <div class="editor-section">
+              <div class="settings-row">
+                <div class="form-group">
+                  <label for="editor-template-layer">Layer</label>
+                  <select id="editor-template-layer">
+                    <option value="system">System</option>
+                    <option value="game">Game</option>
+                    <option value="progression">Progression</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="editor-template-category">Category</label>
+                  <input type="text" id="editor-template-category" placeholder="e.g., general, navigation" />
+                </div>
+              </div>
+            </div>
+
+            <div class="editor-section">
+              <label for="editor-template-content">Content</label>
+              <textarea id="editor-template-content" rows="12" placeholder="Template content with {{variable}} placeholders..."></textarea>
+              <div class="variable-hints">
+                Available: <code>{{gameName}}</code> <code>{{gameScore}}</code> <code>{{avatarHealthPoints}}</code> <code>{{gameTick}}</code> <code>{{availableActions}}</code> <code>{{avatarPosition}}</code>
+              </div>
+            </div>
+
+            <div class="editor-actions">
+              <button id="delete-template-btn" class="btn-danger">Delete</button>
+              <button id="save-template-btn" class="btn-primary">Save Template</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /prompt-dashboard -->
+
+    <!-- Telemetry Dashboard Section -->
+    <div id="telemetry-dashboard" class="section telemetry-section">
+      <div class="dashboard-heading telemetry-heading electric-panel">
+        <p class="step-label">live data</p>
+        <h2>Telemetry Stream</h2>
+        <p>Evaluation runs, user actions, model latency, and trace volume.</p>
+      </div>
+
+      <div class="telemetry-status-strip electric-panel" aria-live="polite">
+        <div>
+          <span>Supabase</span>
+          <strong id="telemetry-storage-status">checking</strong>
+        </div>
+        <div>
+          <span>Live socket</span>
+          <strong id="telemetry-live-clients">0 clients</strong>
+        </div>
+        <div>
+          <span>Data source</span>
+          <strong id="telemetry-fallback-status">ready</strong>
+        </div>
+        <div>
+          <span>Events / min</span>
+          <strong id="telemetry-events-rate">0</strong>
+        </div>
+      </div>
+
+      <section class="telemetry-leaderboard electric-panel" aria-labelledby="telemetry-leaderboard-title">
+        <div class="telemetry-panel-heading">
+          <div>
+            <p class="step-label">persistent records</p>
+            <h3 id="telemetry-leaderboard-title">Arcade Leaderboard</h3>
+          </div>
+          <span id="telemetry-leaderboard-source">local memory</span>
+        </div>
+        <div class="leaderboard-grid">
+          <div class="leaderboard-column">
+            <div class="leaderboard-title-row">
+              <span>Runs</span>
+              <strong>scoreboard</strong>
+            </div>
+            <div id="telemetry-run-leaderboard" class="leaderboard-table"></div>
+          </div>
+          <div class="leaderboard-column">
+            <div class="leaderboard-title-row">
+              <span>Usage</span>
+              <strong>model load</strong>
+            </div>
+            <div id="telemetry-usage-leaderboard" class="leaderboard-table"></div>
+          </div>
+          <div class="leaderboard-column">
+            <div class="leaderboard-title-row">
+              <span>Sessions</span>
+              <strong>players</strong>
+            </div>
+            <div id="telemetry-session-leaderboard" class="leaderboard-table"></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="telemetry-metrics" id="telemetry-metrics"></div>
+
+      <section class="telemetry-pipeline electric-panel" aria-labelledby="telemetry-pipeline-title">
+        <div class="telemetry-panel-heading">
+          <div>
+            <p class="step-label">write path</p>
+            <h3 id="telemetry-pipeline-title">Persistence Pipeline</h3>
+          </div>
+          <span id="telemetry-pipeline-source">local memory</span>
+        </div>
+        <div id="telemetry-pipeline" class="pipeline-rail"></div>
+      </section>
+
+      <div class="telemetry-grid">
+        <section class="telemetry-stream-panel electric-panel" aria-labelledby="telemetry-stream-title">
+          <div class="telemetry-panel-heading">
+            <div>
+              <p class="step-label">stream</p>
+              <h3 id="telemetry-stream-title">Data Flow</h3>
+            </div>
+            <span id="telemetry-stream-count">0 events</span>
+          </div>
+          <div id="telemetry-flow" class="telemetry-flow"></div>
+        </section>
+
+        <section class="telemetry-events-panel electric-panel" aria-labelledby="telemetry-events-title">
+          <div class="telemetry-panel-heading">
+            <div>
+              <p class="step-label">recent</p>
+              <h3 id="telemetry-events-title">Event Log</h3>
+            </div>
+          </div>
+          <div class="telemetry-event-table" id="telemetry-event-table"></div>
+        </section>
+      </div>
+
+      <div class="telemetry-chart-grid">
+        <section class="telemetry-chart electric-panel">
+          <h3>Eval Outcomes</h3>
+          <div id="telemetry-eval-chart" class="telemetry-bars"></div>
+        </section>
+        <section class="telemetry-chart electric-panel">
+          <h3>Clickthrough</h3>
+          <div id="telemetry-funnel-chart" class="telemetry-funnel"></div>
+        </section>
+        <section class="telemetry-chart electric-panel">
+          <h3>Model Telemetry</h3>
+          <div id="telemetry-model-chart" class="telemetry-model-list"></div>
+        </section>
+        <section class="telemetry-chart electric-panel">
+          <h3>Trace Categories</h3>
+          <div id="telemetry-trace-chart" class="telemetry-bars"></div>
+        </section>
+      </div>
+    </div><!-- /telemetry-dashboard -->
+
+  </div>
+
+  <script src="js/telemetry-client.js"></script>
+  <script src="js/app.js" type="module"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/telemetry-dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "gameId": 95,
+  "gameName": "theshepherd",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|SHOOT|WAIT\nScoring: scared hit by entry (+5), seeking hit by entry (+1). Win: clear all notamed. Mechanics: push tamed, push dogtreat, collect treats."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.731Z"
+}

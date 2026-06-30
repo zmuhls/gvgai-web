@@ -1,0 +1,15 @@
+{
+  "gameId": 115,
+  "gameName": "candy",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: evil (+1), kill coin (+1). Win: clear all goal. Lose: die."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.738Z"
+}

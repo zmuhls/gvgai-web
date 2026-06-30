@@ -1,0 +1,15 @@
+{
+  "gameId": 79,
+  "gameName": "rivers",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|DIG|WAIT\nScoring: dryHouse hit by water (+1). Win: clear all dryHouse. Lose: die; timeout."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.725Z"
+}

@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const strategyMemoryStore = require('./strategy-memory-store');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const TEMPLATES_DIR = path.join(DATA_DIR, 'templates');
@@ -175,7 +176,7 @@ function defaultPromptConfig() {
   };
 }
 
-function resolveGamePromptConfig(gameId, levelId) {
+function resolveGamePromptConfig(gameId, levelId, options = {}) {
   const config = getCachedGameConfig(gameId);
   if (!config) return defaultPromptConfig();
 
@@ -213,12 +214,46 @@ function resolveGamePromptConfig(gameId, levelId) {
     }
   }
 
+  let resolvedStrategicMemory = null;
+  if (options.strategyMemory !== 'baseline' && options.strategyMemory !== 'disabled') {
+    resolvedStrategicMemory = options.strategyMemoryRecord || strategyMemoryStore.resolveGameMemory(gameId, config.strategicDigest, {
+      memoryDir: options.strategyMemoryDir,
+      strategyMemory: options.strategyMemory,
+      allowCandidate: options.allowCandidateStrategyMemory,
+      memoryKey: options.strategyMemoryKey
+    });
+  }
+
+  const codeProtocol = config.codeProtocol || null;
+  const strategicDigestMode = config.strategicDigest?.mode || 'replaceGameContext';
+  if (
+    resolvedStrategicMemory &&
+    strategicDigestMode === 'replaceGameContext' &&
+    !(codeProtocol && codeProtocol.enabled)
+  ) {
+    gameContent = resolvedStrategicMemory.promptText || resolvedStrategicMemory.digest?.promptText || gameContent;
+  }
+
   return {
     systemContent,
     gameContent,
     levelContent,
     gameName: config.gameName || null,
-    llmSettings: config.llmSettings || { maxTokens: 100, temperature: 0.7 }
+    llmSettings: config.llmSettings || { maxTokens: 100, temperature: 0.7 },
+    gridSymbolMap: config.gridSymbolMap || null,
+    gridLegend: config.gridLegend || null,
+    actionAliases: config.actionAliases || null,
+    codeProtocol,
+    strategicDigest: config.strategicDigest || null,
+    strategicDigestMemory: resolvedStrategicMemory
+      ? {
+        memoryKey: resolvedStrategicMemory.memoryKey,
+        rulesHash: resolvedStrategicMemory.rulesHash,
+        digestHash: resolvedStrategicMemory.digestHash,
+        evaluationStatus: resolvedStrategicMemory.evaluationStatus,
+        resolvedFrom: resolvedStrategicMemory.resolvedFrom
+      }
+      : null
   };
 }
 

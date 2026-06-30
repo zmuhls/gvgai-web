@@ -1,0 +1,15 @@
+{
+  "gameId": 48,
+  "gameName": "grow",
+  "systemTemplateId": "default-system",
+  "gameContext": {
+    "templateId": null,
+    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|ATTACK|WAIT\nScoring: wilting hit by water (+5), wilted hit by water (+2). Win: survive until timeout."
+  },
+  "progressionContexts": {},
+  "llmSettings": {
+    "maxTokens": 100,
+    "temperature": 0.5
+  },
+  "updatedAt": "2026-02-02T03:11:55.714Z"
+}

@@ -5,28 +5,24 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 
-import core.content.*;
+import core.content.Content;
+import core.content.GameContent;
+import core.content.InteractionContent;
+import core.content.ParameterBoolContent;
+import core.content.ParameterContent;
+import core.content.ParameterDoubleContent;
+import core.content.ParameterIntContent;
+import core.content.SpriteContent;
+import core.content.TerminationContent;
 import core.game.BasicGame;
 import core.game.Game;
 import core.game.GameSpace;
 import core.logging.Logger;
 import core.logging.Message;
-import core.termination.*;
+import core.termination.Termination;
 import ontology.Types;
-import ontology.avatar.*;
-import ontology.avatar.oriented.*;
 import ontology.effects.Effect;
 import ontology.effects.TimeEffect;
-import ontology.effects.binary.*;
-import ontology.effects.unary.*;
-import ontology.sprites.*;
-import ontology.sprites.missile.ErraticMissile;
-import ontology.sprites.missile.Missile;
-import ontology.sprites.missile.RandomMissile;
-import ontology.sprites.npc.Walker;
-import ontology.sprites.npc.WalkerJumper;
-import ontology.sprites.npc.*;
-import ontology.sprites.producer.*;
 import tools.Vector2d;
 
 /**
@@ -58,17 +54,17 @@ public class VGDLFactory
     /**
      * Available Sprite classes for VGDL.
      */
-    private Class[] spriteClasses = new Class[]
-            {Conveyor.class, Flicker.class, Immovable.class, OrientedFlicker.class, Passive.class, Resource.class, Spreader.class,
-             ErraticMissile.class, Missile.class, RandomMissile.class, Walker.class, WalkerJumper.class,
-             ResourcePack.class, Chaser.class, PathChaser.class, Fleeing.class, RandomInertial.class,
-             RandomNPC.class, AlternateChaser.class, RandomAltChaser.class, PathAltChaser.class, RandomPathAltChaser.class,
-             Bomber.class, RandomBomber.class, Portal.class, SpawnPoint.class, SpriteProducer.class, Door.class,
-             FlakAvatar.class, HorizontalAvatar.class, VerticalAvatar.class, MovingAvatar.class,MissileAvatar.class,
-             OrientedAvatar.class,ShootAvatar.class, OngoingAvatar.class, OngoingTurningAvatar.class, BomberRandomMissile.class,
-             OngoingShootAvatar.class, NullAvatar.class, AimedAvatar.class, PlatformerAvatar.class, BirdAvatar.class,
-             SpaceshipAvatar.class, CarAvatar.class, WizardAvatar.class, LanderAvatar.class, ShootOnlyAvatar.class, SpawnPointMultiSprite.class,
-                    LOSChaser.class};
+    private String[] spriteClassNames = new String[]
+            {"ontology.sprites.Conveyor", "ontology.sprites.Flicker", "ontology.sprites.Immovable", "ontology.sprites.OrientedFlicker", "ontology.sprites.Passive", "ontology.sprites.Resource", "ontology.sprites.Spreader",
+             "ontology.sprites.missile.ErraticMissile", "ontology.sprites.missile.Missile", "ontology.sprites.missile.RandomMissile", "ontology.sprites.npc.Walker", "ontology.sprites.npc.WalkerJumper",
+             "ontology.sprites.ResourcePack", "ontology.sprites.npc.Chaser", "ontology.sprites.npc.PathChaser", "ontology.sprites.npc.Fleeing", "ontology.sprites.npc.RandomInertial",
+             "ontology.sprites.npc.RandomNPC", "ontology.sprites.npc.AlternateChaser", "ontology.sprites.npc.RandomAltChaser", "ontology.sprites.npc.PathAltChaser", "ontology.sprites.npc.RandomPathAltChaser",
+             "ontology.sprites.producer.Bomber", "ontology.sprites.producer.RandomBomber", "ontology.sprites.producer.Portal", "ontology.sprites.producer.SpawnPoint", "ontology.sprites.producer.SpriteProducer", "ontology.sprites.Door",
+             "ontology.avatar.FlakAvatar", "ontology.avatar.HorizontalAvatar", "ontology.avatar.VerticalAvatar", "ontology.avatar.MovingAvatar", "ontology.avatar.oriented.MissileAvatar",
+             "ontology.avatar.oriented.OrientedAvatar", "ontology.avatar.oriented.ShootAvatar", "ontology.avatar.oriented.OngoingAvatar", "ontology.avatar.oriented.OngoingTurningAvatar", "ontology.sprites.producer.BomberRandomMissile",
+             "ontology.avatar.oriented.OngoingShootAvatar", "ontology.avatar.NullAvatar", "ontology.avatar.oriented.AimedAvatar", "ontology.avatar.oriented.PlatformerAvatar", "ontology.avatar.oriented.BirdAvatar",
+             "ontology.avatar.oriented.SpaceshipAvatar", "ontology.avatar.oriented.CarAvatar", "ontology.avatar.oriented.WizardAvatar", "ontology.avatar.oriented.LanderAvatar", "ontology.avatar.oriented.ShootOnlyAvatar", "ontology.sprites.producer.SpawnPointMultiSprite",
+                    "ontology.sprites.npc.LOSChaser"};
 
     /**
      * Available effects for VGDL.
@@ -89,18 +85,18 @@ public class VGDLFactory
     /**
      * Available effect classes for VGDL.
      */
-    private Class[] effectClasses = new Class[]
+    private String[] effectClassNames = new String[]
             {
-                    StepBack.class, TurnAround.class, KillSprite.class, KillBoth.class, KillAll.class, TransformTo.class, TransformToSingleton.class, TransformIfCount.class,
-                    WrapAround.class,ChangeResource.class, KillIfHasLess.class, KillIfHasMore.class, CloneSprite.class,
-                    FlipDirection.class, ReverseDirection.class, ShieldFrom.class, UndoAll.class, Spawn.class, SpawnIfHasMore.class, SpawnIfHasLess.class,
-                    PullWithIt.class, WallStop.class, CollectResource.class, CollectResourceIfHeld.class, KillIfOtherHasMore.class, KillIfFromAbove.class,
-                    TeleportToExit.class, BounceForward.class, AttractGaze.class, Align.class, SubtractHealthPoints.class, AddHealthPoints.class,
-                    TransformToAll.class, AddTimer.class, KillIfFrontal.class, KillIfNotFrontal.class, SpawnBehind.class, UpdateSpawnType.class,
-                    RemoveScore.class, IncreaseSpeedToAll.class, DecreaseSpeedToAll.class, SetSpeedForAll.class, TransformToRandomChild.class,
-                    AddHealthPointsToMax.class, SpawnIfCounterSubTypes.class, BounceDirection.class, WallBounce.class, KillIfSlow.class,
-                    KillIfAlive.class, WaterPhysics.class, HalfSpeed.class, KillIfNotUpright.class, KillIfFast.class, WallReverse.class,
-                    SpawnAbove.class, SpawnLeft.class, SpawnRight.class, SpawnBelow.class
+                    "ontology.effects.unary.StepBack", "ontology.effects.unary.TurnAround", "ontology.effects.unary.KillSprite", "ontology.effects.binary.KillBoth", "ontology.effects.unary.KillAll", "ontology.effects.unary.TransformTo", "ontology.effects.binary.TransformToSingleton", "ontology.effects.binary.TransformIfCount",
+                    "ontology.effects.unary.WrapAround", "ontology.effects.binary.ChangeResource", "ontology.effects.unary.KillIfHasLess", "ontology.effects.unary.KillIfHasMore", "ontology.effects.unary.CloneSprite",
+                    "ontology.effects.unary.FlipDirection", "ontology.effects.unary.ReverseDirection", "ontology.effects.unary.ShieldFrom", "ontology.effects.unary.UndoAll", "ontology.effects.unary.Spawn", "ontology.effects.unary.SpawnIfHasMore", "ontology.effects.unary.SpawnIfHasLess",
+                    "ontology.effects.binary.PullWithIt", "ontology.effects.binary.WallStop", "ontology.effects.binary.CollectResource", "ontology.effects.binary.CollectResourceIfHeld", "ontology.effects.binary.KillIfOtherHasMore", "ontology.effects.binary.KillIfFromAbove",
+                    "ontology.effects.binary.TeleportToExit", "ontology.effects.binary.BounceForward", "ontology.effects.binary.AttractGaze", "ontology.effects.binary.Align", "ontology.effects.unary.SubtractHealthPoints", "ontology.effects.unary.AddHealthPoints",
+                    "ontology.effects.binary.TransformToAll", "ontology.effects.binary.AddTimer", "ontology.effects.binary.KillIfFrontal", "ontology.effects.binary.KillIfNotFrontal", "ontology.effects.unary.SpawnBehind", "ontology.effects.unary.UpdateSpawnType",
+                    "ontology.effects.unary.RemoveScore", "ontology.effects.binary.IncreaseSpeedToAll", "ontology.effects.binary.DecreaseSpeedToAll", "ontology.effects.binary.SetSpeedForAll", "ontology.effects.unary.TransformToRandomChild",
+                    "ontology.effects.unary.AddHealthPointsToMax", "ontology.effects.unary.SpawnIfCounterSubTypes", "ontology.effects.binary.BounceDirection", "ontology.effects.binary.WallBounce", "ontology.effects.unary.KillIfSlow",
+                    "ontology.effects.unary.KillIfAlive", "ontology.effects.unary.WaterPhysics", "ontology.effects.unary.HalfSpeed", "ontology.effects.unary.KillIfNotUpright", "ontology.effects.unary.KillIfFast", "ontology.effects.binary.WallReverse",
+                    "ontology.effects.unary.SpawnAbove", "ontology.effects.unary.SpawnLeft", "ontology.effects.unary.SpawnRight", "ontology.effects.unary.SpawnBelow"
             };
 
 
@@ -115,9 +111,9 @@ public class VGDLFactory
     /**
      * Available termination classes for VGDL.
      */
-    private Class[] terminationClasses = new Class[]
+    private String[] terminationClassNames = new String[]
             {
-                    MultiSpriteCounter.class, SpriteCounter.class, SpriteCounterMore.class, MultiSpriteCounterSubTypes.class, Timeout.class, StopCounter.class
+                    "core.termination.MultiSpriteCounter", "core.termination.SpriteCounter", "core.termination.SpriteCounterMore", "core.termination.MultiSpriteCounterSubTypes", "core.termination.Timeout", "core.termination.StopCounter"
             };
 
 
@@ -135,16 +131,19 @@ public class VGDLFactory
      * Cache for registered sprites.
      */
     public static HashMap<String, Class> registeredSprites;
+    private static HashMap<String, String> registeredSpriteClassNames;
 
     /**
      * Cache for registered effects.
      */
     public static HashMap<String, Class> registeredEffects;
+    private static HashMap<String, String> registeredEffectClassNames;
 
     /**
      * Cache for registered effects.
      */
     public static HashMap<String, Class> registeredTerminations;
+    private static HashMap<String, String> registeredTerminationClassNames;
 
     /**
      * Default private constructor of this singleton.
@@ -161,22 +160,42 @@ public class VGDLFactory
         registeredGames.put("GameSpace", GameSpace.class);
 
         registeredSprites = new HashMap<String, Class>();
+        registeredSpriteClassNames = new HashMap<String, String>();
         for(int i = 0;  i < spriteStrings.length; ++i)
         {
-            registeredSprites.put(spriteStrings[i], spriteClasses[i]);
+            registeredSpriteClassNames.put(spriteStrings[i], spriteClassNames[i]);
         }
 
         registeredEffects  = new HashMap<String, Class>();
+        registeredEffectClassNames = new HashMap<String, String>();
         for(int i = 0;  i < effectStrings.length; ++i)
         {
-            registeredEffects.put(effectStrings[i], effectClasses[i]);
+            registeredEffectClassNames.put(effectStrings[i], effectClassNames[i]);
         }
 
         registeredTerminations = new HashMap<String, Class>();
+        registeredTerminationClassNames = new HashMap<String, String>();
         for(int i = 0;  i < terminationStrings.length; ++i)
         {
-            registeredTerminations.put(terminationStrings[i], terminationClasses[i]);
+            registeredTerminationClassNames.put(terminationStrings[i], terminationClassNames[i]);
         }
+    }
+
+    private Class resolveClass(HashMap<String, Class> classCache, HashMap<String, String> classNames, String key)
+            throws ClassNotFoundException {
+        Class cachedClass = classCache.get(key);
+        if (cachedClass != null) {
+            return cachedClass;
+        }
+
+        String className = classNames.get(key);
+        if (className == null) {
+            return null;
+        }
+
+        Class resolvedClass = Class.forName(className);
+        classCache.put(key, resolvedClass);
+        return resolvedClass;
     }
 
     /**
@@ -231,7 +250,7 @@ public class VGDLFactory
         decorateContent(game, content);
 
         try{
-            Class spriteClass = registeredSprites.get(content.referenceClass);
+            Class spriteClass = resolveClass(registeredSprites, registeredSpriteClassNames, content.referenceClass);
             Constructor spriteConstructor = spriteClass.getConstructor
                     (new Class[] {Vector2d.class, Dimension.class, SpriteContent.class});
             return (VGDLSprite) spriteConstructor.newInstance(new Object[]{position, dim, content});
@@ -281,7 +300,7 @@ public class VGDLFactory
             decorateContent(game, content);
 
         try{
-            Class effectClass = registeredEffects.get(content.function);
+            Class effectClass = resolveClass(registeredEffects, registeredEffectClassNames, content.function);
             Constructor effectConstructor = effectClass.getConstructor
                     (new Class[] {InteractionContent.class});
             Effect ef = (Effect) effectConstructor.newInstance(new Object[]{content});
@@ -326,7 +345,7 @@ public class VGDLFactory
         decorateContent(game, content);
 
         try{
-            Class terminationClass = registeredTerminations.get(content.identifier);
+            Class terminationClass = resolveClass(registeredTerminations, registeredTerminationClassNames, content.identifier);
             Constructor terminationConstructor = terminationClass.getConstructor
                     (new Class[] {TerminationContent.class});
             Termination ter = (Termination) terminationConstructor.newInstance(new Object[]{content});
