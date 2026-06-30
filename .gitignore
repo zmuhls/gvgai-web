@@ -73,3 +73,12 @@ node_modules/
 # Runtime artifacts
 gameStateByBytes.png
 logs/
+web/.gvgai-runtime/
+web/data/telemetry-events.jsonl
+web/data/eval-runs/
+web/evals/
+output/
+telemetry.png
+
+# Local node_modules backup (not a dependency)
+web/node_modules.dataless-backup/
