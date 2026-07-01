@@ -10,6 +10,11 @@ GVGAI (General Video Game AI) framework with a web-based LLM agent integration l
 
 **`web/README.md` is partly stale** — it predates the current work and describes OpenRouter-only routing, browser-side API-key entry, and a "35ms timeout with fallback" that no longer match the code. For LLM routing, the prompt pipeline, and the frontend flow, **this file and `web/lib/` are authoritative**; the README's game-id pointers and prerequisites are still fine.
 
+## Git Workflow
+
+- **Location.** This repo lives at `~/Projects/gvgai` (outside iCloud). Do **not** keep it under `~/Desktop` or `~/Documents` — those are iCloud-synced with "Optimize Mac Storage," which evicts `.git` refs/objects to dataless placeholders mid-operation and corrupts git commands.
+- **Push when finished.** When a task is complete and you have committed work, push to `origin` without waiting to be asked. "Finished" means the requested change is done, committed, and verified — not after every intermediate commit. If the push is not a fast-forward, stop and report rather than force-pushing.
+
 ## Build & Run Commands
 
 ### Java Engine
