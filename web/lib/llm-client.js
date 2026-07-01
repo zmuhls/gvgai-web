@@ -1,11 +1,19 @@
 const net = require('net');
 const { getConfig } = require('./runtime-config');
 const config = getConfig();
-const { buildPrompt, computeAdherence, GameStateTracker } = require('./state-converter');
+const { buildPrompt, computeAdherence, sanitizeStrategy, GameStateTracker } = require('./state-converter');
 const { parseStructured } = require('./response-parser');
 const { resolveModel } = require('./models');
 const promptStore = require('./prompt-store');
 const telemetry = require('./telemetry-store');
+
+// Macro-action executor tuning. The plan queue is a bridge across LLM latency,
+// not a schedule — it drains deterministically while the next call is in flight.
+const MIN_LLM_INTERVAL_MS = 400;   // provider-protection floor between LLM calls
+const REFILL_QUEUE_THRESHOLD = 1;  // fire the next LLM call when this few steps remain
+const MAX_PLAN_STEPS = 6;          // hard cap on queued steps per plan
+const MAX_PLAN_AGE_TICKS = 30;     // stale-plan safety net
+const DEFAULT_TICKS_PER_STEP = 4;  // ticks each plan step is held for
 
 class LLMClient {
   constructor(options = {}) {
@@ -21,6 +29,12 @@ class LLMClient {
     this.pendingLLMAction = null;  // Store the most recent LLM action result
     this.llmCallInProgress = false;  // Track if LLM is currently being called
     this.lastLLMCallTime = 0;  // Time-based LLM sampling
+    this.planQueue = [];  // Macro-action steps awaiting execution (front-first)
+    this.planLength = 0;  // Steps in the current plan (for narration)
+    this.planStep = 0;  // 1-based step currently executing (for narration)
+    this.planSetTick = null;  // Game tick when the plan was set (age invalidation)
+    this.planHealthAtSet = null;  // Health when the plan was set (damage invalidation)
+    this.planStepHoldRemaining = 0;  // Ticks left before advancing to the next step
     this.levelCount = 0;  // Track current level number
     this.onSessionEnd = null;  // Callback for session cleanup
     this.gameId = null;  // Game ID for prompt config lookup
@@ -79,9 +93,11 @@ class LLMClient {
     this.gameActive = true;
     this.gameId = gameId != null ? gameId : null;
     this.gameName = gameName || 'unknown';
-    // Runtime-only directive — lives on the instance, never reaches promptStore.saveGameConfig
-    this.sessionStrategy = (sessionStrategy || '').trim() || null;
+    // Runtime-only directive — lives on the instance, never reaches promptStore.saveGameConfig.
+    // Sanitized here so every caller (walk-up + marble run) gets one canonical, fenced-safe value.
+    this.sessionStrategy = sanitizeStrategy(sessionStrategy).text;
     this.stateTracker.reset();
+    this.clearPlan();
     this.runLog = [];
     this.runStartScore = null;
     this.lastProvider = null;
@@ -227,6 +243,12 @@ class LLMClient {
           if (this.maxActions && this.runLog.length >= this.maxActions) {
             console.log(`[LLMClient] Max actions reached (${this.maxActions}); ending Java eval case`);
             this.sendMessageWithId(msgId, `ABORT#${this.actResponseType}`);
+            // Java doesn't reliably close the socket after ABORT, so emit the
+            // run-summary now — otherwise the eval/marble case hangs until the
+            // per-case timeout. The summaryEmitted guard makes this idempotent
+            // if the socket does later close. (Only reached in eval/marble mode;
+            // the walk-up path never sets maxActions.)
+            this.emitCloseSummary();
             return;
           }
           const directPolicy = this.resolveAuthoritativePolicy(jsonPayload);
@@ -266,17 +288,24 @@ class LLMClient {
           return;
         }
 
-        // CRITICAL: Respond IMMEDIATELY with the specific message ID
-        const actionToSend = this.pendingLLMAction || 'ACTION_NIL';
+        // CRITICAL: Respond IMMEDIATELY with the specific message ID.
+        // dequeuePlanAction is O(1) with no JSON parsing; with an empty plan
+        // queue it degrades to the classic pendingLLMAction || ACTION_NIL.
+        const actionToSend = this.dequeuePlanAction();
         this.sendMessageWithId(msgId, `${actionToSend}#${this.actResponseType}`);
 
         // Async processing after response sent (don't block)
         setImmediate(() => {
-          this.recordActState(jsonPayload, actionToSend);
+          const sso = this.recordActState(jsonPayload, actionToSend);
+          if (sso) this.maybeInvalidatePlan(sso);
 
-          // Start async LLM call every 400ms minimum (time-based, not tick-based)
+          // Refill: fire the next LLM call when the plan is (nearly) exhausted
+          // and the provider-protection interval has elapsed. With no plan the
+          // queue is always empty, so this is the classic 400ms time gate.
           const now = Date.now();
-          if (!this.llmCallInProgress && (now - this.lastLLMCallTime) >= 400) {
+          if (!this.llmCallInProgress &&
+              this.planQueue.length <= REFILL_QUEUE_THRESHOLD &&
+              (now - this.lastLLMCallTime) >= MIN_LLM_INTERVAL_MS) {
             this.startAsyncLLMCall(jsonPayload);
           }
         });
@@ -354,7 +383,9 @@ class LLMClient {
           health: sso.avatarHealthPoints,
           maxHealth: sso.avatarMaxHealthPoints,
           tick: sso.gameTick,
-          action: actionToSend
+          action: actionToSend,
+          planStep: this.planStep,
+          planLength: this.planLength
         });
       }
       return sso;
@@ -363,6 +394,85 @@ class LLMClient {
       return null;
     }
   }
+
+  // --- Macro-action plan executor -----------------------------------------
+
+  macroEnabled() {
+    if (process.env.MACRO_ACTIONS_DISABLED === '1') return false;
+    return Boolean(this.promptConfig?.macroActions?.enabled);
+  }
+
+  ticksPerStep() {
+    const n = this.promptConfig?.macroActions?.ticksPerStep;
+    return Number.isInteger(n) && n > 0 ? n : DEFAULT_TICKS_PER_STEP;
+  }
+
+  // Hot path: called synchronously before the ACT tick reply, so no JSON parsing.
+  // Each plan step is held for ticksPerStep ticks so a 4-step plan spans the
+  // real LLM latency gap instead of draining in ~160ms of engine ticks.
+  dequeuePlanAction() {
+    if (this.planStepHoldRemaining > 0 && this.pendingLLMAction) {
+      this.planStepHoldRemaining -= 1;
+      return this.pendingLLMAction;
+    }
+    if (this.planQueue.length > 0) {
+      const step = this.planQueue.shift();
+      this.planStep += 1;
+      this.planStepHoldRemaining = this.ticksPerStep() - 1;
+      this.pendingLLMAction = step;
+      return step;
+    }
+    return this.pendingLLMAction || 'ACTION_NIL';
+  }
+
+  setPlan(plan, sso) {
+    const legal = new Set(sso.availableActions || []);
+    const steps = (Array.isArray(plan) ? plan : [])
+      .filter(a => legal.has(a))
+      .slice(0, MAX_PLAN_STEPS);
+    this.planQueue = steps;
+    this.planLength = steps.length;
+    this.planStep = 0;
+    this.planStepHoldRemaining = 0;
+    this.planSetTick = sso.gameTick || 0;
+    this.planHealthAtSet = Number.isFinite(sso.avatarHealthPoints) ? sso.avatarHealthPoints : null;
+  }
+
+  clearPlan() {
+    this.planQueue = [];
+    this.planLength = 0;
+    this.planStep = 0;
+    this.planSetTick = null;
+    this.planHealthAtSet = null;
+    this.planStepHoldRemaining = 0;
+  }
+
+  // A plan is a commitment to a world that may no longer exist. Drop it when the
+  // world hit us (health), it went stale (age), it's walking into a wall (loop),
+  // or its next step is no longer legal. Deliberately NOT on score gain — a
+  // scoring plan is a working plan, and clearing it re-introduces jitter.
+  maybeInvalidatePlan(sso) {
+    if (this.planQueue.length === 0) return;
+    const tick = sso.gameTick || 0;
+    const health = Number.isFinite(sso.avatarHealthPoints) ? sso.avatarHealthPoints : null;
+    let reason = null;
+    if (this.planHealthAtSet !== null && health !== null && health < this.planHealthAtSet) {
+      reason = 'health-drop';
+    } else if (this.planSetTick !== null && tick - this.planSetTick > MAX_PLAN_AGE_TICKS) {
+      reason = 'plan-age';
+    } else if (this.stateTracker.detectLoop()) {
+      reason = 'loop-detected';
+    } else if (Array.isArray(sso.availableActions) && sso.availableActions.length > 0 &&
+               !sso.availableActions.includes(this.planQueue[0])) {
+      reason = 'illegal-step';
+    }
+    if (reason) {
+      console.log(`[LLMClient] Plan invalidated (${reason}) with ${this.planQueue.length} steps remaining`);
+      this.clearPlan();
+    }
+  }
+
+  // -------------------------------------------------------------------------
 
   resolveAuthoritativePolicy(jsonPayload) {
     if (!this.promptConfig?.codeProtocol?.enabled) return null;
@@ -394,6 +504,7 @@ class LLMClient {
       policyAuthoritative: true,
       prompt: promptDecision.userMessage,
       systemPrompt: promptDecision.systemMessage || null,
+      promptLayers: promptDecision.promptLayers || null,
       actionCodeMap: promptDecision.actionCodeMap || null,
       responseMode: promptDecision.responseMode
     };
@@ -454,6 +565,7 @@ class LLMClient {
       this.io.emit('llm-reasoning', {
         prompt,
         systemPrompt: decision.systemPrompt,
+        promptLayers: decision.promptLayers || null,
         response: '',
         reason: decision.reason,
         decisionSource: decision.decisionSource,
@@ -463,6 +575,8 @@ class LLMClient {
         fallbackActionCode: decision.fallbackActionCode,
         strategy: this.sessionStrategy,
         action: decision.action,
+        plan: [decision.action],
+        planLength: 1,
         elapsed: 0,
         provider: 'encoded-policy',
         modelUsed: this.model,
@@ -571,6 +685,7 @@ class LLMClient {
     const {
       systemMessage,
       userMessage,
+      promptLayers,
       actionCodeMap,
       responseMode,
       fallbackAction,
@@ -641,7 +756,8 @@ class LLMClient {
     }
 
     const elapsed = Date.now() - startTime;
-    const parsed = parseStructured(llmResponse, sso.availableActions, actionCodeMap);
+    const maxPlanSteps = this.promptConfig?.macroActions?.maxSteps || MAX_PLAN_STEPS;
+    const parsed = parseStructured(llmResponse, sso.availableActions, actionCodeMap, { maxPlanSteps });
     let { action, reason } = parsed;
     let decisionSource = parsed.source || 'unknown';
     if (
@@ -666,6 +782,18 @@ class LLMClient {
     this.lastProvider = usedProvider;
     this.lastModelUsed = usedModel;
     this.pendingLLMAction = action;
+
+    // Queue the multi-step plan for the tick executor. Code-protocol responses
+    // never take this path (buildPrompt branches to buildCodePrompt first, and
+    // the overrides above rewrite action anyway).
+    const planActions = (this.macroEnabled() && responseMode !== 'code' && Array.isArray(parsed.plan) && parsed.plan.length > 0)
+      ? parsed.plan
+      : [action];
+    if (this.macroEnabled() && responseMode !== 'code') {
+      this.setPlan(planActions, sso);
+    }
+    const aliases = this.promptConfig?.actionAliases || null;
+    const displayPlan = aliases ? planActions.map(a => aliases[a] || a) : planActions;
 
     this.recordActionDecision(action, sso.gameTick, reason);
 
@@ -692,6 +820,9 @@ class LLMClient {
         fallbackActionCode,
         modelUsed: usedModel,
         responseMode: responseMode || 'text',
+        plan: planActions,
+        planLength: planActions.length,
+        planSource: parsed.planSource || 'single-action',
         strategy_present: Boolean(this.sessionStrategy),
         prompt: storeRawText ? prompt : undefined,
         systemPrompt: storeRawText ? systemMessage || null : undefined,
@@ -712,6 +843,7 @@ class LLMClient {
       this.io.emit('llm-reasoning', {
         prompt,
         systemPrompt: systemMessage || null,
+        promptLayers: promptLayers || null,
         response: llmResponse,
         reason,
         decisionSource,
@@ -721,6 +853,8 @@ class LLMClient {
         fallbackActionCode,
         strategy: this.sessionStrategy,
         action,
+        plan: displayPlan,
+        planLength: planActions.length,
         elapsed,
         provider: usedProvider,
         modelUsed: usedModel,
@@ -768,10 +902,11 @@ class LLMClient {
     // Build the end-of-run summary BEFORE resetting run state
     const summary = this.buildRunSummary(sso);
 
-    // Reset LLM state for next level
+    // Reset LLM state for next level (a plan must never leak across levels)
     this.pendingLLMAction = null;
     this.llmCallInProgress = false;
     this.lastLLMCallTime = 0;
+    this.clearPlan();
 
     // Notify frontend (per-level, not session end)
     if (this.io) {

@@ -990,6 +990,127 @@ button {
   margin-top: var(--space-2);
 }
 
+/* Prompting-field soft-warn nudge (non-blocking) */
+.strategy-warn {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid rgba(255, 193, 94, 0.5);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 193, 94, 0.08);
+  color: #ffc15e;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.strategy-warn.hidden { display: none; }
+
+/* Unfold-the-rules scaffold (code-sourced instruction chips) */
+.unfold-rules {
+  margin-top: var(--space-3);
+  border: 1px solid var(--arcade-border);
+  border-radius: var(--radius-md);
+  background: var(--arcade-bg);
+}
+.unfold-rules.hidden { display: none; }
+.unfold-rules > summary {
+  cursor: pointer;
+  padding: var(--space-2) var(--space-3);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--arcade-secondary);
+  list-style: none;
+  user-select: none;
+}
+.unfold-rules > summary::-webkit-details-marker { display: none; }
+.unfold-rules[open] > summary { border-bottom: 1px solid var(--arcade-border); }
+.unfold-note {
+  margin: var(--space-3) var(--space-3) var(--space-2);
+  font-size: 12px;
+  color: var(--arcade-text-dim, #9aa0b4);
+}
+.unfold-chips {
+  padding: 0 var(--space-3) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.unfold-group { display: flex; flex-direction: column; gap: var(--space-2); }
+.unfold-group-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--arcade-accent);
+}
+.unfold-group-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.unfold-chip {
+  background: var(--arcade-bg);
+  border: 1px solid var(--arcade-border);
+  color: var(--arcade-text);
+  padding: 4px var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.unfold-chip:hover { border-color: var(--arcade-secondary); color: var(--arcade-secondary); }
+.unfold-chip.added {
+  border-color: var(--arcade-accent);
+  background: rgba(120, 220, 200, 0.12);
+  color: var(--arcade-accent);
+}
+
+/* Decision Autopsy — live adherence ribbon + prompt-layer stack */
+.adherence-ribbon {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+  background: var(--arcade-bg);
+  border: 1px solid var(--arcade-border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+.adherence-ribbon.hidden { display: none; }
+.ribbon-label { color: var(--arcade-secondary); white-space: nowrap; font-weight: 600; }
+.ribbon-bar { flex: 1; height: 6px; background: var(--arcade-border); border-radius: 3px; overflow: hidden; }
+.ribbon-fill { height: 100%; background: var(--arcade-accent); transition: width var(--transition-base); }
+.autopsy-flow {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--arcade-text-dim, #9aa0b4);
+  margin: var(--space-2) 0;
+  word-break: break-word;
+}
+.layer-stack { display: flex; flex-direction: column; gap: 4px; margin: var(--space-2) 0; }
+.layer { border: 1px solid var(--arcade-border); border-radius: var(--radius-sm); overflow: hidden; }
+.layer-tactic { border-color: var(--arcade-secondary); }
+.layer-head {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  padding: 3px var(--space-2);
+  font-size: 11px;
+  list-style: none;
+}
+.layer-head::-webkit-details-marker { display: none; }
+.layer-name { color: var(--arcade-text); font-weight: 600; }
+.layer-tactic .layer-name { color: var(--arcade-secondary); }
+.layer-count { color: var(--arcade-text-dim, #9aa0b4); }
+.layer-text {
+  margin: 0;
+  padding: var(--space-2);
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--arcade-text-dim, #9aa0b4);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 160px;
+  overflow-y: auto;
+  border-top: 1px solid var(--arcade-border);
+}
+
 /* Step 3: active-strategy banner + narration */
 .strategy-active {
   padding: var(--space-2) var(--space-3);
@@ -1017,6 +1138,31 @@ button {
   border: 1px solid var(--arcade-secondary);
   border-radius: var(--radius-sm);
   background: rgba(188, 140, 255, 0.08);
+}
+.plan-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+.plan-step {
+  padding: 2px var(--space-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--arcade-text-dim);
+  border: 1px solid var(--arcade-text-dim);
+  border-radius: var(--radius-sm);
+}
+.plan-step-active {
+  color: var(--arcade-secondary);
+  border-color: var(--arcade-secondary);
+  background: rgba(188, 140, 255, 0.12);
+}
+.plan-step-done {
+  color: var(--arcade-text-dim);
+  border-color: transparent;
+  background: rgba(188, 140, 255, 0.05);
+  text-decoration: line-through;
 }
 .raw-toggle {
   margin-top: var(--space-2);

@@ -244,6 +244,7 @@ function resolveGamePromptConfig(gameId, levelId, options = {}) {
     gridLegend: config.gridLegend || null,
     actionAliases: config.actionAliases || null,
     codeProtocol,
+    macroActions: config.macroActions || null,
     strategicDigest: config.strategicDigest || null,
     strategicDigestMemory: resolvedStrategicMemory
       ? {

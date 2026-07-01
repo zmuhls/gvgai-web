@@ -353,3 +353,272 @@ test('requestLLMAction can let authoritative game code override a valid model ac
     global.fetch = originalFetch;
   }
 });
+
+// --- Macro-action plan executor ---------------------------------------------
+
+function actPayload(overrides = {}) {
+  return JSON.stringify({
+    phase: 'ACT',
+    gameTick: 1,
+    gameScore: 0,
+    avatarHealthPoints: 100,
+    gameWinner: 'NO_WINNER',
+    availableActions: ['ACTION_NIL', 'ACTION_LEFT', 'ACTION_RIGHT', 'ACTION_USE'],
+    ...overrides
+  });
+}
+
+function macroClient(macroActions = { enabled: true, ticksPerStep: 1 }) {
+  const client = new LLMClient();
+  client.promptConfig = { gameName: 'aliens', macroActions };
+  client.startAsyncLLMCall = () => {};
+  client.llmCallInProgress = true; // keep the refill gate closed unless a test opens it
+  return client;
+}
+
+const nextTickDrain = () => new Promise(resolve => setImmediate(resolve));
+
+test('plan queue is consumed one step per ACT tick, then repeats the last step', async () => {
+  const client = macroClient();
+  const sent = [];
+  client.sendMessageWithId = (msgId, message) => sent.push(message);
+
+  client.planQueue = ['ACTION_LEFT', 'ACTION_LEFT', 'ACTION_USE'];
+  client.planLength = 3;
+
+  for (let tick = 1; tick <= 5; tick++) {
+    await client.processMessage(`${tick}#${actPayload({ gameTick: tick })}`);
+    await nextTickDrain();
+  }
+
+  assert.deepEqual(sent, [
+    'ACTION_LEFT#BOTH',
+    'ACTION_LEFT#BOTH',
+    'ACTION_USE#BOTH',
+    'ACTION_USE#BOTH', // exhausted queue repeats the last step (classic behavior)
+    'ACTION_USE#BOTH'
+  ]);
+  assert.equal(client.planStep, 3);
+});
+
+test('ticksPerStep holds each plan step for N ticks before advancing', async () => {
+  const client = macroClient({ enabled: true, ticksPerStep: 2 });
+  const sent = [];
+  client.sendMessageWithId = (msgId, message) => sent.push(message);
+
+  client.planQueue = ['ACTION_LEFT', 'ACTION_USE'];
+  client.planLength = 2;
+
+  for (let tick = 1; tick <= 4; tick++) {
+    await client.processMessage(`${tick}#${actPayload({ gameTick: tick })}`);
+    await nextTickDrain();
+  }
+
+  assert.deepEqual(sent, [
+    'ACTION_LEFT#BOTH',
+    'ACTION_LEFT#BOTH',
+    'ACTION_USE#BOTH',
+    'ACTION_USE#BOTH'
+  ]);
+});
+
+test('refill fires only when the queue is low and the interval elapsed', async () => {
+  const client = macroClient();
+  const calls = [];
+  client.llmCallInProgress = false;
+  client.lastLLMCallTime = 0;
+  client.startAsyncLLMCall = () => calls.push('call');
+  client.sendMessageWithId = () => {};
+
+  client.planQueue = ['ACTION_LEFT', 'ACTION_LEFT', 'ACTION_USE'];
+  await client.processMessage(`1#${actPayload()}`);
+  await nextTickDrain();
+  assert.equal(calls.length, 0, 'no refill while the queue is full');
+
+  client.planQueue = ['ACTION_USE'];
+  await client.processMessage(`2#${actPayload({ gameTick: 2 })}`);
+  await nextTickDrain();
+  assert.equal(calls.length, 1, 'refill once the queue is low');
+
+  client.planQueue = [];
+  client.lastLLMCallTime = Date.now(); // interval not elapsed
+  await client.processMessage(`3#${actPayload({ gameTick: 3 })}`);
+  await nextTickDrain();
+  assert.equal(calls.length, 1, 'time floor still applies');
+});
+
+test('plan is invalidated on health drop, stale age, and loop detection', async () => {
+  const scenarios = [
+    { setup: c => { c.planHealthAtSet = 100; }, payload: { avatarHealthPoints: 50 } },
+    { setup: c => { c.planSetTick = 0; }, payload: { gameTick: 31 } },
+    { setup: c => { c.stateTracker.detectLoop = () => 'stuck warning'; }, payload: {} }
+  ];
+
+  for (const scenario of scenarios) {
+    const client = macroClient();
+    client.sendMessageWithId = () => {};
+    client.planQueue = ['ACTION_LEFT', 'ACTION_USE'];
+    client.planLength = 2;
+    scenario.setup(client);
+
+    await client.processMessage(`1#${actPayload(scenario.payload)}`);
+    await nextTickDrain();
+
+    assert.deepEqual(client.planQueue, []);
+    assert.equal(client.planLength, 0);
+  }
+});
+
+test('handleEnd clears the plan queue so plans never leak across levels', async () => {
+  const client = macroClient();
+  client.planQueue = ['ACTION_LEFT'];
+  client.planLength = 1;
+  client.planStep = 2;
+
+  await client.handleEnd({ gameScore: 5, gameWinner: 'PLAYER_WINS', gameTick: 90 }, '9');
+
+  assert.deepEqual(client.planQueue, []);
+  assert.equal(client.planLength, 0);
+  assert.equal(client.planStep, 0);
+});
+
+test('authoritative code policy bypasses a non-empty plan queue', async () => {
+  const client = new LLMClient();
+  const sent = [];
+  client.model = 'google/gemini-2.5-flash';
+  client.gameId = 4;
+  client.gameName = 'bait';
+  client.promptConfig = {
+    gameName: 'bait',
+    macroActions: { enabled: true },
+    codeProtocol: {
+      enabled: true,
+      id: 'GV1',
+      policyId: 'bait-level0',
+      authoritative: true,
+      actionCodes: { U: 'ACTION_UP', D: 'ACTION_DOWN', L: 'ACTION_LEFT', R: 'ACTION_RIGHT' },
+      keyItype: 7,
+      boxItype: 9,
+      withKeyAvatarType: 5
+    }
+  };
+  client.sendMessageWithId = (msgId, message) => sent.push(message);
+  client.planQueue = ['ACTION_LEFT', 'ACTION_LEFT'];
+  client.planLength = 2;
+
+  await client.processMessage(`7#${JSON.stringify({
+    phase: 'ACT',
+    blockSize: 10,
+    worldDimension: [50, 60],
+    avatarPosition: [20, 10],
+    avatarType: 4,
+    gameTick: 0,
+    gameScore: 0,
+    gameWinner: 'NO_WINNER',
+    availableActions: ['ACTION_LEFT', 'ACTION_RIGHT', 'ACTION_DOWN', 'ACTION_UP'],
+    movablePositionsNum: 2,
+    movablePositions: [
+      [{ position: { x: 20, y: 40 }, itype: 7, category: 6, obsID: 26 }],
+      [
+        { position: { x: 20, y: 30 }, itype: 9, category: 6, obsID: 19 },
+        { position: { x: 30, y: 30 }, itype: 9, category: 6, obsID: 21 }
+      ]
+    ]
+  })}`);
+  await nextTickDrain();
+
+  assert.deepEqual(sent, ['ACTION_DOWN#BOTH']);
+  assert.deepEqual(client.planQueue, ['ACTION_LEFT', 'ACTION_LEFT'], 'queue untouched by policy path');
+});
+
+test('requestLLMAction queues a PLAN response and emits plan metadata', async () => {
+  const originalFetch = global.fetch;
+  const client = new LLMClient({ actionTimeoutMs: 1000 });
+  const emitted = [];
+
+  client.model = 'gpt-oss:120b';
+  client.gameId = 0;
+  client.levelCount = 0;
+  client.sessionStrategy = 'rush left and shoot';
+  client.promptConfig = {
+    gameName: 'aliens',
+    llmSettings: { maxTokens: 100, temperature: 0.7 },
+    actionAliases: { ACTION_USE: 'SHOOT' },
+    macroActions: { enabled: true, maxSteps: 4 }
+  };
+  client.io = { emit: (event, payload) => emitted.push({ event, payload }) };
+
+  global.fetch = async () => ({
+    ok: true,
+    async json() {
+      return { choices: [{ message: { content: 'REASON: rushing left as asked.\nPLAN: LEFT, LEFT, SHOOT' } }] };
+    }
+  });
+
+  try {
+    const result = await client.requestLLMAction(actPayload({ gameTick: 10 }));
+
+    assert.equal(result.action, 'ACTION_LEFT');
+    assert.deepEqual(client.planQueue, ['ACTION_LEFT', 'ACTION_LEFT', 'ACTION_USE']);
+    assert.equal(client.planLength, 3);
+    assert.equal(client.planSetTick, 10);
+    assert.equal(client.planHealthAtSet, 100);
+
+    const reasoning = emitted.find(e => e.event === 'llm-reasoning');
+    assert.ok(reasoning);
+    assert.deepEqual(reasoning.payload.plan, ['ACTION_LEFT', 'ACTION_LEFT', 'SHOOT'], 'display aliases applied');
+    assert.equal(reasoning.payload.planLength, 3);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('MACRO_ACTIONS_DISABLED=1 degrades a PLAN response to a single action', async () => {
+  const originalFetch = global.fetch;
+  const client = new LLMClient({ actionTimeoutMs: 1000 });
+
+  client.model = 'gpt-oss:120b';
+  client.gameId = 0;
+  client.levelCount = 0;
+  client.promptConfig = {
+    gameName: 'aliens',
+    macroActions: { enabled: true }
+  };
+
+  global.fetch = async () => ({
+    ok: true,
+    async json() {
+      return { choices: [{ message: { content: 'REASON: go.\nPLAN: LEFT, LEFT, SHOOT' } }] };
+    }
+  });
+
+  process.env.MACRO_ACTIONS_DISABLED = '1';
+  try {
+    const result = await client.requestLLMAction(actPayload());
+
+    assert.equal(result.action, 'ACTION_LEFT');
+    assert.equal(client.pendingLLMAction, 'ACTION_LEFT');
+    assert.deepEqual(client.planQueue, [], 'kill switch keeps the queue empty');
+  } finally {
+    delete process.env.MACRO_ACTIONS_DISABLED;
+    global.fetch = originalFetch;
+  }
+});
+
+test('game-state emit carries live planStep and planLength', async () => {
+  const client = macroClient();
+  const emitted = [];
+  client.sendMessageWithId = () => {};
+  client.io = { emit: (event, payload) => emitted.push({ event, payload }) };
+
+  client.planQueue = ['ACTION_LEFT', 'ACTION_USE'];
+  client.planLength = 2;
+
+  await client.processMessage(`1#${actPayload()}`);
+  await nextTickDrain();
+
+  const gameState = emitted.find(e => e.event === 'game-state');
+  assert.ok(gameState);
+  assert.equal(gameState.payload.planStep, 1);
+  assert.equal(gameState.payload.planLength, 2);
+});

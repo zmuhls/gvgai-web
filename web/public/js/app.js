@@ -24,6 +24,24 @@ const STRATEGY_PRESETS = [
   { label: 'Goal test', text: 'Move deliberately and plan ahead. Work toward the exit or goal step by step without wasting moves.' }
 ];
 
+// Advice clause for each VGDL strategy tag (the controlled vocab from vgdl-digest).
+const TAG_ADVICE = {
+  'avoid-collisions': 'Avoid collisions with hazards.',
+  'collect-resources': 'Collect resources when the path is safe.',
+  'attack-targets': 'Attack targets when you can line up a hit.',
+  'position-puzzle': 'Plan your moves and pushes before committing.',
+  'state-change': 'Trigger the transformation to make progress.',
+  'clear-objectives': 'Clear every objective to win.',
+  'survive': 'Prioritize surviving as long as possible.',
+  'use-action': 'Use your action button when it helps.',
+  'lane-control': 'Hold your lane and line up shots.',
+  'balanced-navigation': 'Move deliberately toward the goal.'
+};
+
+// Generic tactic words that count as "on-topic" even without game-specific overlap,
+// so reasonable defensive/aggressive tactics don't trip the soft-warn.
+const GENERIC_TACTIC_WORDS = new Set(['avoid', 'dodge', 'defend', 'defensive', 'defensively', 'attack', 'attacking', 'survive', 'survival', 'score', 'scoring', 'points', 'safe', 'safely', 'aggressive', 'careful', 'carefully', 'plan', 'retreat', 'collect', 'explore', 'goal', 'enemy', 'enemies', 'threat', 'threats', 'distance', 'risk', 'risks', 'shoot', 'move', 'wait', 'push']);
+
 const PREVIEW_GAMES = [
   { id: 0, name: 'aliens', category: 'gridphysics', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
   { id: 32, name: 'doorkoban', category: 'gridphysics', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
@@ -80,12 +98,17 @@ const strategyActive = document.getElementById('strategy-active');
 const summaryStrategy = document.getElementById('summary-strategy');
 const summaryAdherence = document.getElementById('summary-adherence');
 const summaryHighlights = document.getElementById('summary-highlights');
+const strategyWarn = document.getElementById('strategy-warn');
+const unfoldRules = document.getElementById('unfold-rules');
+const unfoldChips = document.getElementById('unfold-chips');
 
 // Additional stat elements
 const scoreEl = document.getElementById('score');
 const healthEl = document.getElementById('health');
 const maxHealthEl = document.getElementById('max-health');
 const tickEl = document.getElementById('tick');
+const navLinks = Array.from(document.querySelectorAll('#main-nav .nav-link'));
+const topLevelSections = Array.from(document.querySelectorAll('#app > .section'));
 const canvasCtx = gameCanvas.getContext('2d', { alpha: false });
 const frameState = {
   pending: null,
@@ -149,6 +172,127 @@ function renderStrategyCards() {
       trackUx('strategy_selected', { label: preset.label }, {}, { eventFamily: 'clickthrough' });
     });
   });
+}
+
+// Fetch the selected game's rules (derived from VGDL) and render the unfold chips.
+async function loadGameDigest(gameId) {
+  state.gameDigest = null;
+  state.digestKeywords = [];
+  if (unfoldChips) unfoldChips.innerHTML = '';
+  if (unfoldRules) { unfoldRules.open = false; unfoldRules.classList.remove('hidden'); }
+  try {
+    const response = await fetch(`/api/games/${gameId}/digest`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const digest = await response.json();
+    state.gameDigest = digest;
+    state.digestKeywords = digestKeywords(digest);
+    renderUnfoldChips(digest);
+  } catch (error) {
+    console.warn('[App] Could not load game digest:', error.message);
+    if (unfoldRules) unfoldRules.classList.add('hidden');
+  }
+}
+
+// Flatten the digest facets into a keyword set for the soft-warn topical check.
+function digestKeywords(digest) {
+  const stop = new Set(['all', 'the', 'and', 'hit', 'by', 'to', 'of', 'die', 'count', 'reaches', 'gone']);
+  const blob = [
+    ...(digest.scoring || []),
+    ...(digest.hazards || []),
+    ...(digest.mechanics || []),
+    ...(digest.winConditions || []),
+    ...(digest.loseConditions || []),
+    ...(digest.strategyTags || [])
+  ].join(' ').toLowerCase();
+  return [...new Set((blob.match(/[a-z]+/g) || []).filter(w => w.length >= 3 && !stop.has(w)))];
+}
+
+// Render the game's rules as tappable "unfold" chips grouped by facet. Tapping a
+// chip appends a well-formed clause to the tactic box — code-sourced scaffolding.
+function renderUnfoldChips(digest) {
+  if (!unfoldChips) return;
+  const stripScore = s => s.replace(/\s*\([+-]?\d+\)\s*$/, '').trim();
+  const groups = [];
+  const add = (label, items, toClause) => {
+    const chips = (items || []).filter(Boolean).map(item => ({ item, clause: toClause(item) }));
+    if (chips.length) groups.push({ label, chips });
+  };
+  add('Avoid', digest.hazards, h => `Avoid the ${h}.`);
+  add('Score by', digest.scoring, s => `Go for: ${stripScore(s)}.`);
+  add('Mechanics', digest.mechanics, m => `Use the mechanic: ${m}.`);
+  add('Win', digest.winConditions, w => `Work toward: ${w}.`);
+  add('Approach', digest.strategyTags, t => TAG_ADVICE[t] || `Play with a ${t} approach.`);
+
+  unfoldChips.replaceChildren();
+  for (const g of groups) {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'unfold-group';
+
+    const labelEl = document.createElement('span');
+    labelEl.className = 'unfold-group-label';
+    labelEl.textContent = g.label;
+    groupEl.appendChild(labelEl);
+
+    const chipsEl = document.createElement('div');
+    chipsEl.className = 'unfold-group-chips';
+    for (const c of g.chips) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'unfold-chip';
+      btn.textContent = c.item;
+      btn.dataset.clause = c.clause;
+      btn.addEventListener('click', () => appendClause(c.clause, btn));
+      chipsEl.appendChild(btn);
+    }
+    groupEl.appendChild(chipsEl);
+    unfoldChips.appendChild(groupEl);
+  }
+}
+
+// Append a chip's clause to the tactic box (deduped, capped at the server limit).
+function appendClause(clause, chip) {
+  if (!strategyText || !clause) return;
+  const current = strategyText.value.trim();
+  if (current.toLowerCase().includes(clause.toLowerCase())) return;
+  const next = current ? `${current} ${clause}` : clause;
+  strategyText.value = next.slice(0, 240);
+  if (chip) chip.classList.add('added');
+  updateStrategyWarn();
+  trackUx('unfold_chip_added', { clause }, {}, { eventFamily: 'clickthrough' });
+}
+
+// Non-blocking soft-warn: flag injection-shaped or off-topic tactics. Never blocks
+// submission — the server-side sanitizer is the actual floor; this is just a nudge.
+function assessStrategy(text) {
+  const t = (text || '').trim();
+  if (!t) return null;
+  const lower = t.toLowerCase();
+  if (/\b(ignore|disregard|forget|override)\b[^.!?]*\b(rule|rules|instruction|instructions|above|previous|system|prompt)\b/.test(lower)
+      || /\b(system|assistant|developer)\s*:/.test(lower)) {
+    return "That reads like an instruction to the model, not a game tactic — it'll be neutralized. Try an Unfold chip below.";
+  }
+  const kws = state.digestKeywords || [];
+  const words = new Set(lower.match(/[a-z]+/g) || []);
+  if (kws.length && words.size >= 3) {
+    const onTopic = kws.some(k => words.has(k)) || [...words].some(w => GENERIC_TACTIC_WORDS.has(w));
+    if (!onTopic) {
+      return "This doesn't mention anything in this game — the model may ignore it. Try an Unfold chip below.";
+    }
+  }
+  return null;
+}
+
+// Refresh the soft-warn banner from the current tactic text.
+function updateStrategyWarn() {
+  if (!strategyWarn) return;
+  const msg = assessStrategy(strategyText ? strategyText.value : '');
+  if (msg) {
+    strategyWarn.textContent = msg;
+    strategyWarn.classList.remove('hidden');
+  } else {
+    strategyWarn.textContent = '';
+    strategyWarn.classList.add('hidden');
+  }
 }
 
 // Load models from API
@@ -223,6 +367,10 @@ function selectGame(gameId) {
 
   console.log('[App] Populated levels:', levels);
 
+  // Load the game's rules for the unfold scaffold + reset any prior soft-warn.
+  loadGameDigest(gameId);
+  updateStrategyWarn();
+
   // Show model selector
   showStep(modelSelector);
 }
@@ -296,6 +444,10 @@ async function startGame() {
     document.getElementById('current-game-name').textContent = state.selectedGame.name;
     reasoningLog.innerHTML = '';
     state.lastSummary = null;
+    state.adherenceMentioned = 0;
+    state.adherenceTotal = 0;
+    const ribbon0 = document.getElementById('adherence-ribbon');
+    if (ribbon0) ribbon0.classList.add('hidden');
     resetFrameDisplay();
     gameEndMessage.classList.add('hidden');
 
@@ -375,8 +527,29 @@ function showStep(step) {
   }
 }
 
+function showSection(sectionId) {
+  const section = document.getElementById(sectionId);
+  if (!section) return;
+
+  topLevelSections.forEach(item => {
+    item.classList.toggle('active', item.id === sectionId);
+  });
+
+  navLinks.forEach(link => {
+    link.classList.toggle('active', link.dataset.target === sectionId);
+  });
+}
+
 // Event listeners
 function setupEventListeners() {
+  navLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      const sectionId = link.dataset.target;
+      showSection(sectionId);
+      trackUx('section_selected', { sectionId }, {}, { eventFamily: 'clickthrough' });
+    });
+  });
+
   gameSearch.addEventListener('input', (e) => {
     const search = e.target.value.toLowerCase();
     if (!search) {
@@ -412,6 +585,7 @@ function setupEventListeners() {
 
   startGameBtn.addEventListener('click', startGame);
   stopGameBtn.addEventListener('click', stopGame);
+  if (strategyText) strategyText.addEventListener('input', updateStrategyWarn);
   backToGamesBtn.addEventListener('click', () => showStep(gameSelector));
   playAgainBtn.addEventListener('click', () => {
     showStep(modelSelector);
@@ -445,6 +619,10 @@ function setupWebSocket() {
     console.error('[App] Connection error:', error);
   });
 
+  // Chip row of the newest multi-step plan, so per-tick game-state events can
+  // advance the live "executing step N" highlight without a new socket event.
+  let latestPlanChips = null;
+
   socket.on('llm-reasoning', (data) => {
     console.log('[App] LLM reasoning:', data);
 
@@ -453,25 +631,53 @@ function setupWebSocket() {
     if (healthEl) healthEl.textContent = data.gameState?.health || 0;
     if (tickEl) tickEl.textContent = data.gameState?.tick || 0;
 
-    // Add narration entry: clean rationale up top, raw details collapsible
+    // Live adherence ribbon (running "followed the strategy" rate).
+    updateAdherenceRibbon(data);
+
+    // Add narration entry (built with DOM methods; the prompt layers can be long
+    // and mix game + sanitized-player text, so we avoid innerHTML entirely here).
     const entry = document.createElement('div');
     entry.className = 'reasoning-entry';
 
     const timing = data.elapsed > 800 ? 'slow' : 'fast';
     const narration = data.reason || data.response || '(no rationale)';
-    const followsBadge = sharesStrategyKeyword(data.reason, data.strategy)
-      ? '<span class="strategy-badge">↳ following your strategy</span>'
-      : '';
 
-    entry.innerHTML = `
-      <div class="narration">${escapeHtml(narration)}</div>
-      ${followsBadge}
-      <div class="action ${timing}">→ ${escapeHtml(data.action)} (${data.elapsed}ms${data.provider ? ' · ' + escapeHtml(data.provider) : ''})</div>
-      <details class="raw-toggle">
-        <summary>details</summary>
-        <div class="response">${escapeHtml(data.response || '(no response)')}</div>
-      </details>
-    `;
+    const narrDiv = document.createElement('div');
+    narrDiv.className = 'narration';
+    narrDiv.textContent = narration;
+    entry.appendChild(narrDiv);
+
+    if (sharesStrategyKeyword(data.reason, data.strategy)) {
+      const badge = document.createElement('span');
+      badge.className = 'strategy-badge';
+      badge.textContent = '↳ following your strategy';
+      entry.appendChild(badge);
+    }
+
+    const hasPlan = Array.isArray(data.plan) && data.plan.length > 1;
+    if (hasPlan) {
+      const planRow = document.createElement('div');
+      planRow.className = 'plan-steps';
+      data.plan.forEach((step, i) => {
+        const chip = document.createElement('span');
+        chip.className = 'plan-step' + (i === 0 ? ' plan-step-active' : '');
+        chip.textContent = step;
+        planRow.appendChild(chip);
+      });
+      entry.appendChild(planRow);
+      latestPlanChips = planRow;
+    } else {
+      latestPlanChips = null;
+    }
+
+    const actDiv = document.createElement('div');
+    actDiv.className = `action ${timing}`;
+    const planTag = hasPlan ? `plan 1/${data.plan.length} · ` : '';
+    actDiv.textContent = `→ ${data.action} (${planTag}${data.elapsed}ms${data.provider ? ' · ' + data.provider : ''})`;
+    entry.appendChild(actDiv);
+
+    // The Decision Autopsy: how this move was assembled + decided.
+    entry.appendChild(buildAutopsy(data));
 
     reasoningLog.insertBefore(entry, reasoningLog.firstChild);
 
@@ -491,6 +697,16 @@ function setupWebSocket() {
     if (healthEl) healthEl.textContent = data.health || 0;
     if (maxHealthEl && data.maxHealth) maxHealthEl.textContent = data.maxHealth;
     if (tickEl) tickEl.textContent = data.tick || 0;
+
+    // Advance the live plan-step highlight on the newest narration entry
+    if (latestPlanChips && data.planLength > 1) {
+      const chips = latestPlanChips.children;
+      for (let i = 0; i < chips.length; i++) {
+        chips[i].classList.remove('plan-step-active', 'plan-step-done');
+        if (i < data.planStep - 1) chips[i].classList.add('plan-step-done');
+        else if (i === data.planStep - 1) chips[i].classList.add('plan-step-active');
+      }
+    }
   });
 
   // Per-level end (non-blocking notification)
@@ -678,6 +894,80 @@ async function drawQueuedFrame() {
 // Light client-side check for the per-move "following your strategy" badge.
 // Honest: only shows when the model's rationale literally echoes a strategy word.
 const BADGE_STOPWORDS = new Set(['the','and','for','with','your','you','this','that','play','playing','try','keep','make','get','move','moving','action','when','from','are','will','can','should','need','want','take','use','using','only','even','some','over','it','to','of','in','on','as','be','do','go']);
+// Build the Decision Autopsy: a collapsible view of the prompt-layer stack the
+// model saw (rules → tactic → grid → tick state) plus the decision flow, so a
+// viewer can see HOW a move was assembled and decided. DOM-built (no innerHTML).
+function buildAutopsy(data) {
+  const details = document.createElement('details');
+  details.className = 'raw-toggle';
+  const summary = document.createElement('summary');
+  summary.textContent = 'decision autopsy';
+  details.appendChild(summary);
+
+  const flow = document.createElement('div');
+  flow.className = 'autopsy-flow';
+  flow.textContent = `state → prompt → ${data.modelUsed || 'model'} (${data.provider || '?'}) → REASON → ${data.action || '—'}`;
+  details.appendChild(flow);
+
+  if (Array.isArray(data.promptLayers) && data.promptLayers.length) {
+    const stack = document.createElement('div');
+    stack.className = 'layer-stack';
+    for (const layer of data.promptLayers) {
+      const row = document.createElement('details');
+      row.className = 'layer' + (layer.name === 'Player tactic' ? ' layer-tactic' : '');
+      const head = document.createElement('summary');
+      head.className = 'layer-head';
+      const name = document.createElement('span');
+      name.className = 'layer-name';
+      name.textContent = layer.name;
+      const count = document.createElement('span');
+      count.className = 'layer-count';
+      count.textContent = `${layer.text.length} chars`;
+      head.append(name, count);
+      row.appendChild(head);
+      const body = document.createElement('pre');
+      body.className = 'layer-text';
+      body.textContent = layer.text;
+      row.appendChild(body);
+      stack.appendChild(row);
+    }
+    details.appendChild(stack);
+  }
+
+  const resp = document.createElement('div');
+  resp.className = 'response';
+  resp.textContent = data.response || '(no response)';
+  details.appendChild(resp);
+  return details;
+}
+
+// Running "followed the strategy" rate, updated per decision (mirrors the
+// server-side computeAdherence heuristic, shown live instead of only on the card).
+function updateAdherenceRibbon(data) {
+  const ribbon = document.getElementById('adherence-ribbon');
+  if (!ribbon) return;
+  if (!data.strategy) { ribbon.classList.add('hidden'); return; }
+  state.adherenceTotal = (state.adherenceTotal || 0) + 1;
+  if (sharesStrategyKeyword(data.reason, data.strategy)) {
+    state.adherenceMentioned = (state.adherenceMentioned || 0) + 1;
+  }
+  const m = state.adherenceMentioned || 0;
+  const t = state.adherenceTotal;
+  const pct = t ? Math.round((m / t) * 100) : 0;
+  ribbon.classList.remove('hidden');
+  ribbon.replaceChildren();
+  const label = document.createElement('span');
+  label.className = 'ribbon-label';
+  label.textContent = `Following strategy: ${m}/${t} moves`;
+  const bar = document.createElement('div');
+  bar.className = 'ribbon-bar';
+  const fill = document.createElement('div');
+  fill.className = 'ribbon-fill';
+  fill.style.width = pct + '%';
+  bar.appendChild(fill);
+  ribbon.append(label, bar);
+}
+
 function sharesStrategyKeyword(reason, strategy) {
   if (!reason || !strategy) return false;
   const r = reason.toLowerCase();

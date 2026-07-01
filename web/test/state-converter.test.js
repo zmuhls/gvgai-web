@@ -547,3 +547,54 @@ test('grid target policy routes around non-target danger', () => {
   assert.equal(prompt.fallbackAction, 'ACTION_UP');
   assert.match(prompt.userMessage, /B:U/);
 });
+
+test('macro-enabled game with a strategy asks for a PLAN closing contract', () => {
+  const prompt = buildPrompt(createAliensState(), {
+    gameName: 'aliens',
+    macroActions: { enabled: true, maxSteps: 4 }
+  }, null, 'rush the left column');
+
+  assert.match(prompt.userMessage, /PLAN: <2 to 4 actions from the list above/);
+  assert.match(prompt.userMessage, /example: ACTION_LEFT, ACTION_LEFT, ACTION_RIGHT/);
+  assert.doesNotMatch(prompt.userMessage, /ACTION: <one action/);
+  assert.match(prompt.userMessage, /REASON: <one short sentence/);
+});
+
+test('macro config without a strategy keeps the legacy single-word contract', () => {
+  const prompt = buildPrompt(createAliensState(), {
+    gameName: 'aliens',
+    macroActions: { enabled: true, maxSteps: 4 }
+  }, null, null);
+
+  assert.match(prompt.userMessage, /Choose ONE action\. Respond with ONLY the action word\./);
+  assert.doesNotMatch(prompt.userMessage, /PLAN:/);
+});
+
+test('strategy without macro config keeps the REASON/ACTION contract', () => {
+  const prompt = buildPrompt(createAliensState(), {
+    gameName: 'aliens'
+  }, null, 'rush the left column');
+
+  assert.match(prompt.userMessage, /ACTION: <one action from the list above>/);
+  assert.doesNotMatch(prompt.userMessage, /PLAN:/);
+});
+
+test('codeProtocol still short-circuits before the macro closing branch', () => {
+  const prompt = buildPrompt(createBaitState(), {
+    gameName: 'bait',
+    macroActions: { enabled: true },
+    codeProtocol: {
+      enabled: true,
+      id: 'GV1',
+      policyId: 'bait-level0',
+      authoritative: true,
+      actionCodes: { U: 'ACTION_UP', D: 'ACTION_DOWN', L: 'ACTION_LEFT', R: 'ACTION_RIGHT' },
+      keyItype: 7,
+      boxItype: 9,
+      withKeyAvatarType: 5
+    }
+  }, null, 'push the boxes');
+
+  assert.equal(prompt.responseMode, 'code');
+  assert.doesNotMatch(prompt.userMessage, /PLAN: <1 to/);
+});

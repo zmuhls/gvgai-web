@@ -100,25 +100,48 @@ function parseAction(llmResponse, availableActions = VALID_ACTIONS, actionCodeMa
   return parseActionDetailed(llmResponse, availableActions, actionCodeMap).action;
 }
 
-// Parse a structured "REASON: ... / ACTION: ..." response into { action, reason }.
-// Used when narration is on. The action is extracted ONLY from the text after the
-// last ACTION: marker, so prose direction words ("the LEFT enemy is closer, go RIGHT")
-// can no longer hijack the bare-word tier.
-function parseStructured(llmResponse, availableActions = VALID_ACTIONS, actionCodeMap = null) {
+// Parse a structured "REASON: ... / ACTION: ..." (or "PLAN: ...") response into
+// { action, reason, plan }. Used when narration is on. The action is extracted ONLY
+// from the text after the last ACTION:/PLAN: marker, so prose direction words
+// ("the LEFT enemy is closer, go RIGHT") can no longer hijack the bare-word tier.
+// A PLAN: line yields a multi-step plan (front-first, so a truncated plan is still
+// a valid prefix); plan[0] === action always.
+function parseStructured(llmResponse, availableActions = VALID_ACTIONS, actionCodeMap = null, options = {}) {
+  const maxPlanSteps = options.maxPlanSteps || 6;
+
   if (!llmResponse) {
-    return { action: 'ACTION_NIL', reason: '' };
+    return { action: 'ACTION_NIL', reason: '', plan: ['ACTION_NIL'], valid: false, source: 'empty', planSource: 'single-action' };
   }
 
-  // Rationale: one sentence after REASON:, up to the next line or ACTION:
+  // Rationale: one sentence after REASON:, up to the next line or ACTION:/PLAN:
   let reason = '';
-  const reasonMatch = llmResponse.match(/REASON:\s*(.+?)(?:\n|ACTION:|$)/is);
+  const reasonMatch = llmResponse.match(/REASON:\s*(.+?)(?:\n|ACTION:|PLAN:|$)/is);
   if (reasonMatch) {
     reason = reasonMatch[1].trim().replace(/\s+/g, ' ').slice(0, 200);
   }
 
-  // Action: prefer the slice after the LAST ACTION: marker
   const upper = llmResponse.toUpperCase();
   const actionIdx = upper.lastIndexOf('ACTION:');
+
+  // Plan: the slice after the LAST PLAN: marker (when it's the model's conclusion,
+  // i.e. after any ACTION: marker), taken up to end-of-line only — plans are one
+  // line, and stopping there keeps trailing prose out of the token scan.
+  const planIdx = upper.lastIndexOf('PLAN:');
+  if (planIdx !== -1 && planIdx > actionIdx) {
+    const planLine = llmResponse.slice(planIdx + 'PLAN:'.length).split('\n')[0];
+    const tokens = planLine.split(/[,;→>]+|\bTHEN\b/i).map(t => t.trim()).filter(Boolean);
+    const plan = [];
+    for (const token of tokens) {
+      if (plan.length >= maxPlanSteps) break;
+      const meta = parseActionDetailed(token, availableActions, actionCodeMap);
+      if (meta.matched) plan.push(meta.action);
+    }
+    if (plan.length > 0) {
+      return { action: plan[0], reason, plan, valid: true, source: 'plan-line', planSource: 'plan-line' };
+    }
+  }
+
+  // Action: prefer the slice after the LAST ACTION: marker
   const actionSlice = actionIdx !== -1
     ? llmResponse.slice(actionIdx + 'ACTION:'.length)
     : llmResponse;
@@ -129,7 +152,7 @@ function parseStructured(llmResponse, availableActions = VALID_ACTIONS, actionCo
   if (!reason) {
     const lines = llmResponse.split('\n').map(l => l.trim()).filter(Boolean);
     for (const line of lines) {
-      if (/^ACTION[:_]/i.test(line)) continue;
+      if (/^(?:ACTION[:_]|PLAN:)/i.test(line)) continue;
       if (parseAction(line, availableActions, actionCodeMap) !== 'ACTION_NIL' || (actionCodeMap && actionCodeMap[line.trim().toUpperCase()] === 'ACTION_NIL')) continue;
       const stripped = line.replace(/[^A-Za-z_]/g, '').toUpperCase();
       if (availableActions.includes(stripped)) continue;
@@ -141,8 +164,10 @@ function parseStructured(llmResponse, availableActions = VALID_ACTIONS, actionCo
   return {
     action,
     reason,
+    plan: [action],
     valid: actionMeta.matched,
-    source: actionMeta.source
+    source: actionMeta.source,
+    planSource: 'single-action'
   };
 }
 

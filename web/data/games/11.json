@@ -8,8 +8,13 @@
   },
   "progressionContexts": {},
   "llmSettings": {
-    "maxTokens": 200,
+    "maxTokens": 320,
     "temperature": 0.5
   },
-  "updatedAt": "2026-02-02T03:11:55.696Z"
+  "updatedAt": "2026-07-01T23:35:35.091Z",
+  "macroActions": {
+    "enabled": true,
+    "maxSteps": 4,
+    "ticksPerStep": 4
+  }
 }
