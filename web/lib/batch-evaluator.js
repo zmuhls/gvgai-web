@@ -110,7 +110,7 @@ function selectEvalCases(plan, options = {}) {
   return repeatedCases;
 }
 
-function createEventSink() {
+function createEventSink(broadcastIo = null) {
   const emitter = new EventEmitter();
   const events = [];
 
@@ -119,6 +119,9 @@ function createEventSink() {
     emit(event, payload) {
       events.push({ event, payload, at: new Date().toISOString() });
       emitter.emit(event, payload);
+      // Optional live broadcast: tee sink events to a real Socket.IO server so a
+      // marble run can be watched live while still buffering for result capture.
+      if (broadcastIo) broadcastIo.emit(event, payload);
     },
     on(event, handler) {
       emitter.on(event, handler);
@@ -160,7 +163,7 @@ async function runEvalCase(evalCase, options = {}) {
   const gameManager = options.gameManager || loaded.gameManager;
   const LLMClient = options.LLMClient || loaded.LLMClient;
   const config = options.config || loaded.config;
-  const sink = createEventSink();
+  const sink = createEventSink(options.io || null);
   const llmErrors = [];
   sink.on('llm-error', error => llmErrors.push(error));
 
@@ -187,6 +190,12 @@ async function runEvalCase(evalCase, options = {}) {
     llmClient.onSessionEnd = () => {
       sink.emit('session-end', { runId: evalCase.runId });
     };
+
+    // Hand the coordinator a live handle so a walk-up can interrupt this case
+    // by disconnecting the client (which resolves the run-summary wait below).
+    if (options.onCaseStart) {
+      options.onCaseStart({ processId: gameProcess.processId, llmClient });
+    }
 
     const summaryPromise = waitForEvent(sink, 'run-summary', timeoutMs);
     await llmClient.connect(

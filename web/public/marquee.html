@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inference Arcade — Marble Run</title>
+  <style>
+    :root {
+      --bg: #0b0d17; --panel: #141726; --border: #2a2f45;
+      --text: #e6e8f0; --dim: #9aa0b4; --accent: #78dcc8; --secondary: #bc8cff;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .marquee { display: grid; grid-template-rows: auto auto 1fr auto; height: 100vh; gap: 12px; padding: 14px; }
+    header { display: flex; align-items: center; justify-content: space-between; }
+    .title { font-weight: 800; letter-spacing: 0.08em; font-size: 14px; text-transform: uppercase; }
+    .title .dot { color: var(--accent); }
+    .live { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.05em; }
+    .live .pip { width: 8px; height: 8px; border-radius: 50%; background: #555; transition: background .2s; }
+    .live.on .pip { background: #ff5c72; box-shadow: 0 0 8px #ff5c72; }
+    .nowplaying { font-size: 14px; color: var(--dim); }
+    .nowplaying strong { color: var(--secondary); }
+    .stage { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; min-height: 0; }
+    .screen { position: relative; background: #000; border: 1px solid var(--border);
+      border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    canvas { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+    .overlay { position: absolute; top: 8px; left: 8px; display: flex; gap: 14px;
+      font-size: 12px; background: rgba(0,0,0,0.55); padding: 5px 10px; border-radius: 6px; }
+    .overlay span { color: var(--dim); } .overlay strong { color: var(--text); margin-left: 4px; }
+    .side { display: grid; grid-template-rows: auto 1fr auto; gap: 12px; min-height: 0; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; min-height: 0; }
+    .panel h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); }
+    .narration { overflow-y: auto; }
+    #narration { overflow-y: auto; max-height: 100%; }
+    .entry { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+    .entry:first-child .reason { color: #fff; }
+    .entry .reason { color: var(--text); line-height: 1.45; }
+    .entry .act { color: var(--dim); margin-top: 3px; }
+    .entry .act b { color: var(--secondary); }
+    .upnext-item { font-size: 12px; color: var(--dim); padding: 3px 0; }
+    .upnext-item b { color: var(--text); }
+    footer { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); }
+    .ticker b { color: var(--accent); }
+    .loop { color: var(--secondary); font-weight: 700; letter-spacing: 0.05em; }
+  </style>
+</head>
+<body>
+  <div class="marquee">
+    <header>
+      <div class="title">Inference Arcade <span class="dot">◆</span> Marble Run</div>
+      <div class="live" id="live"><span class="pip"></span><span id="live-text">connecting…</span></div>
+    </header>
+    <div class="nowplaying" id="nowplaying">Waiting for the next marble…</div>
+    <div class="stage">
+      <div class="screen">
+        <canvas id="canvas" width="320" height="240"></canvas>
+        <div class="overlay">
+          <div><span>Score</span><strong id="score">0</strong></div>
+          <div><span>Health</span><strong id="health">—</strong></div>
+          <div><span>Tick</span><strong id="tick">0</strong></div>
+        </div>
+      </div>
+      <div class="side">
+        <div class="panel"><h3>Up Next</h3><div id="upnext">—</div></div>
+        <div class="panel narration"><h3>Move Trace</h3><div id="narration"></div></div>
+        <div class="panel"><h3>Last Result</h3><div id="ticker" class="ticker">—</div></div>
+      </div>
+    </div>
+    <footer>
+      <div id="playlist-pos">—</div>
+      <div class="loop" id="loop">Loop 0</div>
+    </footer>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/marquee.js"></script>
+</body>
+</html>

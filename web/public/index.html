@@ -110,9 +110,15 @@
       <div class="form-group">
         <label>Choose a tactic, then rewrite it:</label>
         <div id="strategy-cards" class="strategy-cards"></div>
-        <textarea id="strategy-text" class="strategy-text" rows="3"
+        <textarea id="strategy-text" class="strategy-text" rows="3" maxlength="240"
           placeholder="e.g. Play defensively — dodge enemies and only shoot when one is directly in front of you."></textarea>
         <small>Treat the model's explanation as a claim you can compare with the move.</small>
+        <div id="strategy-warn" class="strategy-warn hidden" role="status" aria-live="polite"></div>
+        <details id="unfold-rules" class="unfold-rules">
+          <summary>Unfold the game's rules ▸</summary>
+          <p class="unfold-note">Tap a rule to add it to your tactic — these come straight from the game's definition.</p>
+          <div id="unfold-chips" class="unfold-chips"></div>
+        </details>
       </div>
 
       <div class="settings-row">
@@ -150,6 +156,7 @@
           <h3>Move Trace</h3>
           <p class="panel-note">Compare each reason with the chosen action.</p>
           <div id="strategy-active" class="strategy-active hidden"></div>
+          <div id="adherence-ribbon" class="adherence-ribbon hidden"></div>
           <div id="reasoning-log"></div>
         </div>
       </div>
@@ -342,6 +349,32 @@
               <strong>players</strong>
             </div>
             <div id="telemetry-session-leaderboard" class="leaderboard-table"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="telemetry-leaderboard electric-panel" aria-labelledby="telemetry-marble-title">
+        <div class="telemetry-panel-heading">
+          <div>
+            <p class="step-label">attract mode</p>
+            <h3 id="telemetry-marble-title">Marble Run — Tote Board</h3>
+          </div>
+          <span id="telemetry-marble-total">0 cases</span>
+        </div>
+        <div class="leaderboard-grid">
+          <div class="leaderboard-column">
+            <div class="leaderboard-title-row">
+              <span>Standings</span>
+              <strong>win rate</strong>
+            </div>
+            <div id="telemetry-marble-standings" class="telemetry-bars"></div>
+          </div>
+          <div class="leaderboard-column">
+            <div class="leaderboard-title-row">
+              <span>By strategy</span>
+              <strong>mean score</strong>
+            </div>
+            <div id="telemetry-marble-strategy" class="telemetry-bars"></div>
           </div>
         </div>
       </section>

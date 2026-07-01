@@ -6,6 +6,8 @@ const fs = require('fs');
 const { loadRootEnv } = require('./scripts/load-root-env');
 const { getConfig, getConfigLoadStatus } = require('./lib/runtime-config');
 const { resolveScreenshotPath } = require('./lib/screenshot-path');
+const { sanitizeStrategy } = require('./lib/state-converter');
+const coordinator = require('./lib/attract-coordinator');
 const config = getConfig();
 
 const telemetry = require('./lib/telemetry-store');
@@ -191,6 +193,10 @@ app.use('/api/models', require('./routes/models-local'));
 app.use('/api/prompts', require('./routes/prompts-local'));
 app.use('/api/evals', require('./routes/evals'));
 app.use('/api/telemetry', require('./routes/telemetry'));
+app.use('/api/marble', require('./routes/marble'));
+
+// Clean URL for the embeddable spectator page (also served as /marquee.html).
+app.get('/marquee', (req, res) => res.sendFile(path.join(__dirname, 'public', 'marquee.html')));
 
 // Active game instances
 const activeGames = new Map();
@@ -198,8 +204,12 @@ const activeGames = new Map();
 // Start game endpoint (API key loaded from environment)
 app.post('/api/game/start', async (req, res) => {
   const { gameId, levelId, model, strategy } = req.body;
+  // Neutralize the walk-up player's free-text tactic before it enters any prompt.
+  const { text: cleanStrategy, warnings: strategyWarnings } = sanitizeStrategy(strategy);
 
   try {
+    // A walk-up player takes priority: pause the marble run and free port 8080.
+    await coordinator.beginWalkup();
     const runtime = loadRuntimeModules();
     console.log(`[Server] Starting game ${gameId} (level ${levelId}) with model ${model}`);
     const runId = telemetry.createRunId(`game-${gameId}`);
@@ -247,12 +257,13 @@ app.post('/api/game/start', async (req, res) => {
       activeGames.delete(gameProcess.processId);
       stopScreenshotStreaming();
       runtime.gameManager.stopGame(gameProcess.processId);
+      coordinator.endWalkup(); // resume the marble run after the walk-up finishes
     };
 
     // Connect LLM client to GVGAI socket
     try {
       const gameName = resolveGameName(gameId);
-      await llmClient.connect(config.gvgai.socketPort, model, io, gameId, gameName, strategy);
+      await llmClient.connect(config.gvgai.socketPort, model, io, gameId, gameName, cleanStrategy);
       console.log('[Server] LLM client connected successfully');
       telemetry.track({
         eventFamily: 'evaluation',
@@ -265,7 +276,9 @@ app.post('/api/game/start', async (req, res) => {
         payload: {
           gameName,
           processId: gameProcess.processId,
-          strategy_present: Boolean(strategy)
+          strategy_present: Boolean(strategy),
+          strategy_sanitized: strategyWarnings.length > 0,
+          strategy_warning_types: strategyWarnings.map(w => w.type)
         }
       });
     } catch (error) {
@@ -297,7 +310,8 @@ app.post('/api/game/start', async (req, res) => {
       processId: gameProcess.processId,
       gameId,
       model,
-      runId
+      runId,
+      strategyWarnings
     });
   } catch (error) {
     console.error('[Server] Error starting game:', error);
@@ -327,6 +341,7 @@ app.post('/api/game/stop', (req, res) => {
     if (gameManager) gameManager.stopGame(processId);
     activeGames.delete(processId);
     stopScreenshotStreaming();
+    coordinator.endWalkup(); // resume the marble run after the walk-up stops
     telemetry.track({
       eventFamily: 'evaluation',
       eventType: 'run_stopped',
@@ -347,6 +362,8 @@ app.post('/api/game/stop', (req, res) => {
 io.on('connection', (socket) => {
   console.log('[Server] Frontend connected:', socket.id);
   console.log('[Server] Active connections:', io.engine.clientsCount);
+  // Hydrate late-joining spectators (e.g. a freshly opened /marquee iframe).
+  socket.emit('marble-run-state', coordinator.getSnapshot());
   telemetry.track({
     eventFamily: 'user_experience',
     eventType: 'socket_connected',
@@ -388,6 +405,7 @@ process.on('SIGINT', () => {
   }
 
   activeGames.clear();
+  coordinator.stop();
   stopScreenshotStreaming();
   telemetry.track({
     eventFamily: 'system',
@@ -446,6 +464,26 @@ async function startServer() {
       console.log(`[Server] Running on http://localhost:${PORT}`);
       console.log(`[Server] GVGAI project root: ${config.gvgai.projectRoot}`);
       console.log(`[Server] OpenRouter API key loaded from environment`);
+
+      // Wire the attract-mode marble run onto the single Java process. It shares the
+      // one screenshot streamer and yields to any walk-up player (activeGames > 0).
+      const runtime = loadRuntimeModules();
+      coordinator.configure({
+        io,
+        streamer: { start: startScreenshotStreaming, stop: stopScreenshotStreaming },
+        isWalkupActive: () => activeGames.size > 0,
+        gameManager: runtime.gameManager,
+        telemetry,
+        caseOptions: { maxActions: 40 }
+      });
+      // Always-on by default (attract mode); set MARBLE_RUN_AUTOSTART=false to disable.
+      if (process.env.MARBLE_RUN_AUTOSTART !== 'false') {
+        coordinator.start();
+        console.log('[Server] Attract-mode marble run started');
+      } else {
+        console.log('[Server] Attract-mode marble run autostart disabled');
+      }
+
       resolve(server);
     });
   });

@@ -2,8 +2,27 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 
+const { buildStrategicDigestFromFile } = require('../lib/vgdl-digest');
+
 const router = express.Router();
 const PROJECT_ROOT = path.join(__dirname, '../..');
+
+// VGDL files are static, so cache each game's derived digest facets.
+const digestCache = new Map();
+
+// Resolve a game id to its VGDL file via the game registry CSV.
+function resolveGameFile(gameId) {
+  const csvPath = path.join(PROJECT_ROOT, 'examples/all_games_sp.csv');
+  const csvContent = fs.readFileSync(csvPath, 'utf-8');
+  for (const line of csvContent.trim().split('\n')) {
+    const [id, filepath] = line.trim().split(',');
+    if (Number.parseInt(id, 10) === gameId && filepath) {
+      const file = filepath.trim();
+      return { name: path.basename(file, '.txt'), file };
+    }
+  }
+  return null;
+}
 
 function loadFeaturedSet() {
   try {
@@ -51,6 +70,48 @@ router.get('/', (req, res) => {
   } catch (error) {
     console.error('Error loading games:', error);
     res.status(500).json({ error: 'Failed to load games' });
+  }
+});
+
+// GET /api/games/:id/digest — the game's rules, derived straight from its VGDL,
+// as discrete "unfold" facets for the prompting-field scaffold. All 122 games,
+// zero authoring: the same vgdl-digest that seeds each game's customOverride.
+router.get('/:id/digest', (req, res) => {
+  try {
+    const gameId = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(gameId)) {
+      return res.status(400).json({ error: 'Invalid game id' });
+    }
+    if (digestCache.has(gameId)) {
+      return res.json(digestCache.get(gameId));
+    }
+
+    const game = resolveGameFile(gameId);
+    if (!game) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+    const vgdlPath = path.join(PROJECT_ROOT, game.file);
+    if (!fs.existsSync(vgdlPath)) {
+      return res.status(404).json({ error: 'VGDL file not found' });
+    }
+
+    const digest = buildStrategicDigestFromFile(vgdlPath, { gameId, gameName: game.name });
+    const facets = {
+      gameId,
+      gameName: digest.gameName,
+      controls: digest.controls,
+      scoring: digest.scoring,
+      hazards: digest.hazards,
+      mechanics: digest.mechanics,
+      winConditions: digest.winConditions,
+      loseConditions: digest.loseConditions,
+      strategyTags: digest.strategyTags
+    };
+    digestCache.set(gameId, facets);
+    res.json(facets);
+  } catch (error) {
+    console.error('Error building digest:', error);
+    res.status(500).json({ error: 'Failed to build digest' });
   }
 });
 

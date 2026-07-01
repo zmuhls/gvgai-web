@@ -69,6 +69,8 @@ node_modules/
 
 # Web frontend entry point — must be tracked despite the global *.html ignore above
 !web/public/index.html
+# Marble-run spectator page — also tracked despite the global *.html ignore
+!web/public/marquee.html
 
 # Runtime artifacts
 gameStateByBytes.png

@@ -88,6 +88,39 @@
     renderFunnel(snapshot.funnel || {});
     renderModelChart(snapshot.models || []);
     renderTraceChart(snapshot.traceTypes || []);
+    renderMarbleRun(snapshot.marbleRun || {});
+  }
+
+  // The Tote Board: per-model standings + strategy effect from the marble run.
+  function renderMarbleRun(marble) {
+    setText('telemetry-marble-total', `${formatNumber(marble.totalCases || 0)} cases`);
+
+    const standings = document.getElementById('telemetry-marble-standings');
+    if (standings) {
+      const rows = marble.standings || [];
+      standings.innerHTML = rows.length ? rows.map(row => `
+        <div class="bar-row" style="--bar-width: ${Math.max(4, row.winRate)}%;">
+          <span>${escapeHtml(row.modelId)} <small>${row.meanScore} avg · ${row.strongAdherenceRate}% adhere · ${row.fallbackRate}% fallback</small></span>
+          <strong>${row.winRate}% W</strong>
+        </div>
+      `).join('') : '<div class="telemetry-empty">No marble-run cases yet</div>';
+    }
+
+    const strat = document.getElementById('telemetry-marble-strategy');
+    if (strat) {
+      const rows = marble.byStrategy || [];
+      if (!rows.length) {
+        strat.innerHTML = '<div class="telemetry-empty">No strategy data yet</div>';
+      } else {
+        const max = Math.max(1, ...rows.map(row => row.meanScore));
+        strat.innerHTML = rows.map(row => `
+          <div class="bar-row" style="--bar-width: ${Math.max(4, (row.meanScore / max) * 100)}%;">
+            <span>${escapeHtml(row.label)} <small>${row.winRate}% win</small></span>
+            <strong>${row.meanScore}</strong>
+          </div>
+        `).join('');
+      }
+    }
   }
 
   function renderMetrics(metrics) {

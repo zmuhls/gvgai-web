@@ -45,9 +45,11 @@ npm start          # http://localhost:3000
 
 Open `http://localhost:3000`. Pick a game, choose a strategy, and watch. The server starts and stops the Java process for you.
 
+On start, the arcade also runs itself: an always-on **marble run** (attract mode) cycles the featured models through the featured games under contrasting strategies and broadcasts it live — so the cabinet is never dark. Watch the embeddable spectator feed at `http://localhost:3000/marquee`, and the live standings on the **Telemetry** tab. Starting a game yourself interrupts the marble run; it resumes when you stop. The loop makes real LLM calls on boot — set `MARBLE_RUN_AUTOSTART=false` to disable it.
+
 ## The arcade flow
 
-Pick a game, tap a strategy card to drop a plain-language directive into an editable box, then watch. A live panel shows each decision: the action, the model's stated reason, and which provider answered. When the run ends, a summary card reports the score, echoes the strategy, and rates how closely the model stuck to it.
+Pick a game, tap a strategy card to drop a plain-language directive into an editable box — or **unfold the game's rules** (derived straight from its VGDL) to build a tactic from tappable facets. Whatever you type is length-capped, fenced, and neutralized server-side, so a stray note or injection can't break the model's ability to play. Then watch. A live panel shows each decision: the action, the model's stated reason, which provider answered, and an expandable **decision autopsy** of the prompt layers behind the move, alongside a running adherence ribbon. When the run ends, a summary card reports the score, echoes the strategy, and rates how closely the model stuck to it.
 
 A separate Prompt Dashboard lets you edit the per-game prompt layers directly. Your in-session strategy never overwrites that saved config; it layers on top at runtime and is discarded when the run ends.
 

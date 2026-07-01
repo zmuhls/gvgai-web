@@ -316,6 +316,30 @@ class GameManager {
     return false;
   }
 
+  // Stop a game and resolve once the OS process has actually exited (or a timeout),
+  // so the caller can guarantee the fixed socket port is free before spawning again.
+  stopGameAndWait(processId, timeoutMs = 3000) {
+    const processData = this.activeProcesses.get(processId);
+    if (!processData) return Promise.resolve(false);
+    const { process } = processData;
+    return new Promise((resolve) => {
+      let settled = false;
+      const done = (result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(result);
+      };
+      const timer = setTimeout(() => done(false), timeoutMs);
+      if (process.exitCode !== null || process.signalCode !== null) {
+        done(true);
+        return;
+      }
+      process.once('close', () => done(true));
+      this.stopGame(processId);
+    });
+  }
+
   stopAll() {
     for (const [processId, processData] of this.activeProcesses) {
       const { process } = processData;

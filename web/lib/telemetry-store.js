@@ -617,6 +617,7 @@ class TelemetryStore {
       series: this.minuteSeries(activeEvents, now),
       models: this.modelSummary(modelEvents),
       evalOutcomes: this.evalOutcomes(evalEvents),
+      marbleRun: this.marbleRun(evalEvents),
       traceTypes: this.traceTypes(traceEvents),
       leaderboards: this.leaderboards(activeEvents),
       pipeline: this.persistencePipeline(activeEvents, options.dataSource || 'memory'),
@@ -685,6 +686,65 @@ class TelemetryStore {
       other: Math.max(0, summaries.length - wins - losses),
       total: summaries.length
     };
+  }
+
+  // The Tote Board: live standings from the attract-mode marble run.
+  marbleRun(evalEvents) {
+    const cases = evalEvents.filter(event => event.event_type === 'marble_case_completed');
+    return {
+      totalCases: cases.length,
+      standings: this.marbleStandings(cases),
+      byStrategy: this.marbleByStrategy(cases)
+    };
+  }
+
+  // Per-model standings: win rate, mean score, strong-adherence rate, fallback rate.
+  marbleStandings(cases) {
+    const byModel = new Map();
+    for (const event of cases) {
+      const p = event.payload || {};
+      const key = event.model_id || p.modelUsed || 'unknown';
+      if (!byModel.has(key)) {
+        byModel.set(key, { modelId: key, runs: 0, wins: 0, scoreSum: 0, adherenceStrong: 0, fallbacks: 0 });
+      }
+      const g = byModel.get(key);
+      g.runs += 1;
+      if (p.won === true) g.wins += 1;
+      if (typeof p.finalScore === 'number') g.scoreSum += p.finalScore;
+      if (p.adherenceLabel && /strong/i.test(p.adherenceLabel)) g.adherenceStrong += 1;
+      if (p.provider === 'openrouter') g.fallbacks += 1; // primary is ollama-cloud
+    }
+    return [...byModel.values()].map(g => ({
+      modelId: g.modelId,
+      runs: g.runs,
+      winRate: g.runs ? Math.round((g.wins / g.runs) * 100) : 0,
+      meanScore: g.runs ? Math.round((g.scoreSum / g.runs) * 10) / 10 : 0,
+      strongAdherenceRate: g.runs ? Math.round((g.adherenceStrong / g.runs) * 100) : 0,
+      fallbackRate: g.runs ? Math.round((g.fallbacks / g.runs) * 100) : 0
+    })).sort((a, b) => b.winRate - a.winRate || b.meanScore - a.meanScore).slice(0, 8);
+  }
+
+  // Strategy-effect: how each preset strategy fares across the playlist.
+  marbleByStrategy(cases) {
+    const byStrat = new Map();
+    for (const event of cases) {
+      const p = event.payload || {};
+      const key = p.strategyId || 'unknown';
+      if (!byStrat.has(key)) {
+        byStrat.set(key, { strategyId: key, label: p.strategyLabel || key, runs: 0, wins: 0, scoreSum: 0 });
+      }
+      const g = byStrat.get(key);
+      g.runs += 1;
+      if (p.won === true) g.wins += 1;
+      if (typeof p.finalScore === 'number') g.scoreSum += p.finalScore;
+    }
+    return [...byStrat.values()].map(g => ({
+      strategyId: g.strategyId,
+      label: g.label,
+      runs: g.runs,
+      winRate: g.runs ? Math.round((g.wins / g.runs) * 100) : 0,
+      meanScore: g.runs ? Math.round((g.scoreSum / g.runs) * 10) / 10 : 0
+    })).sort((a, b) => b.meanScore - a.meanScore);
   }
 
   traceTypes(events) {
