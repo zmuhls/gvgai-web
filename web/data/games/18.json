@@ -51,5 +51,17 @@
     "dangerNonTargets": true,
     "dangerRadius": 1
   },
-  "updatedAt": "2026-02-02T03:11:55.700Z"
+  "updatedAt": "2026-07-02T01:39:27.621Z",
+  "classification": {
+    "classifierVersion": 1,
+    "archetype": "collector",
+    "subtypes": [
+      "transform"
+    ],
+    "pace": "reactive",
+    "inputs": {
+      "avatarType": "MovingAvatar",
+      "physicsCategory": "gridphysics"
+    }
+  }
 }

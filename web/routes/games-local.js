@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { buildStrategicDigestFromFile } = require('../lib/vgdl-digest');
+const { getCachedClassification } = require('../lib/game-classifier');
 
 const router = express.Router();
 const PROJECT_ROOT = path.join(__dirname, '../..');
@@ -55,14 +56,19 @@ router.get('/', (req, res) => {
 
       if (levels.length === 0) levels.push(0, 1, 2, 3, 4);
 
+      const gameId = Number.parseInt(id, 10);
+      const classification = getCachedClassification(gameId);
+
       return {
-        id: Number.parseInt(id, 10),
+        id: gameId,
         name: filename,
         file: trimmedFilepath,
         category,
+        archetype: classification?.archetype || null,
+        pace: classification?.pace || null,
         levels,
         levelCount: levels.length,
-        featured: featuredSet.has(Number.parseInt(id, 10))
+        featured: featuredSet.has(gameId)
       };
     });
 
@@ -105,7 +111,8 @@ router.get('/:id/digest', (req, res) => {
       mechanics: digest.mechanics,
       winConditions: digest.winConditions,
       loseConditions: digest.loseConditions,
-      strategyTags: digest.strategyTags
+      strategyTags: digest.strategyTags,
+      classification: getCachedClassification(gameId)
     };
     digestCache.set(gameId, facets);
     res.json(facets);

@@ -11,5 +11,17 @@
     "maxTokens": 100,
     "temperature": 0.5
   },
-  "updatedAt": "2026-02-02T03:11:55.704Z"
+  "updatedAt": "2026-07-02T01:39:27.622Z",
+  "classification": {
+    "classifierVersion": 1,
+    "archetype": "pusher-puzzle",
+    "subtypes": [
+      "timed"
+    ],
+    "pace": "reactive",
+    "inputs": {
+      "avatarType": "MovingAvatar",
+      "physicsCategory": "gridphysics"
+    }
+  }
 }

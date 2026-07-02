@@ -1,0 +1,47 @@
+{
+  "_comment": "Per-archetype runtime defaults, applied by lib/class-defaults.js. Precedence: env kill switches > explicit per-game config fields > config.classification.archetypeOverride > archetype entry here > pace overlay > code constants. Archetypes come from lib/game-classifier.js. Macro-enabled archetypes need maxTokens >= 320 so the PLAN contract has headroom.",
+  "archetypes": {
+    "pusher-puzzle": {
+      "macroActions": { "enabled": true, "maxSteps": 4, "ticksPerStep": 4 },
+      "llmSettings": { "maxTokens": 320 },
+      "eval": { "minSurvivalTicks": 80, "nilLoopThreshold": 5 },
+      "memoryGate": { "scoreGain": 1, "tickGain": 15 },
+      "strategyPresetRank": ["Goal test", "Survive first"]
+    },
+    "collector": {
+      "macroActions": { "enabled": true, "maxSteps": 4, "ticksPerStep": 4 },
+      "llmSettings": { "maxTokens": 320 },
+      "eval": { "minSurvivalTicks": 60, "nilLoopThreshold": 4 },
+      "memoryGate": { "scoreGain": 2, "tickGain": 25 },
+      "strategyPresetRank": ["Score test", "Goal test"]
+    },
+    "shooter-lane": {
+      "codeProtocolEligible": true,
+      "strategyPresetRank": ["Score test", "Threat test"]
+    },
+    "shooter-roaming": {
+      "strategyPresetRank": ["Threat test", "Score test"]
+    },
+    "chaser": {
+      "strategyPresetRank": ["Goal test", "Score test"]
+    },
+    "survivor": {
+      "memoryGate": { "scoreGain": 1, "tickGain": 40 },
+      "strategyPresetRank": ["Survive first", "Threat test"]
+    },
+    "reflex-pilot": {
+      "featuredEligible": false,
+      "eval": { "minSurvivalTicks": 30 },
+      "strategyPresetRank": ["Survive first"]
+    },
+    "navigator": {
+      "strategyPresetRank": ["Goal test", "Survive first"]
+    }
+  },
+  "paceOverlays": {
+    "twitch": {
+      "macroActions": { "enabled": false },
+      "featuredEligible": false
+    }
+  }
+}

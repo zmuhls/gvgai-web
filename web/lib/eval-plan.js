@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { MODELS } = require('./models');
+const { getCachedClassification } = require('./game-classifier');
 
 const DEFAULT_GAME_COUNT = 3;
 const MIN_SURVIVAL_TICKS = 50;
@@ -126,11 +127,13 @@ function buildArcadeEvalPlan(options = {}) {
     const registryEntry = registry.get(gameId) || { id: gameId, name: `game-${gameId}`, file: '', category: 'unknown' };
     const config = loadGameConfig(gameId);
     const levels = registryEntry.file ? levelIdsForGame(registryEntry, root) : [0];
+    const classification = config.classification || getCachedClassification(gameId);
     return {
       id: gameId,
       name: config.gameName || registryEntry.name,
       file: registryEntry.file,
       category: registryEntry.category,
+      classification: classification || null,
       levelIds: levels,
       levelId: levels.includes(0) ? 0 : levels[0],
       llmSettings: config.llmSettings || {}
@@ -151,6 +154,7 @@ function buildArcadeEvalPlan(options = {}) {
           runId,
           gameId: game.id,
           gameName: game.name,
+          archetype: game.classification?.archetype || null,
           levelId: game.levelId,
           modelId: model.id,
           modelName: model.name,

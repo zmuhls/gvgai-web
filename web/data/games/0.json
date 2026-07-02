@@ -54,5 +54,17 @@
     "entityLimit": 5,
     "hazardLimit": 4
   },
-  "updatedAt": "2026-02-03T04:29:07.354Z"
+  "updatedAt": "2026-07-02T01:39:27.613Z",
+  "classification": {
+    "classifierVersion": 1,
+    "archetype": "shooter-lane",
+    "subtypes": [
+      "lane"
+    ],
+    "pace": "reactive",
+    "inputs": {
+      "avatarType": "FlakAvatar",
+      "physicsCategory": "gridphysics"
+    }
+  }
 }

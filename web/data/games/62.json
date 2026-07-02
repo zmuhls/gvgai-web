@@ -11,5 +11,17 @@
     "maxTokens": 100,
     "temperature": 0.5
   },
-  "updatedAt": "2026-02-02T03:11:55.719Z"
+  "updatedAt": "2026-07-02T01:39:27.629Z",
+  "classification": {
+    "classifierVersion": 1,
+    "archetype": "navigator",
+    "subtypes": [
+      "digger"
+    ],
+    "pace": "reactive",
+    "inputs": {
+      "avatarType": "ShootAvatar",
+      "physicsCategory": "gridphysics"
+    }
+  }
 }

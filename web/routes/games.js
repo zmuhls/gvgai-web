@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { getCachedClassification } = require('../lib/game-classifier');
 const router = express.Router();
 
 const PROJECT_ROOT = path.join(__dirname, '../..');
@@ -47,14 +48,19 @@ router.get('/', (req, res) => {
           levels.push(0, 1, 2, 3, 4);
         }
 
+        const gameId = parseInt(id);
+        const classification = getCachedClassification(gameId);
+
         return {
-          id: parseInt(id),
+          id: gameId,
           name: filename,
           file: trimmedFilepath,
           category,
+          archetype: classification?.archetype || null,
+          pace: classification?.pace || null,
           levels,
           levelCount: levels.length,
-          featured: featuredSet.has(parseInt(id))
+          featured: featuredSet.has(gameId)
         };
       });
 

@@ -35,5 +35,17 @@
       "MOVE_RIGHT_TO_GOAL"
     ]
   },
-  "updatedAt": "2026-02-02T03:11:55.699Z"
+  "updatedAt": "2026-07-02T01:39:27.620Z",
+  "classification": {
+    "classifierVersion": 1,
+    "archetype": "collector",
+    "subtypes": [
+      "transform"
+    ],
+    "pace": "deliberate",
+    "inputs": {
+      "avatarType": "MovingAvatar",
+      "physicsCategory": "gridphysics"
+    }
+  }
 }

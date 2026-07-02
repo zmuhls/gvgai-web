@@ -11,5 +11,17 @@
     "maxTokens": 100,
     "temperature": 0.5
   },
-  "updatedAt": "2026-02-02T03:11:55.737Z"
+  "updatedAt": "2026-07-02T01:39:27.638Z",
+  "classification": {
+    "classifierVersion": 1,
+    "archetype": "chaser",
+    "subtypes": [
+      "hazard-dense"
+    ],
+    "pace": "twitch",
+    "inputs": {
+      "avatarType": "SpaceshipAvatar",
+      "physicsCategory": "contphysics"
+    }
+  }
 }

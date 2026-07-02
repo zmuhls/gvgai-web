@@ -2,8 +2,11 @@ const fs = require('fs');
 const path = require('path');
 
 const { buildStrategicDigestFromFile } = require('./vgdl-digest');
+const { classifyDigest } = require('./game-classifier');
 
-const MEMORY_SCHEMA_VERSION = 1;
+// v2: records carry a `classification` block (archetype/subtypes/pace) derived
+// from the digest. v1 records (no classification) still resolve unchanged.
+const MEMORY_SCHEMA_VERSION = 2;
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DEFAULT_MEMORY_DIR = path.join(DATA_DIR, 'strategy-memory');
 const INDEX_FILE = '_index.json';
@@ -104,6 +107,7 @@ function summarizeIndexEntry(record) {
     gameName: record.gameName,
     rulesHash: record.rulesHash,
     digestHash: record.digestHash,
+    archetype: record.classification?.archetype || null,
     evaluationStatus: record.evaluationStatus || 'candidate',
     updatedAt: record.updatedAt || null
   };
@@ -144,6 +148,7 @@ function createMemoryRecordFromDigest(digest, meta = {}) {
     rulesHash: digest.rulesHash,
     digestHash: digest.digestHash,
     digest,
+    classification: meta.classification || classifyDigest(digest, { physicsCategory: meta.physicsCategory || null }),
     promptText: digest.promptText,
     evaluationStatus: meta.evaluationStatus || 'candidate'
   };
@@ -158,6 +163,7 @@ function createMemoryRecordFromFile(game, options = {}) {
     gameId: game.id,
     gameName: game.name,
     vgdlPath: game.relativePath || game.file || game.vgdlPath,
+    physicsCategory: game.category || null,
     evaluationStatus: options.evaluationStatus || 'candidate'
   });
 }
