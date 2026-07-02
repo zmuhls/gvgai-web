@@ -166,6 +166,8 @@ The **spectator page** (`public/marquee.html` + `js/marquee.js`, served at `/mar
 
 The single-session constraint still holds (one Java process, fixed port 8080, one global screenshot path), so the marble run is a **serial playlist on one broadcast channel**, not parallel lanes. Multi-tablet concurrency and Docker/Railway packaging remain out of scope.
 
+The walk-up handoff only protects sessions that go through the server. **Standalone eval scripts (`evaluate-strategy-memory.js`, `run-arcade-eval.js`) spawn their own Java on the same port 8080 and will race an active marble run** — cross-connected sockets kill the script with no output while the marble run keeps going. Before a script-driven eval, stop the marble run (`curl -X POST localhost:3000/api/marble/stop`) and confirm the port is clear (`pgrep -fl JavaServer`); restart it after. A related symptom: a JavaServer whose client died can linger orphaned (parent = launchd, socket CLOSED) spinning at 100% CPU — check with `ps -o pid,ppid,%cpu,etime -p $(pgrep -f JavaServer)` and kill orphans.
+
 ## Key Files
 
 ### Node.js Backend (web/lib/)
@@ -180,7 +182,6 @@ The single-session constraint still holds (one Java process, fixed port 8080, on
 | `game-manager.js` | Java process spawn/kill (portable `JAVA_BIN`/env resolution), stdout monitoring for socket-ready signal |
 | `runtime-config.js` | `getConfig()` — loads `config.json` (timeout-guarded subprocess read), merges `DEFAULT_CONFIG`, applies env overrides (`PORT`, `GVGAI_*`), derives `projectRoot`. The single source of resolved config |
 | `code-protocol.js` | Optional compact-action prompt mode (`buildCodePrompt`): single-letter action codes (U/D/L/R/F/X/N), forward-model dodge lookahead, policy heuristics. Active only when a game config sets `codeProtocol.enabled` (consumed by `state-converter.js`) |
-| `grid-renderer.js` | `renderAsciiGrid()` + `detectBackgroundItypes()` (listed above) |
 | `game-registry.js` | Reads `examples/all_games_sp.csv` + `featured.json`; `selectGames()` picks the eval/showcase set |
 | `screenshot-path.js` | `resolveScreenshotPath(gvgaiConfig)` — single resolver for the per-frame PNG path |
 | `vgdl-digest.js` | Parses a VGDL `.txt` into a structural "strategic digest" (sprites/interactions/termination) with a content hash; feeds strategy-memory |
