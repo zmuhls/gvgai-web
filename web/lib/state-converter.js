@@ -421,15 +421,16 @@ function buildPrompt(sso, promptConfig, stateTracker, sessionStrategy) {
   let closing;
   if (macro) {
     const maxSteps = promptConfig.macroActions.maxSteps || 4;
-    // Ask for 2+ steps (a "1 to N" phrasing invites single-step replies) and
-    // show an example built from this game's own action labels.
+    // Bias toward full-length plans ("1 to N" or "2 to N" phrasings invite
+    // single-step replies, which leave the executor idle through the provider
+    // gap) and show an example built from this game's own action labels.
     const moveActions = displayActions.filter(a => !/NIL|WAIT/i.test(a));
     const example = moveActions.length >= 2
-      ? ` (example: ${moveActions[0]}, ${moveActions[0]}, ${moveActions[1]})`
+      ? ` (example: ${moveActions[0]}, ${moveActions[0]}, ${moveActions[1]}, ${moveActions[1]})`
       : '';
     closing = `Respond in EXACTLY this format, nothing else:
 REASON: <one short sentence; say how this move follows the player's tactic>
-PLAN: <2 to ${maxSteps} actions from the list above, comma-separated, in the order to execute them${example}>`;
+PLAN: <${maxSteps} actions when the path is safe, never fewer than 2, comma-separated, in the order to execute them${example}>`;
   } else if (narrate) {
     closing = `Respond in EXACTLY this format, nothing else:
 REASON: <one short sentence; say how this move follows the player's tactic>

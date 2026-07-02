@@ -56,18 +56,15 @@ npm run telemetry:backfill   # replay local telemetry-events.jsonl into Supabase
 
 The web frontend spawns the Java process automatically via `game-manager.js` when a game is started from the browser. Tests use Node's built-in runner only — no Jest/Mocha; name new files `web/test/*.test.js`.
 
-### Working tree ≠ git: much of the running app is uncommitted (verify before you commit)
+### Frontend: `public-local/` is live, `public/` is the tracked mirror
 
-The current branch's working tree is a large in-progress refactor whose required files are **untracked** (not gitignored, just never `git add`ed). This has two consequences a future agent must internalize:
+The server serves `public-local/` **before** `public/` (`express.static` order in `server.js`) and mounts the `*-local` route variants (`routes/{games,models,prompts}-local.js`). So **editing tracked `public/js/app.js` or `routes/games.js` does not change live behavior** — edit the `-local` copy, then mirror it into the tracked `public/` file (keep them byte-identical; `public-local/` is just the working copy and is itself untracked). When a change "doesn't take," check which variant the running `server.js` actually requires/serves.
 
-1. **A clean clone of `HEAD` does not even boot.** `lib/grid-renderer.js` exists in **no commit on any branch**, yet the committed `lib/state-converter.js` does `require('./grid-renderer')`. So `git clone` → `npm start` crashes with `Cannot find module './grid-renderer'`. The app runs here only because the file exists as an untracked working-tree file. Verified by reconstructing `HEAD` into a clean tree and loading `state-converter.js`.
+`.gitignore` has aggressive global patterns (`*.html`, `*.xml`, `*.gif`). Tracked HTML under `web/public/` survives only via explicit `!` exceptions — currently `!web/public/index.html` and `!web/public/marquee.html`. **Any new HTML page needs its own exception** or it silently falls out of version control.
 
-2. **The working-tree refactor adds many more untracked-but-required modules.** The modified-and-tracked `server.js`, `llm-client.js`, `game-manager.js` now `require` untracked `lib/runtime-config.js`, `lib/screenshot-path.js`, `lib/telemetry-store.js`, `scripts/load-root-env.js`, and `routes/{games,models,prompts}-local.js`, `routes/{evals,telemetry}.js`. Untracked counts at last check: ~9 `lib/`, 5 `routes/`, 6 `scripts/`, 17 `test/`, 114 `data/games/*.json`.
+`sources.txt` is a build artifact (the Java source list) that the compile step regenerates — don't commit its churn.
 
-**Practical rules:**
-- `npm test` passing is **not** evidence the committed repo works — the tests exercise untracked modules. To check shippability, reconstruct `HEAD` (`git archive HEAD | tar -x -C <tmp>`) and load the entry points there.
-- Before committing, `git status` the full set and `git add` every module the tracked code `require`s. Don't commit `server.js`/`state-converter.js` without the untracked files they depend on, or you ship a tree that crashes on boot.
-- The running server serves `public-local/` **before** `public/` and registers the `*-local` route variants. `public-local/js/app.js` has diverged from the tracked `public/js/app.js`, and `public-local/` is gitignored (the `*.html` rule, with no `!`-exception like `public/index.html` has). So **editing the tracked `public/js/app.js` or `routes/games.js` does not change live behavior** — edit the `-local` copy, then mirror it back into the tracked file. When a change "doesn't take," check which variant the running `server.js` actually requires/serves.
+(Historical note: an earlier state of this tree had many untracked-but-required `lib/`/`routes/` modules that broke a clean clone; they are committed now, so a fresh clone boots. `npm test` is a reasonable shippability signal again.)
 
 ## Architecture
 
@@ -90,6 +87,8 @@ The Java engine requires action responses within **40ms** per tick. LLMs take 20
 - Fire async LLM call in background, gated to ≥400ms since the last call
 - When LLM responds, store result for the *next* tick
 - This means every LLM decision is applied ~10 ticks after the state it was computed from. **This staleness is not solved — it is curated around** (featured games are slow/puzzle games where it doesn't dominate; see `web/data/featured.json`).
+
+**Three action modes.** The async/stale behavior above is the **walk-up live** path. The **eval and marble-run** paths instead set `synchronousActions` on the `LLMClient`, which blocks each Java tick until the LLM answers — no staleness, but each tick waits ~0.5–2s (a slow but faithful playthrough, capped by `maxActions`, default 40; on reaching the cap the client sends `ABORT` **and** proactively calls `emitCloseSummary()` so the case finalizes instead of hanging on the timeout). **Macro-action plans** (opt-in per game via a `macroActions` block in the game config) bridge latency a third way: the model returns a short *plan* of steps that `response-parser.js` parses, and `llm-client.js` drains a step queue over several ticks while the next plan computes in the background (`MAX_PLAN_STEPS`, `ticksPerStep`, stale-plan invalidation).
 
 ### Socket Protocol Phases
 
@@ -115,6 +114,8 @@ Prompts are assembled from layers in `buildPrompt(sso, promptConfig, stateTracke
 **Ephemeral session strategy (key invariant).** The walk-up user's strategy is threaded `server.js` start request → `llmClient.connect(..., strategy)` → `this.sessionStrategy` (a runtime-only field on the client instance). It is injected as Layer 0 and **never written to `web/data/games/{id}.json`** — `saveGameConfig` is only reachable from the dashboard PUT route. The persistent dashboard config is the base; the strategy layers on top at runtime only.
 
 **Closing contract.** When a strategy is active the tick state ends with a structured `REASON: <one sentence> / ACTION: <action>` format (`ACTION:` last, truncation-safe), so the model both narrates and acts. With no strategy it falls back to the legacy "respond with ONLY the action word".
+
+**Untrusted-input floor.** The walk-up strategy is free text a stranger typed, so `sanitizeStrategy()` (state-converter.js) runs at the single storage point (`llm-client.js` `connect`): caps length (~240), collapses newlines, and defangs forged `ACTION:`/`REASON:`/`ANS=` markers, override stems, and role prefixes. Layer 0 is then **fenced and demoted below the game rules** in the assembly order, so a hostile note cannot outrank the rules or forge the closing contract; the closed action space (`availableActions`) is the hard backstop. The frontend adds a non-blocking soft-warn, and `GET /api/games/:id/digest` serves each game's VGDL-derived rule facets for the "unfold the rules" scaffold (a user composes a tactic from code-sourced chips). `buildPrompt` also returns `promptLayers` (labeled prompt slices) which ride the `llm-reasoning` payload for the frontend "decision autopsy."
 
 Template variables resolved at runtime: `{{gameName}}`, `{{gameScore}}`, `{{availableActions}}`, `{{playerPosition}}`, `{{gridSize}}`, `{{blockedDirections}}`, `{{asciiGrid}}`, `{{lastAction}}`, etc.
 
@@ -143,7 +144,13 @@ Models matching patterns in `config.json:multimodalPatterns` automatically get t
 
 `web/public/` (vanilla JS, no framework) drives a kiosk-style flow for the Inference Arcade showcase: pick a game (featured grid + browse-all-122) → tap a preset strategy card that pre-fills an editable text box → watch the game with a **live narration panel** (the model's `reason` per decision + a "following your strategy" badge + the answering `provider`) → an **end-of-run summary card** (score, echoed strategy, stated-adherence label, highlight decisions). The Prompt Dashboard (`dashboard.js`) is the separate power-user config editor. Browser Socket.IO events: `game-state`, `game-frame` (PNG), `llm-reasoning` (now carries `reason`/`strategy`/`provider`), `level-end`, `run-summary` (the summary card payload), `session-end`, `llm-error`.
 
-Architecturally this is **Sub-project A** (the single-tablet core loop) of a larger plan; concurrency/multi-tablet, leaderboard, and Docker/Railway packaging are deliberately out of scope here and run on the existing single-session architecture (one Java process, fixed port 8080, global screenshot path).
+### Attract mode: the marble run + spectator marquee
+
+When no walk-up player is active, an always-on **marble run** (`lib/attract-coordinator.js`, a singleton state machine) plays the eval playlist on the single Java process, broadcasts it live, and loops. It reuses the eval harness: each case runs through `runEvalCase` (`batch-evaluator.js`) with a **broadcast tee** — `createEventSink(broadcastIo)` forwards the buffered sink events to the real Socket.IO server, and `onCaseStart` hands the coordinator a live `{processId, llmClient}` handle. A walk-up has priority: `server.js` `/api/game/start` calls `coordinator.beginWalkup()` (disconnect the live case — which resolves the `run-summary` the eval was awaiting, so it unwinds through its own `finally` — then await `game-manager.stopGameAndWait()` to free port 8080), plays, then `endWalkup()` resumes the loop. Auto-starts on boot; disable with `MARBLE_RUN_AUTOSTART=false`. Control surface: `routes/marble.js` (`POST /api/marble/start|stop`, `GET /api/marble/state`). New events: `marble-run-state`, `case-started`, `case-completed`.
+
+The **spectator page** (`public/marquee.html` + `js/marquee.js`, served at `/marquee`, iframe-embeddable) is a read-only consumer of that stream — because all Socket.IO emits are **global** (no rooms), any tab already sees the live run. The **Tote Board** on the telemetry dashboard shows per-model standings + strategy effect from a `marbleRun` block on `getDashboardSnapshot` (aggregated from `marble_case_completed` events).
+
+The single-session constraint still holds (one Java process, fixed port 8080, one global screenshot path), so the marble run is a **serial playlist on one broadcast channel**, not parallel lanes. Multi-tablet concurrency and Docker/Railway packaging remain out of scope.
 
 ## Key Files
 
@@ -165,7 +172,8 @@ Architecturally this is **Sub-project A** (the single-tablet core loop) of a lar
 | `vgdl-digest.js` | Parses a VGDL `.txt` into a structural "strategic digest" (sprites/interactions/termination) with a content hash; feeds strategy-memory |
 | `telemetry-store.js` | Event capture (`track`), batched async flush to Supabase, local `data/telemetry-events.jsonl` fallback, dashboard read models (`getDashboardSnapshot`) |
 | `strategy-memory-store.js` + `strategy-memory-evaluator.js` | Per-game strategy "memory" records (built from VGDL digest), cached CRUD under `data/strategy-memory/`, and A/B evaluation (baseline vs digest-memory prompt) |
-| `eval-plan.js` + `batch-evaluator.js` + `offline-game-evaluator.js` | Arcade eval harness: build game×model×strategy plans, run batches (spawns Java + real LLM via `game-manager`/`llm-client`), and an offline scripted-policy evaluator for prompt-pipeline tests without a live model |
+| `eval-plan.js` + `batch-evaluator.js` + `offline-game-evaluator.js` | Arcade eval harness: build game×model×strategy plans, run batches (spawns Java + real LLM via `game-manager`/`llm-client`), and an offline scripted-policy evaluator for prompt-pipeline tests without a live model. `createEventSink(broadcastIo)` + `runEvalCase`'s `onCaseStart` are the seams the marble run reuses to broadcast live |
+| `attract-coordinator.js` | Attract-mode "marble run" singleton: serial playlist broadcast on the single Java process, walk-up interrupt/resume state machine, consecutive-error backstop; emits `marble-run-state`/`case-started`/`case-completed` |
 
 ### Data (web/data/)
 | Path | Purpose |
@@ -205,6 +213,8 @@ Architecturally this is **Sub-project A** (the single-tablet core loop) of a lar
 ```
 
 `customOverride` takes precedence over `templateId`. Both are optional per layer. (`maxTokens` defaults to 160 in code when unset, 200 on featured games — reasoning models need headroom; keep `customOverride` free of output-format instructions since the closing contract now governs that.)
+
+Two optional per-game blocks change the response contract: `codeProtocol` (compact single-letter action codes + policy heuristics, see `code-protocol.js`) and `macroActions` (`{ enabled, maxSteps, ticksPerStep }` — the multi-step plan queue described under Critical Timing Constraint).
 
 ## LLM Routing (web/lib/models.js)
 

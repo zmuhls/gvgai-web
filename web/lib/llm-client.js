@@ -6,6 +6,7 @@ const { parseStructured } = require('./response-parser');
 const { resolveModel } = require('./models');
 const promptStore = require('./prompt-store');
 const telemetry = require('./telemetry-store');
+const { getCachedClassification } = require('./game-classifier');
 
 // Macro-action executor tuning. The plan queue is a bridge across LLM latency,
 // not a schedule — it drains deterministically while the next call is in flight.
@@ -152,7 +153,9 @@ class LLMClient {
           payload: {
             gameName: this.gameName,
             synchronousActions: this.synchronousActions,
-            strategy_present: Boolean(this.sessionStrategy)
+            strategy_present: Boolean(this.sessionStrategy),
+            archetype: getCachedClassification(this.gameId)?.archetype || null,
+            pace: getCachedClassification(this.gameId)?.pace || null
           }
         });
         resolve();
@@ -410,6 +413,12 @@ class LLMClient {
   // Hot path: called synchronously before the ACT tick reply, so no JSON parsing.
   // Each plan step is held for ticksPerStep ticks so a 4-step plan spans the
   // real LLM latency gap instead of draining in ~160ms of engine ticks.
+  //
+  // Exhausted queue: the classic behavior repeats the last action until the next
+  // LLM result — fine for puzzle games, deadly in gravity/hazard games where a
+  // 2-second provider gap means ~50 blind ticks in one direction. A game config
+  // can set macroActions.exhaustAction: 'wait' to stand still instead, giving the
+  // demo its burst-of-moves-then-thinking cadence.
   dequeuePlanAction() {
     if (this.planStepHoldRemaining > 0 && this.pendingLLMAction) {
       this.planStepHoldRemaining -= 1;
@@ -421,6 +430,10 @@ class LLMClient {
       this.planStepHoldRemaining = this.ticksPerStep() - 1;
       this.pendingLLMAction = step;
       return step;
+    }
+    if (this.macroEnabled() && this.planLength > 0 &&
+        this.promptConfig?.macroActions?.exhaustAction === 'wait') {
+      return 'ACTION_NIL';
     }
     return this.pendingLLMAction || 'ACTION_NIL';
   }

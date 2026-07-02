@@ -1139,31 +1139,6 @@ button {
   border-radius: var(--radius-sm);
   background: rgba(188, 140, 255, 0.08);
 }
-.plan-steps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  margin-bottom: var(--space-2);
-}
-.plan-step {
-  padding: 2px var(--space-2);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--arcade-text-dim);
-  border: 1px solid var(--arcade-text-dim);
-  border-radius: var(--radius-sm);
-}
-.plan-step-active {
-  color: var(--arcade-secondary);
-  border-color: var(--arcade-secondary);
-  background: rgba(188, 140, 255, 0.12);
-}
-.plan-step-done {
-  color: var(--arcade-text-dim);
-  border-color: transparent;
-  background: rgba(188, 140, 255, 0.05);
-  text-decoration: line-through;
-}
 .raw-toggle {
   margin-top: var(--space-2);
 }
@@ -3760,5 +3735,116 @@ button:hover {
   to {
     opacity: 0;
     transform: translate(-50%, -50%) rotate(45deg) scale(1.08);
+  }
+}
+
+/* ===== Plan tape ===========================================================
+   The model calls its shots as a short instruction tape. Cells are connected
+   segments (machine tape, not pills); the executing cell burns the cabinet's
+   live teal; spent cells are inked out with a draftsman's hatch; a mono
+   counter ticks at the row's end. One row always — on narrow viewports the
+   tape scrolls sideways instead of wrapping. */
+.plan-tape {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  margin-bottom: var(--space-2);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.plan-tape::-webkit-scrollbar {
+  display: none;
+}
+
+/* The tape lives inside the dark bezel of the reasoning panel, so it uses the
+   bezel's own light-ink system (matching .reasoning-entry) rather than the
+   page-level paper tokens. The live cell lifts the theme accent for dark
+   backgrounds via color-mix. */
+.plan-cell {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  padding: 3px var(--space-2);
+  margin-left: -1px;
+  border: 1px solid rgba(232, 238, 239, 0.16);
+  background: rgba(232, 238, 239, 0.045);
+  color: rgba(237, 244, 242, 0.66);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.plan-cell:first-child {
+  margin-left: 0;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.plan-cell:nth-last-child(2) {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.plan-cell:first-child:nth-last-child(2) {
+  border-radius: var(--radius-sm);
+}
+
+.plan-cell.is-live {
+  position: relative;
+  z-index: 1;
+  border-color: color-mix(in srgb, var(--arcade-accent) 65%, #edf4f2);
+  background: color-mix(in srgb, var(--arcade-accent) 28%, transparent);
+  color: color-mix(in srgb, var(--arcade-accent) 45%, #edf4f2);
+}
+
+.plan-cell.is-done {
+  background: repeating-linear-gradient(135deg, rgba(232, 238, 239, 0.13) 0 2px, transparent 2px 6px);
+  color: rgba(237, 244, 242, 0.38);
+}
+
+.plan-count {
+  flex: 0 0 auto;
+  margin-left: var(--space-2);
+  color: rgba(237, 244, 242, 0.5);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (pointer: coarse) {
+  .plan-cell {
+    padding: 6px var(--space-3);
+    font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .reasoning-entry:first-child {
+    border-left-width: 3px;
+    background: rgba(232, 238, 239, 0.08);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .plan-cell {
+    animation: plan-cell-in 180ms both;
+    animation-delay: calc(var(--cell-index, 0) * 30ms);
+  }
+
+  .plan-cell.is-live {
+    animation: none;
+  }
+}
+
+@keyframes plan-cell-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }

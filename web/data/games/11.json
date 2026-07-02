@@ -4,17 +4,33 @@
   "systemTemplateId": "default-system",
   "gameContext": {
     "templateId": null,
-    "customOverride": "Scoring: collect diamond (+2), boulder (-1), butterfly (-1), butterfly hit by crab (+1). Avoid: butterfly. Win: clear all exitdoor. Lose: die. Mechanics: collect diamond."
+    "customOverride": "Boulderdash: collect diamonds (+2 each); the exit door only opens after you hold 9 diamonds. GRAVITY IS THE KILLER: boulders (M on the map) fall straight down when nothing supports them — a falling boulder kills you instantly (-1). Never move into or stop in a square directly below a boulder, and never dig the dirt out from under a boulder while standing beneath it. Approach diamonds from the side or from below-and-diagonal, never up through a boulder column. Crabs and butterflies (E) kill on touch — keep 2+ squares away and turn away when one approaches. Digging through dirt is safe only when no boulder sits above your path."
   },
-  "progressionContexts": {},
+  "progressionContexts": {
+    "0": {
+      "customOverride": "Level start: a boulder sits at your right shoulder — open by digging DOWN or LEFT, not right or up. The safest diamonds are below you and to the left. Re-check boulder columns after every plan."
+    }
+  },
   "llmSettings": {
     "maxTokens": 320,
     "temperature": 0.5
   },
-  "updatedAt": "2026-07-01T23:35:35.091Z",
+  "updatedAt": "2026-07-02T01:39:27.619Z",
   "macroActions": {
     "enabled": true,
     "maxSteps": 4,
-    "ticksPerStep": 4
+    "ticksPerStep": 3,
+    "exhaustAction": "wait"
+  },
+  "gridLegend": "@ = you, M = boulder (falls — never stand under one), $ = diamond, E = crab/butterfly (deadly), # = dirt/wall, O = exit door, . = empty",
+  "classification": {
+    "classifierVersion": 1,
+    "archetype": "collector",
+    "subtypes": [],
+    "pace": "reactive",
+    "inputs": {
+      "avatarType": "ShootAvatar",
+      "physicsCategory": "gridphysics"
+    }
   }
 }

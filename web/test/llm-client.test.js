@@ -605,6 +605,26 @@ test('MACRO_ACTIONS_DISABLED=1 degrades a PLAN response to a single action', asy
   }
 });
 
+test('exhaustAction wait stands still instead of repeating the last step', async () => {
+  const client = macroClient({ enabled: true, ticksPerStep: 1, exhaustAction: 'wait' });
+  const sent = [];
+  client.sendMessageWithId = (msgId, message) => sent.push(message);
+
+  client.planQueue = ['ACTION_LEFT'];
+  client.planLength = 1;
+
+  for (let tick = 1; tick <= 3; tick++) {
+    await client.processMessage(`${tick}#${actPayload({ gameTick: tick })}`);
+    await nextTickDrain();
+  }
+
+  assert.deepEqual(sent, [
+    'ACTION_LEFT#BOTH',
+    'ACTION_NIL#BOTH', // exhausted: wait, don't march
+    'ACTION_NIL#BOTH'
+  ]);
+});
+
 test('game-state emit carries live planStep and planLength', async () => {
   const client = macroClient();
   const emitted = [];

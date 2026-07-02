@@ -554,8 +554,8 @@ test('macro-enabled game with a strategy asks for a PLAN closing contract', () =
     macroActions: { enabled: true, maxSteps: 4 }
   }, null, 'rush the left column');
 
-  assert.match(prompt.userMessage, /PLAN: <2 to 4 actions from the list above/);
-  assert.match(prompt.userMessage, /example: ACTION_LEFT, ACTION_LEFT, ACTION_RIGHT/);
+  assert.match(prompt.userMessage, /PLAN: <4 actions when the path is safe, never fewer than 2/);
+  assert.match(prompt.userMessage, /example: ACTION_LEFT, ACTION_LEFT, ACTION_RIGHT, ACTION_RIGHT/);
   assert.doesNotMatch(prompt.userMessage, /ACTION: <one action/);
   assert.match(prompt.userMessage, /REASON: <one short sentence/);
 });

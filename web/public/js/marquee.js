@@ -84,6 +84,8 @@
   }
 
   // --- narration -----------------------------------------------------------
+  let latestPlanTape = null;
+
   function addNarration(data) {
     if (!data) return;
     const box = el('narration');
@@ -95,13 +97,44 @@
     const act = document.createElement('div');
     act.className = 'act';
     const b = document.createElement('b');
-    b.textContent = data.action || '—';
+    b.textContent = data.action ? String(data.action).replace(/^ACTION_/, '') : '—';
     act.append(document.createTextNode('→ '), b);
     if (data.provider) act.append(document.createTextNode(` · ${data.provider}`));
     if (typeof data.elapsed === 'number' && data.elapsed > 0) act.append(document.createTextNode(` · ${data.elapsed}ms`));
     entry.append(reason, act);
+    if (Array.isArray(data.plan) && data.plan.length > 1) {
+      const tape = document.createElement('div');
+      tape.className = 'plan-tape';
+      data.plan.forEach((step, i) => {
+        const cell = document.createElement('span');
+        cell.className = 'plan-cell' + (i === 0 ? ' is-live' : '');
+        cell.textContent = String(step).replace(/^ACTION_/, '');
+        tape.appendChild(cell);
+      });
+      const count = document.createElement('span');
+      count.className = 'plan-count';
+      count.textContent = `1/${data.plan.length}`;
+      tape.appendChild(count);
+      entry.appendChild(tape);
+      latestPlanTape = tape;
+    } else {
+      latestPlanTape = null;
+    }
     box.insertBefore(entry, box.firstChild);
     while (box.children.length > 12) box.removeChild(box.lastChild);
+  }
+
+  function advancePlanTape(s) {
+    if (!latestPlanTape || !s || !(s.planLength > 1)) return;
+    const cells = latestPlanTape.querySelectorAll('.plan-cell');
+    const liveIdx = Math.max(1, Math.min(s.planStep, cells.length)) - 1;
+    cells.forEach((cell, i) => {
+      cell.classList.remove('is-live', 'is-done');
+      if (i < liveIdx) cell.classList.add('is-done');
+      else if (i === liveIdx) cell.classList.add('is-live');
+    });
+    const count = latestPlanTape.querySelector('.plan-count');
+    if (count) count.textContent = `${Math.max(1, Math.min(s.planStep, s.planLength))}/${s.planLength}`;
   }
 
   // --- wiring --------------------------------------------------------------
@@ -111,6 +144,7 @@
   socket.on('case-started', (c) => {
     resetScreen();
     el('narration').replaceChildren();
+    latestPlanTape = null;
     el('ticker').textContent = '—';
     if (c && c.model && c.game) {
       setNowPlaying({
@@ -138,6 +172,7 @@
     if (s.score != null) el('score').textContent = s.score;
     if (s.health != null) el('health').textContent = s.health;
     if (s.tick != null) el('tick').textContent = s.tick;
+    advancePlanTape(s);
   });
   socket.on('llm-reasoning', addNarration);
 

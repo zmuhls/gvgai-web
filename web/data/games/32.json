@@ -11,10 +11,23 @@
     "maxTokens": 320,
     "temperature": 0.5
   },
-  "updatedAt": "2026-07-01T23:34:48.220Z",
+  "updatedAt": "2026-07-02T01:39:27.623Z",
   "macroActions": {
     "enabled": true,
     "maxSteps": 4,
-    "ticksPerStep": 4
+    "ticksPerStep": 3,
+    "exhaustAction": "wait"
+  },
+  "classification": {
+    "classifierVersion": 1,
+    "archetype": "pusher-puzzle",
+    "subtypes": [
+      "timed"
+    ],
+    "pace": "deliberate",
+    "inputs": {
+      "avatarType": "MovingAvatar",
+      "physicsCategory": "gridphysics"
+    }
   }
 }

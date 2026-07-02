@@ -16,12 +16,14 @@ const state = {
   lastSummary: null
 };
 
-// Preset strategy cards — tap to pre-fill the editable text box
+// Preset strategy cards — tap to pre-fill the editable text box. Each preset
+// lists the game archetypes (from /api/games) it suits best; on game select
+// the cards re-rank so affine presets come first (never hidden).
 const STRATEGY_PRESETS = [
-  { label: 'Survive first', text: 'Play defensively. Keep distance from enemies, avoid danger, and prioritize staying alive over scoring.' },
-  { label: 'Score test', text: 'Pursue points. Collect resources and take measured risks when a clear scoring route appears.' },
-  { label: 'Threat test', text: 'Seek out enemies when the path is clear. Attack threats and retreat when health or position gets worse.' },
-  { label: 'Goal test', text: 'Move deliberately and plan ahead. Work toward the exit or goal step by step without wasting moves.' }
+  { label: 'Survive first', text: 'Play defensively. Keep distance from enemies, avoid danger, and prioritize staying alive over scoring.', archetypes: ['survivor', 'reflex-pilot', 'navigator'] },
+  { label: 'Score test', text: 'Pursue points. Collect resources and take measured risks when a clear scoring route appears.', archetypes: ['collector', 'shooter-lane'] },
+  { label: 'Threat test', text: 'Seek out enemies when the path is clear. Attack threats and retreat when health or position gets worse.', archetypes: ['shooter-roaming', 'shooter-lane', 'chaser'] },
+  { label: 'Goal test', text: 'Move deliberately and plan ahead. Work toward the exit or goal step by step without wasting moves.', archetypes: ['pusher-puzzle', 'chaser', 'navigator', 'collector'] }
 ];
 
 // Advice clause for each VGDL strategy tag (the controlled vocab from vgdl-digest).
@@ -43,11 +45,11 @@ const TAG_ADVICE = {
 const GENERIC_TACTIC_WORDS = new Set(['avoid', 'dodge', 'defend', 'defensive', 'defensively', 'attack', 'attacking', 'survive', 'survival', 'score', 'scoring', 'points', 'safe', 'safely', 'aggressive', 'careful', 'carefully', 'plan', 'retreat', 'collect', 'explore', 'goal', 'enemy', 'enemies', 'threat', 'threats', 'distance', 'risk', 'risks', 'shoot', 'move', 'wait', 'push']);
 
 const PREVIEW_GAMES = [
-  { id: 0, name: 'aliens', category: 'gridphysics', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
-  { id: 32, name: 'doorkoban', category: 'gridphysics', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
-  { id: 4, name: 'bait', category: 'gridphysics', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
-  { id: 11, name: 'boulderdash', category: 'gridphysics', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
-  { id: 18, name: 'chase', category: 'gridphysics', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true }
+  { id: 0, name: 'aliens', category: 'gridphysics', archetype: 'shooter-lane', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
+  { id: 32, name: 'doorkoban', category: 'gridphysics', archetype: 'pusher-puzzle', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
+  { id: 4, name: 'bait', category: 'gridphysics', archetype: 'pusher-puzzle', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
+  { id: 11, name: 'boulderdash', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
+  { id: 18, name: 'chase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true }
 ];
 
 const PREVIEW_MODELS = [
@@ -157,11 +159,18 @@ function renderCurrentGameList() {
   renderGames(state.showingAllGames || featured.length === 0 ? state.games : featured);
 }
 
-// Render the preset strategy cards
-function renderStrategyCards() {
+// Render the preset strategy cards, affine-to-archetype presets first
+function renderStrategyCards(archetype) {
   if (!strategyCards) return;
-  strategyCards.innerHTML = STRATEGY_PRESETS.map((p, i) => `
-    <button type="button" class="strategy-card" data-strategy-idx="${i}">${escapeHtml(p.label)}</button>
+  const ranked = STRATEGY_PRESETS
+    .map((preset, originalIdx) => ({ preset, originalIdx }))
+    .sort((a, b) => {
+      const aAffine = archetype && (a.preset.archetypes || []).includes(archetype) ? 0 : 1;
+      const bAffine = archetype && (b.preset.archetypes || []).includes(archetype) ? 0 : 1;
+      return aAffine - bAffine || a.originalIdx - b.originalIdx;
+    });
+  strategyCards.innerHTML = ranked.map(({ preset, originalIdx }) => `
+    <button type="button" class="strategy-card" data-strategy-idx="${originalIdx}">${escapeHtml(preset.label)}</button>
   `).join('');
   strategyCards.querySelectorAll('.strategy-card').forEach(card => {
     card.addEventListener('click', () => {
@@ -318,7 +327,7 @@ function renderGames(games) {
     <div class="game-card${game.featured ? ' featured' : ''}" data-game-id="${game.id}">
       <div class="game-card-meta">
         <span>${String(game.id).padStart(3, '0')}</span>
-        <span>${escapeHtml(game.category)}</span>
+        <span>${escapeHtml(game.archetype || game.category)}</span>
       </div>
       <h3>${escapeHtml(game.name)}</h3>
       <p class="levels">${game.levels.length} levels</p>
@@ -347,11 +356,16 @@ function selectGame(gameId) {
   trackUx('game_selected', {
     gameId,
     gameName: state.selectedGame.name,
-    category: state.selectedGame.category
+    category: state.selectedGame.category,
+    archetype: state.selectedGame.archetype || null,
+    pace: state.selectedGame.pace || null
   }, {}, {
     eventFamily: 'clickthrough',
     gameId
   });
+
+  // Re-rank the preset strategy cards for this game's archetype
+  renderStrategyCards(state.selectedGame.archetype);
 
   // Update UI
   document.getElementById('selected-game-name').textContent = state.selectedGame.name;
@@ -619,9 +633,26 @@ function setupWebSocket() {
     console.error('[App] Connection error:', error);
   });
 
-  // Chip row of the newest multi-step plan, so per-tick game-state events can
-  // advance the live "executing step N" highlight without a new socket event.
-  let latestPlanChips = null;
+  // The newest multi-step plan's tape, so per-tick game-state events can
+  // advance the live "executing step N" cell without a new socket event.
+  let latestPlanTape = null;
+
+  function buildPlanTape(plan) {
+    const tape = document.createElement('div');
+    tape.className = 'plan-tape';
+    plan.forEach((step, i) => {
+      const cell = document.createElement('span');
+      cell.className = 'plan-cell' + (i === 0 ? ' is-live' : '');
+      cell.style.setProperty('--cell-index', i);
+      cell.textContent = String(step).replace(/^ACTION_/, '');
+      tape.appendChild(cell);
+    });
+    const count = document.createElement('span');
+    count.className = 'plan-count';
+    count.textContent = `1/${plan.length}`;
+    tape.appendChild(count);
+    return tape;
+  }
 
   socket.on('llm-reasoning', (data) => {
     console.log('[App] LLM reasoning:', data);
@@ -656,24 +687,17 @@ function setupWebSocket() {
 
     const hasPlan = Array.isArray(data.plan) && data.plan.length > 1;
     if (hasPlan) {
-      const planRow = document.createElement('div');
-      planRow.className = 'plan-steps';
-      data.plan.forEach((step, i) => {
-        const chip = document.createElement('span');
-        chip.className = 'plan-step' + (i === 0 ? ' plan-step-active' : '');
-        chip.textContent = step;
-        planRow.appendChild(chip);
-      });
-      entry.appendChild(planRow);
-      latestPlanChips = planRow;
+      const tape = buildPlanTape(data.plan);
+      entry.appendChild(tape);
+      latestPlanTape = tape;
     } else {
-      latestPlanChips = null;
+      latestPlanTape = null;
     }
 
+    // The tape owns plan progression, so the action line stays timing + provider.
     const actDiv = document.createElement('div');
     actDiv.className = `action ${timing}`;
-    const planTag = hasPlan ? `plan 1/${data.plan.length} · ` : '';
-    actDiv.textContent = `→ ${data.action} (${planTag}${data.elapsed}ms${data.provider ? ' · ' + data.provider : ''})`;
+    actDiv.textContent = `→ ${String(data.action || '').replace(/^ACTION_/, '')} (${data.elapsed}ms${data.provider ? ' · ' + data.provider : ''})`;
     entry.appendChild(actDiv);
 
     // The Decision Autopsy: how this move was assembled + decided.
@@ -698,13 +722,26 @@ function setupWebSocket() {
     if (maxHealthEl && data.maxHealth) maxHealthEl.textContent = data.maxHealth;
     if (tickEl) tickEl.textContent = data.tick || 0;
 
-    // Advance the live plan-step highlight on the newest narration entry
-    if (latestPlanChips && data.planLength > 1) {
-      const chips = latestPlanChips.children;
-      for (let i = 0; i < chips.length; i++) {
-        chips[i].classList.remove('plan-step-active', 'plan-step-done');
-        if (i < data.planStep - 1) chips[i].classList.add('plan-step-done');
-        else if (i === data.planStep - 1) chips[i].classList.add('plan-step-active');
+    // Advance the live tape on the newest narration entry
+    if (latestPlanTape && data.planLength > 1) {
+      const cells = latestPlanTape.querySelectorAll('.plan-cell');
+      // planStep can be 0 for one tick when a fresh plan lands mid-tick;
+      // a called plan is always "on step 1" until it advances.
+      const liveIdx = Math.max(1, Math.min(data.planStep, cells.length)) - 1;
+      cells.forEach((cell, i) => {
+        cell.classList.remove('is-live', 'is-done');
+        if (i < liveIdx) cell.classList.add('is-done');
+        else if (i === liveIdx) cell.classList.add('is-live');
+      });
+      const count = latestPlanTape.querySelector('.plan-count');
+      if (count) count.textContent = `${Math.max(1, Math.min(data.planStep, data.planLength))}/${data.planLength}`;
+      if (cells[liveIdx] && latestPlanTape.scrollWidth > latestPlanTape.clientWidth) {
+        // Scroll the tape only (horizontal), never the reasoning log's reading position
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        latestPlanTape.scrollTo({
+          left: Math.max(0, cells[liveIdx].offsetLeft - 16),
+          behavior: reduced ? 'auto' : 'smooth'
+        });
       }
     }
   });
@@ -808,7 +845,7 @@ function renderRunSummary(s) {
   if (s.highlights && s.highlights.length > 0) {
     const items = s.highlights.map(h => {
       const delta = h.scoreDelta ? ` <span class="hl-score">+${h.scoreDelta}</span>` : '';
-      return `<li><span class="hl-action">${escapeHtml(h.action)}</span> — ${escapeHtml(h.reason || '')}${delta}</li>`;
+      return `<li><span class="hl-action">${escapeHtml(String(h.action || '').replace(/^ACTION_/, ''))}</span> — ${escapeHtml(h.reason || '')}${delta}</li>`;
     }).join('');
     summaryHighlights.innerHTML = `<h4>Key moves</h4><ul>${items}</ul>`;
     summaryHighlights.classList.remove('hidden');
