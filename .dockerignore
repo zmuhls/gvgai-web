@@ -1,0 +1,12 @@
+.git
+.env
+out
+sources.txt
+node_modules
+web/node_modules
+web/.gvgai-runtime
+web/public-local
+web/data/telemetry-events.jsonl
+web/data/eval-runs
+web/evals
+*.pdf
