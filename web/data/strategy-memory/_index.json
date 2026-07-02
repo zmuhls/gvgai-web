@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 2,
+  "updatedAt": "2026-07-02T04:22:08.531Z",
+  "games": {
+    "0": {
+      "memoryKey": "sha256:812795fce59a893f4af130d244222e1b858585684e4957849392997a16f4f840",
+      "gameId": 0,
+      "gameName": "aliens",
+      "rulesHash": "sha256:83e616a83b4d829d31f929709d12ba0b3ac82b77ba909b4d9515c3a1eff5b9a7",
+      "digestHash": "sha256:812795fce59a893f4af130d244222e1b858585684e4957849392997a16f4f840",
+      "archetype": "shooter-lane",
+      "evaluationStatus": "candidate",
+      "updatedAt": "2026-07-02T04:22:08.529Z"
+    },
+    "4": {
+      "memoryKey": "sha256:acbe784c340166b0f992ef9bf96defbbcdef97eb71437e31d6219b680d0eccf2",
+      "gameId": 4,
+      "gameName": "bait",
+      "rulesHash": "sha256:9688b7df8693cc259a6a91a647a85a835f83186266265d2625f66021cff9e3c6",
+      "digestHash": "sha256:acbe784c340166b0f992ef9bf96defbbcdef97eb71437e31d6219b680d0eccf2",
+      "archetype": "pusher-puzzle",
+      "evaluationStatus": "candidate",
+      "updatedAt": "2026-07-02T04:22:08.530Z"
+    },
+    "11": {
+      "memoryKey": "sha256:974e1b2a1ddf2eb13044e28ec6c8256abac4efe703ca95050e1e0814eb18e300",
+      "gameId": 11,
+      "gameName": "boulderdash",
+      "rulesHash": "sha256:2f3fe9b78dda1dd445b670932671ebfb089a7a636579044f7c98d41b605ef1bf",
+      "digestHash": "sha256:974e1b2a1ddf2eb13044e28ec6c8256abac4efe703ca95050e1e0814eb18e300",
+      "archetype": "collector",
+      "evaluationStatus": "candidate",
+      "updatedAt": "2026-07-02T04:22:08.531Z"
+    },
+    "18": {
+      "memoryKey": "sha256:d5e6374830f8478bdade1e7c8067597c12f481d8e9eecab6cb277447e71ed191",
+      "gameId": 18,
+      "gameName": "chase",
+      "rulesHash": "sha256:60f3ffcfc4ae428a27d93c62c66380f9b2ba9e92a4c478c66936ffab41ebef99",
+      "digestHash": "sha256:d5e6374830f8478bdade1e7c8067597c12f481d8e9eecab6cb277447e71ed191",
+      "archetype": "collector",
+      "evaluationStatus": "candidate",
+      "updatedAt": "2026-07-02T04:22:08.531Z"
+    },
+    "32": {
+      "memoryKey": "sha256:cb92d7e4d2cfff746774066837f23becc3e574d62014182d4b6cef0b4000a81b",
+      "gameId": 32,
+      "gameName": "doorkoban",
+      "rulesHash": "sha256:10a61138ab4efc307665005950c5496f6d41aa39dc6cdb10f554868883fab1c7",
+      "digestHash": "sha256:cb92d7e4d2cfff746774066837f23becc3e574d62014182d4b6cef0b4000a81b",
+      "archetype": "pusher-puzzle",
+      "evaluationStatus": "candidate",
+      "updatedAt": "2026-07-02T04:22:08.530Z"
+    }
+  },
+  "memoryKeys": {
+    "sha256:812795fce59a893f4af130d244222e1b858585684e4957849392997a16f4f840": {
+      "memoryKey": "sha256:812795fce59a893f4af130d244222e1b858585684e4957849392997a16f4f840",
+      "gameId": 0,
+      "gameName": "aliens",
+      "rulesHash": "sha256:83e616a83b4d829d31f929709d12ba0b3ac82b77ba909b4d9515c3a1eff5b9a7",
+      "digestHash": "sha256:812795fce59a893f4af130d244222e1b858585684e4957849392997a16f4f840",
+      "archetype": "shooter-lane",
+      "evaluationStatus": "candidate",
+      "updatedAt": "2026-07-02T04:22:08.529Z"
+    },
+    "sha256:cb92d7e4d2cfff746774066837f23becc3e574d62014182d4b6cef0b4000a81b": {
+      "memoryKey": "sha256:cb92d7e4d2cfff746774066837f23becc3e574d62014182d4b6cef0b4000a81b",
+      "gameId": 32,
+      "gameName": "doorkoban",
+      "rulesHash": "sha256:10a61138ab4efc307665005950c5496f6d41aa39dc6cdb10f554868883fab1c7",
+      "digestHash": "sha256:cb92d7e4d2cfff746774066837f23becc3e574d62014182d4b6cef0b4000a81b",
+      "archetype": "pusher-puzzle",
+      "evaluationStatus": "candidate",
+      "updatedAt": "2026-07-02T04:22:08.530Z"
+    },
+    "sha256:acbe784c340166b0f992ef9bf96defbbcdef97eb71437e31d6219b680d0eccf2": {
+      "memoryKey": "sha256:acbe784c340166b0f992ef9bf96defbbcdef97eb71437e31d6219b680d0eccf2",
+      "gameId": 4,
+      "gameName": "bait",
+      "rulesHash": "sha256:9688b7df8693cc259a6a91a647a85a835f83186266265d2625f66021cff9e3c6",
+      "digestHash": "sha256:acbe784c340166b0f992ef9bf96defbbcdef97eb71437e31d6219b680d0eccf2",
+      "archetype": "pusher-puzzle",
+      "evaluationStatus": "candidate",
+      "updatedAt": "2026-07-02T04:22:08.530Z"
+    },
+    "sha256:974e1b2a1ddf2eb13044e28ec6c8256abac4efe703ca95050e1e0814eb18e300": {
+      "memoryKey": "sha256:974e1b2a1ddf2eb13044e28ec6c8256abac4efe703ca95050e1e0814eb18e300",
+      "gameId": 11,
+      "gameName": "boulderdash",
+      "rulesHash": "sha256:2f3fe9b78dda1dd445b670932671ebfb089a7a636579044f7c98d41b605ef1bf",
+      "digestHash": "sha256:974e1b2a1ddf2eb13044e28ec6c8256abac4efe703ca95050e1e0814eb18e300",
+      "archetype": "collector",
+      "evaluationStatus": "candidate",
+      "updatedAt": "2026-07-02T04:22:08.531Z"
+    },
+    "sha256:d5e6374830f8478bdade1e7c8067597c12f481d8e9eecab6cb277447e71ed191": {
+      "memoryKey": "sha256:d5e6374830f8478bdade1e7c8067597c12f481d8e9eecab6cb277447e71ed191",
+      "gameId": 18,
+      "gameName": "chase",
+      "rulesHash": "sha256:60f3ffcfc4ae428a27d93c62c66380f9b2ba9e92a4c478c66936ffab41ebef99",
+      "digestHash": "sha256:d5e6374830f8478bdade1e7c8067597c12f481d8e9eecab6cb277447e71ed191",
+      "archetype": "collector",
+      "evaluationStatus": "candidate",
+      "updatedAt": "2026-07-02T04:22:08.531Z"
+    }
+  }
+}

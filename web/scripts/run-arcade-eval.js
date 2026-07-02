@@ -82,6 +82,23 @@ async function main() {
 
   console.log(`[Eval] ${result.status}: ${result.results.length}/${result.cases.length} runs completed`);
   console.log(`[Eval] meaningful groups: ${result.comparison.groupsWithMeaningfulDifference}/${result.comparison.comparedGroups}`);
+
+  // Per-archetype rollup: games within a class are comparable; across classes
+  // the score scales and pacing differ too much for a single average.
+  const byArchetype = new Map();
+  for (const run of result.results) {
+    const archetype = run.archetype || 'unclassified';
+    const bucket = byArchetype.get(archetype) || { runs: 0, wins: 0, score: 0, nilLoops: 0 };
+    bucket.runs += 1;
+    if (run.won) bucket.wins += 1;
+    bucket.score += Number(run.finalScore || 0);
+    if (run.nilActionLoop) bucket.nilLoops += 1;
+    byArchetype.set(archetype, bucket);
+  }
+  for (const [archetype, bucket] of byArchetype) {
+    const meanScore = (bucket.score / bucket.runs).toFixed(1);
+    console.log(`[Eval] ${archetype}: ${bucket.runs} runs, ${bucket.wins} wins, mean score ${meanScore}, nil loops ${bucket.nilLoops}`);
+  }
   if (result.errors.length > 0) {
     console.log(`[Eval] errors: ${result.errors.length}`);
   }

@@ -98,6 +98,28 @@ test('prompt resolution injects only accepted digest memory for normal prompts',
   }
 });
 
+test('STRATEGY_MEMORY_DISABLED=1 blocks accepted records from prompts', () => {
+  const memoryDir = tempMemoryDir();
+  const originalDir = process.env.STRATEGY_MEMORY_DIR;
+  const originalKill = process.env.STRATEGY_MEMORY_DISABLED;
+  process.env.STRATEGY_MEMORY_DIR = memoryDir;
+  process.env.STRATEGY_MEMORY_DISABLED = '1';
+
+  try {
+    saveMemoryRecord(makeRecord({ evaluationStatus: 'accepted', promptText: 'ACCEPTED DIGEST TEXT' }), { memoryDir });
+    promptStore.invalidateCache();
+    const config = promptStore.resolveGamePromptConfig(32, 0, { strategyMemory: 'accepted' });
+    assert.notEqual(config.gameContent, 'ACCEPTED DIGEST TEXT');
+    assert.equal(config.strategicDigestMemory, null);
+  } finally {
+    if (originalDir === undefined) delete process.env.STRATEGY_MEMORY_DIR;
+    else process.env.STRATEGY_MEMORY_DIR = originalDir;
+    if (originalKill === undefined) delete process.env.STRATEGY_MEMORY_DISABLED;
+    else process.env.STRATEGY_MEMORY_DISABLED = originalKill;
+    promptStore.invalidateCache();
+  }
+});
+
 test('accepted digest memory does not change codeProtocol prompts', () => {
   const memoryDir = tempMemoryDir();
   const originalDir = process.env.STRATEGY_MEMORY_DIR;

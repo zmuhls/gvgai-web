@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 2,
+  "memoryKey": "sha256:acbe784c340166b0f992ef9bf96defbbcdef97eb71437e31d6219b680d0eccf2",
+  "gameId": 4,
+  "gameName": "bait",
+  "vgdlPath": "examples/gridphysics/bait.txt",
+  "rulesHash": "sha256:9688b7df8693cc259a6a91a647a85a835f83186266265d2625f66021cff9e3c6",
+  "digestHash": "sha256:acbe784c340166b0f992ef9bf96defbbcdef97eb71437e31d6219b680d0eccf2",
+  "digest": {
+    "schemaVersion": 1,
+    "gameId": 4,
+    "gameName": "bait",
+    "rulesHash": "sha256:9688b7df8693cc259a6a91a647a85a835f83186266265d2625f66021cff9e3c6",
+    "avatar": {
+      "type": "MovingAvatar",
+      "stype": null,
+      "keyHandler": "Pulse"
+    },
+    "controls": {
+      "actions": [
+        "UP",
+        "DOWN",
+        "LEFT",
+        "RIGHT",
+        "WAIT"
+      ],
+      "directions": [
+        "UP",
+        "DOWN",
+        "LEFT",
+        "RIGHT"
+      ],
+      "useLabel": "USE"
+    },
+    "scoring": [
+      "box hit by hole (+1)",
+      "kill goal (+5)",
+      "kill mushroom (+1)"
+    ],
+    "hazards": [
+      "hole"
+    ],
+    "mechanics": [
+      "push box",
+      "collect key to transform"
+    ],
+    "winConditions": [
+      "clear all goal"
+    ],
+    "loseConditions": [
+      "die"
+    ],
+    "strategyTags": [
+      "avoid-collisions",
+      "attack-targets",
+      "position-puzzle",
+      "state-change",
+      "clear-objectives"
+    ],
+    "digestHash": "sha256:acbe784c340166b0f992ef9bf96defbbcdef97eb71437e31d6219b680d0eccf2",
+    "promptText": "Strategic digest acbe784c3401 for bait.\nControls: UP|DOWN|LEFT|RIGHT|WAIT. Avatar: MovingAvatar.\nScore by: box hit by hole (+1), kill goal (+5), kill mushroom (+1).\nAvoid: hole.\nMechanics: push box, collect key to transform.\nWin: clear all goal.\nLose: die.\nStrategy tags: avoid-collisions, attack-targets, position-puzzle, state-change, clear-objectives."
+  },
+  "classification": {
+    "classifierVersion": 1,
+    "archetype": "pusher-puzzle",
+    "subtypes": [
+      "transform"
+    ],
+    "pace": "reactive",
+    "inputs": {
+      "avatarType": "MovingAvatar",
+      "physicsCategory": "gridphysics"
+    }
+  },
+  "promptText": "Strategic digest acbe784c3401 for bait.\nControls: UP|DOWN|LEFT|RIGHT|WAIT. Avatar: MovingAvatar.\nScore by: box hit by hole (+1), kill goal (+5), kill mushroom (+1).\nAvoid: hole.\nMechanics: push box, collect key to transform.\nWin: clear all goal.\nLose: die.\nStrategy tags: avoid-collisions, attack-targets, position-puzzle, state-change, clear-objectives.",
+  "evaluationStatus": "candidate",
+  "createdAt": "2026-07-02T04:22:08.530Z",
+  "updatedAt": "2026-07-02T04:22:08.530Z"
+}

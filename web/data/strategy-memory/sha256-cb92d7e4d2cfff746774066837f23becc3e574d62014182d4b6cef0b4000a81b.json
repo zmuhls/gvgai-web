@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 2,
+  "memoryKey": "sha256:cb92d7e4d2cfff746774066837f23becc3e574d62014182d4b6cef0b4000a81b",
+  "gameId": 32,
+  "gameName": "doorkoban",
+  "vgdlPath": "examples/gridphysics/doorkoban.txt",
+  "rulesHash": "sha256:10a61138ab4efc307665005950c5496f6d41aa39dc6cdb10f554868883fab1c7",
+  "digestHash": "sha256:cb92d7e4d2cfff746774066837f23becc3e574d62014182d4b6cef0b4000a81b",
+  "digest": {
+    "schemaVersion": 1,
+    "gameId": 32,
+    "gameName": "doorkoban",
+    "rulesHash": "sha256:10a61138ab4efc307665005950c5496f6d41aa39dc6cdb10f554868883fab1c7",
+    "avatar": {
+      "type": "MovingAvatar",
+      "stype": null,
+      "keyHandler": "Pulse"
+    },
+    "controls": {
+      "actions": [
+        "UP",
+        "DOWN",
+        "LEFT",
+        "RIGHT",
+        "WAIT"
+      ],
+      "directions": [
+        "UP",
+        "DOWN",
+        "LEFT",
+        "RIGHT"
+      ],
+      "useLabel": "USE"
+    },
+    "scoring": [
+      "box0 hit by hole0 (+1)",
+      "box1 hit by hole1 (+2)",
+      "box2 hit by hole2 (+4)",
+      "box3 hit by hole3 (+8)",
+      "kill exit (+16)"
+    ],
+    "hazards": [],
+    "mechanics": [
+      "push box"
+    ],
+    "winConditions": [
+      "clear all exit"
+    ],
+    "loseConditions": [
+      "timeout"
+    ],
+    "strategyTags": [
+      "attack-targets",
+      "position-puzzle",
+      "clear-objectives"
+    ],
+    "digestHash": "sha256:cb92d7e4d2cfff746774066837f23becc3e574d62014182d4b6cef0b4000a81b",
+    "promptText": "Strategic digest cb92d7e4d2cf for doorkoban.\nControls: UP|DOWN|LEFT|RIGHT|WAIT. Avatar: MovingAvatar.\nScore by: box0 hit by hole0 (+1), box1 hit by hole1 (+2), box2 hit by hole2 (+4), box3 hit by hole3 (+8), kill exit (+16).\nMechanics: push box.\nWin: clear all exit.\nLose: timeout.\nStrategy tags: attack-targets, position-puzzle, clear-objectives."
+  },
+  "classification": {
+    "classifierVersion": 1,
+    "archetype": "pusher-puzzle",
+    "subtypes": [
+      "timed"
+    ],
+    "pace": "deliberate",
+    "inputs": {
+      "avatarType": "MovingAvatar",
+      "physicsCategory": "gridphysics"
+    }
+  },
+  "promptText": "Strategic digest cb92d7e4d2cf for doorkoban.\nControls: UP|DOWN|LEFT|RIGHT|WAIT. Avatar: MovingAvatar.\nScore by: box0 hit by hole0 (+1), box1 hit by hole1 (+2), box2 hit by hole2 (+4), box3 hit by hole3 (+8), kill exit (+16).\nMechanics: push box.\nWin: clear all exit.\nLose: timeout.\nStrategy tags: attack-targets, position-puzzle, clear-objectives.",
+  "evaluationStatus": "candidate",
+  "createdAt": "2026-07-02T04:22:08.530Z",
+  "updatedAt": "2026-07-02T04:22:08.530Z"
+}

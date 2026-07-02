@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 2,
+  "memoryKey": "sha256:812795fce59a893f4af130d244222e1b858585684e4957849392997a16f4f840",
+  "gameId": 0,
+  "gameName": "aliens",
+  "vgdlPath": "examples/gridphysics/aliens.txt",
+  "rulesHash": "sha256:83e616a83b4d829d31f929709d12ba0b3ac82b77ba909b4d9515c3a1eff5b9a7",
+  "digestHash": "sha256:812795fce59a893f4af130d244222e1b858585684e4957849392997a16f4f840",
+  "digest": {
+    "schemaVersion": 1,
+    "gameId": 0,
+    "gameName": "aliens",
+    "rulesHash": "sha256:83e616a83b4d829d31f929709d12ba0b3ac82b77ba909b4d9515c3a1eff5b9a7",
+    "avatar": {
+      "type": "FlakAvatar",
+      "stype": "sam",
+      "keyHandler": null
+    },
+    "controls": {
+      "actions": [
+        "LEFT",
+        "RIGHT",
+        "SHOOT",
+        "WAIT"
+      ],
+      "directions": [
+        "LEFT",
+        "RIGHT"
+      ],
+      "useLabel": "SHOOT"
+    },
+    "scoring": [
+      "base hit by sam (+1)",
+      "alien (-1)",
+      "bomb (-1)",
+      "alien hit by sam (+2)"
+    ],
+    "hazards": [
+      "alien",
+      "bomb"
+    ],
+    "mechanics": [],
+    "winConditions": [
+      "clear all portal and alien"
+    ],
+    "loseConditions": [
+      "die"
+    ],
+    "strategyTags": [
+      "avoid-collisions",
+      "attack-targets",
+      "clear-objectives",
+      "use-action",
+      "lane-control"
+    ],
+    "digestHash": "sha256:812795fce59a893f4af130d244222e1b858585684e4957849392997a16f4f840",
+    "promptText": "Strategic digest 812795fce59a for aliens.\nControls: LEFT|RIGHT|SHOOT|WAIT. Avatar: FlakAvatar.\nScore by: base hit by sam (+1), alien (-1), bomb (-1), alien hit by sam (+2).\nAvoid: alien, bomb.\nWin: clear all portal and alien.\nLose: die.\nStrategy tags: avoid-collisions, attack-targets, clear-objectives, use-action, lane-control."
+  },
+  "classification": {
+    "classifierVersion": 1,
+    "archetype": "shooter-lane",
+    "subtypes": [
+      "lane"
+    ],
+    "pace": "reactive",
+    "inputs": {
+      "avatarType": "FlakAvatar",
+      "physicsCategory": "gridphysics"
+    }
+  },
+  "promptText": "Strategic digest 812795fce59a for aliens.\nControls: LEFT|RIGHT|SHOOT|WAIT. Avatar: FlakAvatar.\nScore by: base hit by sam (+1), alien (-1), bomb (-1), alien hit by sam (+2).\nAvoid: alien, bomb.\nWin: clear all portal and alien.\nLose: die.\nStrategy tags: avoid-collisions, attack-targets, clear-objectives, use-action, lane-control.",
+  "evaluationStatus": "candidate",
+  "createdAt": "2026-07-02T04:22:08.529Z",
+  "updatedAt": "2026-07-02T04:22:08.529Z"
+}

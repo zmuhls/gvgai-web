@@ -9,6 +9,8 @@ const {
   runArcadeBatchEvaluation
 } = require('./batch-evaluator');
 const { selectGames } = require('./game-registry');
+const { getCachedClassification } = require('./game-classifier');
+const { getClassDefaults } = require('./class-defaults');
 const {
   DEFAULT_MEMORY_DIR,
   upsertMemoryForGame,
@@ -148,10 +150,17 @@ function summarizeVariant(results) {
 }
 
 function compareGameGate(gameId, baselineResults, digestResults, baselineErrors, digestErrors, thresholds = {}) {
-  const scoreGain = Number(thresholds.scoreGain ?? DEFAULT_SCORE_GAIN);
-  const tickGain = Number(thresholds.tickGain ?? DEFAULT_TICK_GAIN);
-  const promptMaxRatio = Number(thresholds.promptMaxRatio ?? DEFAULT_PROMPT_MAX_RATIO);
-  const promptDropRatio = Number(thresholds.promptDropRatio ?? DEFAULT_PROMPT_DROP_RATIO);
+  // Per-class gate thresholds: explicit options win, then the archetype's
+  // memoryGate entry in class-defaults.json, then the code defaults. Puzzle
+  // games can demand smaller tick gains; survivors larger ones.
+  const archetype = thresholds.archetype
+    || getCachedClassification(gameId)?.archetype
+    || null;
+  const classGate = archetype ? getClassDefaults(archetype).memoryGate || {} : {};
+  const scoreGain = Number(thresholds.scoreGain ?? classGate.scoreGain ?? DEFAULT_SCORE_GAIN);
+  const tickGain = Number(thresholds.tickGain ?? classGate.tickGain ?? DEFAULT_TICK_GAIN);
+  const promptMaxRatio = Number(thresholds.promptMaxRatio ?? classGate.promptMaxRatio ?? DEFAULT_PROMPT_MAX_RATIO);
+  const promptDropRatio = Number(thresholds.promptDropRatio ?? classGate.promptDropRatio ?? DEFAULT_PROMPT_DROP_RATIO);
   const baselineByPair = new Map(baselineResults.map(result => [pairKey(result), result]));
   const digestByPair = new Map(digestResults.map(result => [pairKey(result), result]));
   const reasons = [];
@@ -207,6 +216,7 @@ function compareGameGate(gameId, baselineResults, digestResults, baselineErrors,
   const accepted = blockers.length === 0;
   return {
     gameId: Number(gameId),
+    archetype,
     accepted,
     evaluationStatus: accepted ? 'accepted' : 'rejected',
     reasons,

@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const strategyMemoryStore = require('./strategy-memory-store');
+const { getCachedClassification } = require('./game-classifier');
+const { applyClassDefaults } = require('./class-defaults');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const TEMPLATES_DIR = path.join(DATA_DIR, 'templates');
@@ -215,7 +217,8 @@ function resolveGamePromptConfig(gameId, levelId, options = {}) {
   }
 
   let resolvedStrategicMemory = null;
-  if (options.strategyMemory !== 'baseline' && options.strategyMemory !== 'disabled') {
+  const memoryKilled = process.env.STRATEGY_MEMORY_DISABLED === '1';
+  if (!memoryKilled && options.strategyMemory !== 'baseline' && options.strategyMemory !== 'disabled') {
     resolvedStrategicMemory = options.strategyMemoryRecord || strategyMemoryStore.resolveGameMemory(gameId, config.strategicDigest, {
       memoryDir: options.strategyMemoryDir,
       strategyMemory: options.strategyMemory,
@@ -234,17 +237,24 @@ function resolveGamePromptConfig(gameId, levelId, options = {}) {
     gameContent = resolvedStrategicMemory.promptText || resolvedStrategicMemory.digest?.promptText || gameContent;
   }
 
+  // Class-derived runtime defaults: the game's classification (backfilled into
+  // the config, else computed from its VGDL) fills macroActions/llmSettings
+  // beneath any explicit per-game settings.
+  const classification = config.classification || getCachedClassification(gameId) || null;
+  const effective = applyClassDefaults(config, classification);
+
   return {
     systemContent,
     gameContent,
     levelContent,
     gameName: config.gameName || null,
-    llmSettings: config.llmSettings || { maxTokens: 100, temperature: 0.7 },
+    classification,
+    llmSettings: effective.llmSettings || { maxTokens: 100, temperature: 0.7 },
     gridSymbolMap: config.gridSymbolMap || null,
     gridLegend: config.gridLegend || null,
     actionAliases: config.actionAliases || null,
     codeProtocol,
-    macroActions: config.macroActions || null,
+    macroActions: effective.macroActions,
     strategicDigest: config.strategicDigest || null,
     strategicDigestMemory: resolvedStrategicMemory
       ? {

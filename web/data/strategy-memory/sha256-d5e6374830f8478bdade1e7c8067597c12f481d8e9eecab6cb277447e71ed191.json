@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 2,
+  "memoryKey": "sha256:d5e6374830f8478bdade1e7c8067597c12f481d8e9eecab6cb277447e71ed191",
+  "gameId": 18,
+  "gameName": "chase",
+  "vgdlPath": "examples/gridphysics/chase.txt",
+  "rulesHash": "sha256:60f3ffcfc4ae428a27d93c62c66380f9b2ba9e92a4c478c66936ffab41ebef99",
+  "digestHash": "sha256:d5e6374830f8478bdade1e7c8067597c12f481d8e9eecab6cb277447e71ed191",
+  "digest": {
+    "schemaVersion": 1,
+    "gameId": 18,
+    "gameName": "chase",
+    "rulesHash": "sha256:60f3ffcfc4ae428a27d93c62c66380f9b2ba9e92a4c478c66936ffab41ebef99",
+    "avatar": {
+      "type": "MovingAvatar",
+      "stype": null,
+      "keyHandler": null
+    },
+    "controls": {
+      "actions": [
+        "UP",
+        "DOWN",
+        "LEFT",
+        "RIGHT",
+        "WAIT"
+      ],
+      "directions": [
+        "UP",
+        "DOWN",
+        "LEFT",
+        "RIGHT"
+      ],
+      "useLabel": "USE"
+    },
+    "scoring": [
+      "angry (-1)",
+      "collect scared (+1)"
+    ],
+    "hazards": [
+      "angry"
+    ],
+    "mechanics": [
+      "collect scared to transform"
+    ],
+    "winConditions": [
+      "clear all scared"
+    ],
+    "loseConditions": [
+      "die"
+    ],
+    "strategyTags": [
+      "avoid-collisions",
+      "collect-resources",
+      "state-change",
+      "clear-objectives"
+    ],
+    "digestHash": "sha256:d5e6374830f8478bdade1e7c8067597c12f481d8e9eecab6cb277447e71ed191",
+    "promptText": "Strategic digest d5e6374830f8 for chase.\nControls: UP|DOWN|LEFT|RIGHT|WAIT. Avatar: MovingAvatar.\nScore by: angry (-1), collect scared (+1).\nAvoid: angry.\nMechanics: collect scared to transform.\nWin: clear all scared.\nLose: die.\nStrategy tags: avoid-collisions, collect-resources, state-change, clear-objectives."
+  },
+  "classification": {
+    "classifierVersion": 1,
+    "archetype": "collector",
+    "subtypes": [
+      "transform"
+    ],
+    "pace": "reactive",
+    "inputs": {
+      "avatarType": "MovingAvatar",
+      "physicsCategory": "gridphysics"
+    }
+  },
+  "promptText": "Strategic digest d5e6374830f8 for chase.\nControls: UP|DOWN|LEFT|RIGHT|WAIT. Avatar: MovingAvatar.\nScore by: angry (-1), collect scared (+1).\nAvoid: angry.\nMechanics: collect scared to transform.\nWin: clear all scared.\nLose: die.\nStrategy tags: avoid-collisions, collect-resources, state-change, clear-objectives.",
+  "evaluationStatus": "candidate",
+  "createdAt": "2026-07-02T04:22:08.531Z",
+  "updatedAt": "2026-07-02T04:22:08.531Z"
+}

@@ -248,8 +248,14 @@ app.post('/api/game/start', async (req, res) => {
     // Start screenshot streaming BEFORE LLM connects (screenshots begin on first ACT tick)
     startScreenshotStreaming();
 
-    // Create and connect LLM client
-    const llmClient = new runtime.LLMClient({ runId });
+    // Create and connect LLM client. strategyMemory 'accepted' makes the live
+    // gate explicit: only eval-accepted strategy-memory records may replace the
+    // game-rules prompt layer (candidates stay invisible; STRATEGY_MEMORY_DISABLED=1
+    // switches memory off entirely).
+    const llmClient = new runtime.LLMClient({
+      runId,
+      promptConfigOptions: { strategyMemory: 'accepted' }
+    });
 
     // Wire session-end cleanup
     llmClient.onSessionEnd = () => {
@@ -278,7 +284,9 @@ app.post('/api/game/start', async (req, res) => {
           processId: gameProcess.processId,
           strategy_present: Boolean(strategy),
           strategy_sanitized: strategyWarnings.length > 0,
-          strategy_warning_types: strategyWarnings.map(w => w.type)
+          strategy_warning_types: strategyWarnings.map(w => w.type),
+          archetype: llmClient.promptConfig?.classification?.archetype || null,
+          strategic_digest_memory: llmClient.promptConfig?.strategicDigestMemory || null
         }
       });
     } catch (error) {

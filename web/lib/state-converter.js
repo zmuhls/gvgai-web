@@ -417,7 +417,10 @@ function buildPrompt(sso, promptConfig, stateTracker, sessionStrategy) {
   // Macro-action games ask for a short multi-step PLAN instead of a single ACTION;
   // steps execute front-first, so a truncated plan is still a valid prefix.
   const narrate = !!sessionStrategy;
-  const macro = narrate && promptConfig.macroActions && promptConfig.macroActions.enabled;
+  // Same kill switch as the executor's macroEnabled() — the prompt must not
+  // ask for a PLAN the executor will ignore.
+  const macro = narrate && promptConfig.macroActions && promptConfig.macroActions.enabled &&
+    process.env.MACRO_ACTIONS_DISABLED !== '1';
   let closing;
   if (macro) {
     const maxSteps = promptConfig.macroActions.maxSteps || 4;

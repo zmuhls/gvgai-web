@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { MODELS } = require('./models');
 const { getCachedClassification } = require('./game-classifier');
+const { getClassDefaults } = require('./class-defaults');
 
 const DEFAULT_GAME_COUNT = 3;
 const MIN_SURVIVAL_TICKS = 50;
@@ -168,6 +169,17 @@ function buildArcadeEvalPlan(options = {}) {
     }
   }
 
+  const byArchetype = {};
+  for (const game of games) {
+    const archetype = game.classification?.archetype || 'unclassified';
+    byArchetype[archetype] = byArchetype[archetype] || { games: [], caseCount: 0 };
+    byArchetype[archetype].games.push(game.id);
+  }
+  for (const evalCase of cases) {
+    const archetype = evalCase.archetype || 'unclassified';
+    if (byArchetype[archetype]) byArchetype[archetype].caseCount += 1;
+  }
+
   return {
     generatedAt: new Date().toISOString(),
     minSurvivalTicks: MIN_SURVIVAL_TICKS,
@@ -177,6 +189,7 @@ function buildArcadeEvalPlan(options = {}) {
     games,
     models,
     strategies,
+    byArchetype,
     cases
   };
 }
@@ -218,8 +231,11 @@ function filterEvalCases(plan, filters = {}) {
 }
 
 function normalizeEvalResult(evalCase, summary = {}, options = {}) {
-  const minSurvivalTicks = options.minSurvivalTicks || MIN_SURVIVAL_TICKS;
-  const nilLoopThreshold = options.nilLoopThreshold || NIL_LOOP_THRESHOLD;
+  // Per-class thresholds: explicit options win, then the archetype's eval
+  // entry in class-defaults.json, then the global constants.
+  const classEval = evalCase.archetype ? getClassDefaults(evalCase.archetype).eval || {} : {};
+  const minSurvivalTicks = options.minSurvivalTicks || classEval.minSurvivalTicks || MIN_SURVIVAL_TICKS;
+  const nilLoopThreshold = options.nilLoopThreshold || classEval.nilLoopThreshold || NIL_LOOP_THRESHOLD;
   const ticks = Number(summary.ticks || 0);
   const actions = Array.isArray(summary.actions) ? summary.actions : [];
   const winner = summary.winner || null;
@@ -229,6 +245,7 @@ function normalizeEvalResult(evalCase, summary = {}, options = {}) {
     runId: evalCase.runId,
     gameId: evalCase.gameId,
     gameName: evalCase.gameName,
+    archetype: evalCase.archetype || null,
     levelId: evalCase.levelId,
     modelId: evalCase.modelId,
     modelName: evalCase.modelName,

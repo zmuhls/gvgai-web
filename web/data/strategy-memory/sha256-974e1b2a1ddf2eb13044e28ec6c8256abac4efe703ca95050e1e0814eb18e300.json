@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 2,
+  "memoryKey": "sha256:974e1b2a1ddf2eb13044e28ec6c8256abac4efe703ca95050e1e0814eb18e300",
+  "gameId": 11,
+  "gameName": "boulderdash",
+  "vgdlPath": "examples/gridphysics/boulderdash.txt",
+  "rulesHash": "sha256:2f3fe9b78dda1dd445b670932671ebfb089a7a636579044f7c98d41b605ef1bf",
+  "digestHash": "sha256:974e1b2a1ddf2eb13044e28ec6c8256abac4efe703ca95050e1e0814eb18e300",
+  "digest": {
+    "schemaVersion": 1,
+    "gameId": 11,
+    "gameName": "boulderdash",
+    "rulesHash": "sha256:2f3fe9b78dda1dd445b670932671ebfb089a7a636579044f7c98d41b605ef1bf",
+    "avatar": {
+      "type": "ShootAvatar",
+      "stype": "sword",
+      "keyHandler": null
+    },
+    "controls": {
+      "actions": [
+        "UP",
+        "DOWN",
+        "LEFT",
+        "RIGHT",
+        "ATTACK",
+        "WAIT"
+      ],
+      "directions": [
+        "UP",
+        "DOWN",
+        "LEFT",
+        "RIGHT"
+      ],
+      "useLabel": "ATTACK"
+    },
+    "scoring": [
+      "collect diamond (+2)",
+      "boulder (-1)",
+      "butterfly (-1)",
+      "butterfly hit by crab (+1)"
+    ],
+    "hazards": [
+      "butterfly"
+    ],
+    "mechanics": [
+      "collect diamond"
+    ],
+    "winConditions": [
+      "clear all exitdoor"
+    ],
+    "loseConditions": [
+      "die"
+    ],
+    "strategyTags": [
+      "avoid-collisions",
+      "collect-resources",
+      "attack-targets",
+      "clear-objectives",
+      "use-action"
+    ],
+    "digestHash": "sha256:974e1b2a1ddf2eb13044e28ec6c8256abac4efe703ca95050e1e0814eb18e300",
+    "promptText": "Strategic digest 974e1b2a1ddf for boulderdash.\nControls: UP|DOWN|LEFT|RIGHT|ATTACK|WAIT. Avatar: ShootAvatar.\nScore by: collect diamond (+2), boulder (-1), butterfly (-1), butterfly hit by crab (+1).\nAvoid: butterfly.\nMechanics: collect diamond.\nWin: clear all exitdoor.\nLose: die.\nStrategy tags: avoid-collisions, collect-resources, attack-targets, clear-objectives, use-action."
+  },
+  "classification": {
+    "classifierVersion": 1,
+    "archetype": "collector",
+    "subtypes": [],
+    "pace": "reactive",
+    "inputs": {
+      "avatarType": "ShootAvatar",
+      "physicsCategory": "gridphysics"
+    }
+  },
+  "promptText": "Strategic digest 974e1b2a1ddf for boulderdash.\nControls: UP|DOWN|LEFT|RIGHT|ATTACK|WAIT. Avatar: ShootAvatar.\nScore by: collect diamond (+2), boulder (-1), butterfly (-1), butterfly hit by crab (+1).\nAvoid: butterfly.\nMechanics: collect diamond.\nWin: clear all exitdoor.\nLose: die.\nStrategy tags: avoid-collisions, collect-resources, attack-targets, clear-objectives, use-action.",
+  "evaluationStatus": "candidate",
+  "createdAt": "2026-07-02T04:22:08.531Z",
+  "updatedAt": "2026-07-02T04:22:08.531Z"
+}
