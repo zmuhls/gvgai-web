@@ -130,11 +130,34 @@ public class JavaServer {
 
 
 
-        //Game and level to play
-        String game = gamesPath + games[gameIdx] + ".txt";
+        //Game and level to play. The Node web layer numbers games by line in
+        //examples/all_games_sp.csv, which has diverged from the hardcoded array
+        //above (the CSV gained games the array lacks, shifting every id after 19).
+        //Resolve from the CSV first so both layers agree; fall back to the array.
+        String gameBase = null;
+        java.io.File gamesCsv = new java.io.File(gamesDir + "/examples/all_games_sp.csv");
+        if (gamesCsv.exists()) {
+            java.util.Scanner csvScanner = new java.util.Scanner(gamesCsv);
+            while (csvScanner.hasNextLine()) {
+                String[] csvParts = csvScanner.nextLine().trim().split(",");
+                if (csvParts.length != 2) continue;
+                try {
+                    if (Integer.parseInt(csvParts[0].trim()) == gameIdx) {
+                        gameBase = gamesDir + "/" + csvParts[1].trim().replaceAll("\\.txt$", "");
+                        break;
+                    }
+                } catch (NumberFormatException ignored) {}
+            }
+            csvScanner.close();
+        }
+        if (gameBase == null) {
+            gameBase = gamesPath + games[gameIdx];
+        }
+        String gameName = gameBase.substring(gameBase.lastIndexOf('/') + 1);
+        String game = gameBase + ".txt";
         String[] level_files = new String[5];
         for (int i = 0; i <= 4; i++){
-            level_files[i] = gamesPath + games[gameIdx] + "_lvl" + i +".txt";
+            level_files[i] = gameBase + "_lvl" + i +".txt";
         }
         if (levelIdx != 0) {
             String selectedLevel = level_files[levelIdx];
@@ -142,7 +165,7 @@ public class JavaServer {
             level_files[0] = selectedLevel;
         }
         // This plays one selected level for a batch-eval case.
-        System.out.println("[GAME] Game idx:" + gameIdx + " game name " + games[gameIdx] + " first level " + levelIdx);
+        System.out.println("[GAME] Game idx:" + gameIdx + " game name " + gameName + " first level " + levelIdx);
         LearningMachine.runOneGame(game, level_files[0], visuals, cmd, null, 0);
 
 

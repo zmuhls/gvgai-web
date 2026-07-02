@@ -52,6 +52,12 @@ npm run eval:arcade          # dry-run arcade eval plan (--dry-run --all)
 npm run eval:arcade:execute  # actually run the arcade eval batch (spawns Java + LLM calls)
 npm run telemetry:check      # verify Supabase telemetry connectivity
 npm run telemetry:backfill   # replay local telemetry-events.jsonl into Supabase
+
+node scripts/classify-games.js --dry-run --all   # print archetype/pace for all 122 games
+node scripts/classify-games.js --write --all     # backfill classification blocks into data/games/*.json
+node scripts/generate-strategy-memory.js --featured   # (re)build candidate memory records
+node scripts/evaluate-strategy-memory.js --featured --model gpt-oss:120b --strategy-id puzzle --max-actions 150
+                             # real A/B gate (spawns Java + live LLM calls; flips record statuses)
 ```
 
 The web frontend spawns the Java process automatically via `game-manager.js` when a game is started from the browser. Tests use Node's built-in runner only — no Jest/Mocha; name new files `web/test/*.test.js`.
@@ -140,6 +146,14 @@ Converts the `observationGrid[x][y][sprites]` 3D array from the SSO JSON into a 
 
 Models matching patterns in `config.json:multimodalPatterns` automatically get the `gameStateByBytes.png` screenshot attached as a base64 image content block. The Java engine writes this PNG to disk each frame; `server.js` also streams it to the browser via Socket.IO for visualization.
 
+### Game classification & class-derived runtime defaults
+
+Every game gets a computed classification (`lib/game-classifier.js`, pure rules over the VGDL digest): an **archetype** (`shooter-lane`, `shooter-roaming`, `pusher-puzzle`, `collector`, `chaser`, `survivor`, `reflex-pilot`, `navigator`), **subtypes** (`hazard-dense`, `timed`, `transform`, …), and a **pace** (`twitch` | `reactive` | `deliberate`) keyed to the staleness constraint above. Classification is stored in each game config (backfilled by `scripts/classify-games.js`) and computed lazily for configs without one. It must never be added to the hashed digest object itself — that would churn every `digestHash`, which is the strategy-memory key.
+
+`web/data/class-defaults.json` maps archetypes (plus a `twitch` pace overlay) to runtime defaults — `macroActions`, `llmSettings`, per-class eval thresholds (`eval`), and memory-gate thresholds (`memoryGate`). `lib/class-defaults.js` `applyClassDefaults()` merges them beneath explicit config inside `prompt-store.js` `resolveGamePromptConfig` — the single merge site feeding prompt shape, plan contract, and executor. Consequences: pusher-puzzle/collector games get macro plans by default, and effective `maxTokens` is floored at 320 whenever macro is enabled (the PLAN reply truncates below that). Code-protocol games never inherit macro defaults.
+
+Precedence, most binding first: env kill switches (`MACRO_ACTIONS_DISABLED=1`, `CLASS_DEFAULTS_DISABLED=1`, `STRATEGY_MEMORY_DISABLED=1`) > explicit per-game config keys (an explicit `"enabled": false` survives the merge) > `config.classification.archetypeOverride` (manual pin for misclassified games) > archetype entry > pace overlay > code constants. `/api/games` serves `archetype`/`pace` per game; the digest endpoint serves the full block; the frontend re-ranks strategy preset cards by archetype affinity.
+
 ### Web Frontend — the "Arcade" walk-up flow
 
 `web/public/` (vanilla JS, no framework) drives a kiosk-style flow for the Inference Arcade showcase: pick a game (featured grid + browse-all-122) → tap a preset strategy card that pre-fills an editable text box → watch the game with a **live narration panel** (the model's `reason` per decision + a "following your strategy" badge + the answering `provider`) → an **end-of-run summary card** (score, echoed strategy, stated-adherence label, highlight decisions). The Prompt Dashboard (`dashboard.js`) is the separate power-user config editor. Browser Socket.IO events: `game-state`, `game-frame` (PNG), `llm-reasoning` (now carries `reason`/`strategy`/`provider`), `level-end`, `run-summary` (the summary card payload), `session-end`, `llm-error`.
@@ -170,6 +184,8 @@ The single-session constraint still holds (one Java process, fixed port 8080, on
 | `game-registry.js` | Reads `examples/all_games_sp.csv` + `featured.json`; `selectGames()` picks the eval/showcase set |
 | `screenshot-path.js` | `resolveScreenshotPath(gvgaiConfig)` — single resolver for the per-frame PNG path |
 | `vgdl-digest.js` | Parses a VGDL `.txt` into a structural "strategic digest" (sprites/interactions/termination) with a content hash; feeds strategy-memory |
+| `game-classifier.js` | `classifyDigest()`/`getCachedClassification()` — archetype/subtypes/pace from the digest (see Game classification section) |
+| `class-defaults.js` | `applyClassDefaults()` — merges `data/class-defaults.json` archetype/pace defaults beneath explicit game config; `CLASS_DEFAULTS_DISABLED=1` bypass |
 | `telemetry-store.js` | Event capture (`track`), batched async flush to Supabase, local `data/telemetry-events.jsonl` fallback, dashboard read models (`getDashboardSnapshot`) |
 | `strategy-memory-store.js` + `strategy-memory-evaluator.js` | Per-game strategy "memory" records (built from VGDL digest), cached CRUD under `data/strategy-memory/`, and A/B evaluation (baseline vs digest-memory prompt) |
 | `eval-plan.js` + `batch-evaluator.js` + `offline-game-evaluator.js` | Arcade eval harness: build game×model×strategy plans, run batches (spawns Java + real LLM via `game-manager`/`llm-client`), and an offline scripted-policy evaluator for prompt-pipeline tests without a live model. `createEventSink(broadcastIo)` + `runEvalCase`'s `onCaseStart` are the seams the marble run reuses to broadcast live |
@@ -180,8 +196,9 @@ The single-session constraint still holds (one Java process, fixed port 8080, on
 |------|---------|
 | `templates/*.json` | Reusable prompt layers (system, strategy, etc.) |
 | `templates/_index.json` | Template registry |
-| `games/{gameId}.json` | Per-game config: prompt assembly, LLM settings, `actionAliases`, `gridSymbolMap` |
+| `games/{gameId}.json` | Per-game config: prompt assembly, LLM settings, `actionAliases`, `gridSymbolMap`, `classification` |
 | `featured.json` | `{ "featured": [gameIds] }` — the curated showcase set; `routes/games.js` merges a `featured` flag into `/api/games`. Curation is data, no redeploy. |
+| `class-defaults.json` | Per-archetype runtime defaults + `twitch` pace overlay (macro settings, token floors, eval/memory-gate thresholds) |
 | `strategy-memory/` | Per-game strategy-memory records + `_index.json` (written by the strategy-memory scripts) |
 | `telemetry-events.jsonl` + `eval-runs/` | Offline telemetry fallback log and persisted arcade-eval output artifacts |
 
@@ -214,7 +231,7 @@ The single-session constraint still holds (one Java process, fixed port 8080, on
 
 `customOverride` takes precedence over `templateId`. Both are optional per layer. (`maxTokens` defaults to 160 in code when unset, 200 on featured games — reasoning models need headroom; keep `customOverride` free of output-format instructions since the closing contract now governs that.)
 
-Two optional per-game blocks change the response contract: `codeProtocol` (compact single-letter action codes + policy heuristics, see `code-protocol.js`) and `macroActions` (`{ enabled, maxSteps, ticksPerStep }` — the multi-step plan queue described under Critical Timing Constraint).
+Two optional per-game blocks change the response contract: `codeProtocol` (compact single-letter action codes + policy heuristics, see `code-protocol.js`) and `macroActions` (`{ enabled, maxSteps, ticksPerStep }` — the multi-step plan queue described under Critical Timing Constraint). `macroActions` and `llmSettings` are also filled in by class defaults when the config leaves them unset (see Game classification section) — explicit config keys always win. Configs also carry a `classification` block written by `scripts/classify-games.js`; add `archetypeOverride` inside it to pin a misclassified game.
 
 ## LLM Routing (web/lib/models.js)
 
@@ -231,8 +248,8 @@ Two optional per-game blocks change the response contract: `codeProtocol` (compa
 These three subsystems are all newer than the original arcade core loop and live entirely under `web/`.
 
 - **Telemetry (`telemetry-store.js`, `routes/telemetry.js`, `supabase/migrations/`)** — server- and browser-emitted events (`evaluation`, `user_experience`, `clickthrough`, `model_telemetry`, `trace`, `system`). Events are buffered and flushed in batches to Supabase; if Supabase is unconfigured/unreachable they append to `web/data/telemetry-events.jsonl` (the offline fallback that `npm run telemetry:backfill` later replays). `server.js` wraps non-`/api/telemetry` API requests in a timing middleware that auto-emits `api_request` events. Read models for dashboards come from the SQL views in `supabase/migrations/` (see `web/SUPABASE_TELEMETRY.md`). All of this is gated by env vars and degrades to no-op/JSONL when unset.
-- **Strategy memory (`strategy-memory-store.js`, `vgdl-digest.js`)** — derives a structural digest from each game's VGDL and stores a per-game "memory" record under `web/data/strategy-memory/`. `strategy-memory-evaluator.js` A/B-tests a `baseline` prompt vs a `digest-memory` prompt to measure whether injecting the digest helps. Generate/evaluate via `scripts/generate-strategy-memory.js` and `scripts/evaluate-strategy-memory.js`.
-- **Eval harness (`eval-plan.js`, `batch-evaluator.js`, `offline-game-evaluator.js`, `routes/evals.js`)** — `buildArcadeEvalPlan()` enumerates game × model × strategy cases; `runArcadeBatchEvaluation()` executes them by spawning real Java game sessions and real LLM calls (slow, costs tokens — `npm run eval:arcade:execute`). `offline-game-evaluator.js` is the scripted-policy stand-in used by tests and dry runs so the prompt/parse pipeline can be exercised without a live model. Output artifacts land in `web/evals/` and `web/data/eval-runs/`; the `/api/evals/arcade` route serves the plan and `/api/evals/arcade/run` triggers a batch.
+- **Strategy memory (`strategy-memory-store.js`, `vgdl-digest.js`)** — derives a structural digest from each game's VGDL and stores a per-game "memory" record under `web/data/strategy-memory/` (schema v2 records carry the game's `classification`). `strategy-memory-evaluator.js` A/B-tests a `baseline` prompt vs a `digest-memory` prompt and flips each record's `evaluationStatus` to accepted/rejected; gate thresholds come per-archetype from `class-defaults.json` `memoryGate`. **The live path is gated**: `server.js` constructs the walk-up `LLMClient` with `strategyMemory: 'accepted'`, so only accepted records replace the game-context prompt layer (candidates are invisible; `STRATEGY_MEMORY_DISABLED=1` switches injection off; code-protocol games never inject). Generate/evaluate via `scripts/generate-strategy-memory.js` and `scripts/evaluate-strategy-memory.js` (the evaluator loads root `.env` itself and takes `--max-actions` — the default 40-action eval cap makes tick/score gains hard to observe on puzzle games).
+- **Eval harness (`eval-plan.js`, `batch-evaluator.js`, `offline-game-evaluator.js`, `routes/evals.js`)** — `buildArcadeEvalPlan()` enumerates game × model × strategy cases (each carries the game's `archetype`, with a `byArchetype` rollup on the plan); `runArcadeBatchEvaluation()` executes them by spawning real Java game sessions and real LLM calls (slow, costs tokens — `npm run eval:arcade:execute`). Survival/nil-loop thresholds in `normalizeEvalResult` resolve per-archetype from `class-defaults.json` before falling back to the global constants, and the eval report groups results by archetype (cross-archetype score averages aren't comparable). `offline-game-evaluator.js` is the scripted-policy stand-in used by tests and dry runs so the prompt/parse pipeline can be exercised without a live model. Output artifacts land in `web/evals/` and `web/data/eval-runs/`; the `/api/evals/arcade` route serves the plan and `/api/evals/arcade/run` triggers a batch.
 
 ## Development Notes
 
@@ -240,7 +257,7 @@ These three subsystems are all newer than the original arcade core loop and live
 - `extractQuickState()` does fast field extraction from raw JSON strings to avoid full parsing on every tick — only LLM calls do full `JSON.parse`
 - The `observationGrid` is `[x][y][sprites]` (columns-first) — iterate `y` as outer loop for row-by-row display
 - `Observation` objects have `category` (0-6) and `itype` (game-specific sprite ID)
-- Game index: `examples/all_games_sp.csv` (line number = gameId)
+- Game index: `examples/all_games_sp.csv` (line number = gameId). `JavaServer.java` resolves gameId from this same CSV (falling back to its legacy hardcoded array). Before July 2026 it used only the hardcoded array, whose entries diverge from the CSV at id 20 — so ids 20+ played the wrong game through the web layer (e.g. "doorkoban" (32) actually ran enemycitadel). Telemetry and tuning recorded before that fix mislabel those games. After changing the Java side, re-stage the portable runtime with `npm run java:prepare`.
 - VGDL game definitions: `examples/gridphysics/{gameName}.txt` with levels at `{gameName}_lvl{0-4}.txt`
 - Java agents must return actions within `ElapsedCpuTimer` budget
 - Framework loads agents via reflection from class path strings

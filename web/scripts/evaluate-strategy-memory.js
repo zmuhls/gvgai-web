@@ -4,6 +4,7 @@ const path = require('path');
 const { projectRoot } = require('../lib/game-registry');
 const { DEFAULT_MEMORY_DIR } = require('../lib/strategy-memory-store');
 const { evaluateStrategyMemory } = require('../lib/strategy-memory-evaluator');
+const { loadRootEnv } = require('./load-root-env');
 
 function parseArgs(argv = process.argv.slice(2)) {
   const options = {
@@ -35,6 +36,7 @@ function parseArgs(argv = process.argv.slice(2)) {
     else if (arg === '--strategy-id') options.strategyIds = argv[++i] || '';
     else if (arg === '--limit') options.limit = argv[++i] || undefined;
     else if (arg === '--repeats') options.repeats = argv[++i] || undefined;
+    else if (arg === '--max-actions') options.maxActions = Number(argv[++i]) || undefined;
     else if (arg === '--memory-dir') options.memoryDir = path.resolve(argv[++i] || DEFAULT_MEMORY_DIR);
     else if (arg === '--out') options.out = path.resolve(argv[++i] || '');
     else if (arg === '--project-root') options.projectRoot = path.resolve(argv[++i] || options.projectRoot);
@@ -48,6 +50,12 @@ function parseArgs(argv = process.argv.slice(2)) {
 }
 
 async function main() {
+  // Live variant runs call real providers via llm-client, which reads API keys
+  // from process.env — load the root .env first (same as run-arcade-eval.js).
+  const envLoad = await loadRootEnv();
+  if (envLoad.timedOut) {
+    console.warn(`[StrategyEval] skipped root .env after ${envLoad.timeoutMs}ms; using process environment`);
+  }
   const options = parseArgs();
   const result = await evaluateStrategyMemory(options);
   const prefix = result.dryRun ? '[StrategyEval:dry-run]' : '[StrategyEval]';
