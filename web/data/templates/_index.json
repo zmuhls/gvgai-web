@@ -1,9 +1,34 @@
 {
   "templates": [
-    { "id": "default-system", "name": "Default System Prompt", "layer": "system", "category": "general" },
-    { "id": "aliens-strategy", "name": "Aliens Strategy", "layer": "game", "category": "strategy" },
-    { "id": "angelsdemons-strategy", "name": "Angels & Demons Strategy", "layer": "game", "category": "strategy" },
-    { "id": "assemblyline-strategy", "name": "Assemblyline Strategy", "layer": "game", "category": "strategy" },
-    { "id": "avoidgeorge-strategy", "name": "Avoid George Strategy", "layer": "game", "category": "strategy" }
+    {
+      "id": "default-system",
+      "name": "Default System Prompt",
+      "layer": "system",
+      "category": "general"
+    },
+    {
+      "id": "aliens-strategy",
+      "name": "Aliens Strategy",
+      "layer": "game",
+      "category": "strategy"
+    },
+    {
+      "id": "angelsdemons-strategy",
+      "name": "Angels & Demons Strategy",
+      "layer": "game",
+      "category": "strategy"
+    },
+    {
+      "id": "assemblyline-strategy",
+      "name": "Assemblyline Strategy",
+      "layer": "game",
+      "category": "strategy"
+    },
+    {
+      "id": "avoidgeorge-strategy",
+      "name": "Avoid George Strategy",
+      "layer": "game",
+      "category": "strategy"
+    }
   ]
 }

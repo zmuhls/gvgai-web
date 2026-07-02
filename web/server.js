@@ -102,6 +102,16 @@ async function sendScreenshotAsync() {
     // Async file read
     const imageBuffer = await fs.promises.readFile(screenshotPath);
 
+    // Guard against partial writes: validate PNG signature (8 bytes) and
+    // minimum sane size (IHDR chunk = 25 bytes minimum for a valid PNG).
+    // Java overwrites this file in-place; without this check, a fs.watch
+    // callback can fire mid-write and we'd send a truncated PNG that the
+    // browser rejects with "The source image cannot be decoded."
+    const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    if (imageBuffer.length < 33 || !imageBuffer.subarray(0, 8).equals(PNG_SIG)) {
+      return;  // partial write — skip this frame, next fs.watch fires
+    }
+
     // Convert to base64 data URL so the client can use it directly as img.src
     const base64 = imageBuffer.toString('base64');
     io.emit('game-frame', {
@@ -144,7 +154,6 @@ function stopScreenshotStreaming() {
 
 // Middleware
 app.use(express.json());
-app.use(express.static('public-local'));
 app.use(express.static('public'));
 app.use((req, res, next) => {
   if (!req.path.startsWith('/api/') || req.path.startsWith('/api/telemetry')) {

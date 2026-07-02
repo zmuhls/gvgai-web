@@ -886,6 +886,15 @@ async function drawQueuedFrame() {
     const img = new Image();
     img.decoding = 'async';
     img.src = frame.image;
+
+    // Guard: if the data URL is empty or too short to be a valid PNG, skip
+    // without throwing — the server's PNG-signature check catches most partial
+    // writes, but a race between stat() and readFile() can still slip through.
+    if (!frame.image || frame.image.length < 80) {
+      frameState.decoding = false;
+      return;
+    }
+
     if (img.decode) {
       await img.decode();
     } else {
