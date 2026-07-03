@@ -84,3 +84,6 @@ telemetry.png
 
 # Local node_modules backup (not a dependency)
 web/node_modules.dataless-backup/
+
+# Supabase CLI link artifact (real migrations live in web/supabase/migrations/)
+/supabase/
