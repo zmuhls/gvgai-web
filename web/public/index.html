@@ -13,19 +13,39 @@
   <script src="socket.io/socket.io.js"></script>
 </head>
 <body>
-  <div id="app">
-    <header class="site-header">
-      <div class="brand-lockup">
-        <p class="eyebrow">GVGAI</p>
-        <h1 data-text="Inference Arcade">Inference Arcade</h1>
-        <p>Play retro arcade with large language models.</p>
+  <div id="boot-screen" class="boot-screen" hidden aria-hidden="true">
+    <div class="boot-inner">
+      <div class="boot-logo">◆ INFERENCE ARCADE</div>
+      <div class="boot-lines">
+        <span>CABINET BIOS 5.0 — NIGHT WATER</span>
+        <span>LINKING GVGAI ENGINE ... OK</span>
+        <span>MODEL BUS ... OK</span>
+        <span>INSERT STRATEGY</span>
       </div>
-      <nav id="main-nav">
-        <button class="nav-link active" data-target="play-section">Arcade</button>
-        <button class="nav-link" data-target="prompt-dashboard">Prompts</button>
-        <button class="nav-link" data-target="telemetry-dashboard">Telemetry</button>
-      </nav>
-    </header>
+      <button id="boot-skip" class="boot-skip" type="button">PRESS ANY KEY</button>
+    </div>
+  </div>
+
+  <header class="arcade-titlebar">
+    <div class="titlebar-brand">
+      <span class="titlebar-mark">◆</span>
+      <span class="titlebar-title">INFERENCE ARCADE</span>
+      <span class="titlebar-sub">GVGAI · LLM cabinets</span>
+    </div>
+    <nav id="main-nav">
+      <button class="nav-link active" data-target="play-section">Arcade</button>
+      <button class="nav-link" data-target="prompt-dashboard">Operator Desk</button>
+      <button class="nav-link" data-target="telemetry-dashboard">Telemetry</button>
+    </nav>
+    <div class="titlebar-status">
+      <span id="conn-lamp" class="lamp" data-state="off"><span class="lamp-dot"></span>Link</span>
+      <span id="backend-label" class="titlebar-backend">Ollama Cloud</span>
+      <span id="titlebar-clock" class="titlebar-clock">--:--</span>
+      <button id="sound-toggle" class="titlebar-sound" type="button" aria-pressed="false" title="Toggle sound">SND OFF</button>
+    </div>
+  </header>
+
+  <div id="app">
 
     <!-- Play Section (existing 3-step flow) -->
     <div id="play-section" class="section active">
@@ -136,6 +156,7 @@
       <div class="settings-row">
         <div class="form-group">
           <label for="model-select">Model:</label>
+          <div id="model-chips" class="chip-rack"></div>
           <select id="model-select"></select>
         </div>
         <div class="form-group">
@@ -156,17 +177,28 @@
     <!-- Step 3: Game Viewer -->
     <div id="game-viewer" class="step">
       <p class="step-label">3 / trace</p>
-      <h2>Run: <span id="current-game-name"></span></h2>
-      <button id="stop-game" class="btn-danger">Stop Game</button>
+      <div class="viewer-toolbar">
+        <h2>Run: <span id="current-game-name"></span></h2>
+        <button id="stop-game" class="btn-danger">Stop Game</button>
+      </div>
 
       <div class="game-container">
-        <div class="game-display">
-          <canvas id="game-canvas"></canvas>
-          <div id="frame-status" class="frame-status" aria-live="polite">Waiting for frame</div>
+        <div class="cabinet-frame">
+          <div class="game-display">
+            <canvas id="game-canvas"></canvas>
+            <div id="frame-status" class="frame-status" aria-live="polite">Waiting for frame</div>
+          </div>
           <div class="game-overlay">
             <div><span>Score</span><strong id="score">0</strong></div>
             <div><span>Health</span><strong><span id="health">0</span>/<span id="max-health">0</span></strong></div>
             <div><span>Tick</span><strong id="tick">0</strong></div>
+            <div><span>Action</span><strong id="last-action">—</strong></div>
+            <div><span>Lat</span><strong id="frame-latency">—</strong></div>
+          </div>
+          <div class="session-controls">
+            <button id="copy-session-link" class="btn-secondary" type="button">Copy session link</button>
+            <button id="fullscreen-btn" class="btn-secondary" type="button">Fullscreen</button>
+            <button id="export-trace" class="btn-secondary" type="button">Export trace</button>
           </div>
         </div>
 
@@ -194,9 +226,9 @@
     <!-- Prompt Dashboard Section -->
     <div id="prompt-dashboard" class="section">
       <div class="dashboard-heading">
-        <p class="step-label">prompt workbench</p>
-        <h2>Prompt Workbench</h2>
-        <p>Edit the prompt layers that shape play.</p>
+        <p class="step-label">operator desk</p>
+        <h2>Operator Desk</h2>
+        <p>Tune each cartridge's prompt layers — system, game context, progression.</p>
       </div>
       <div class="dashboard-layout">
         <!-- Left sidebar: game/template lists -->
@@ -456,6 +488,7 @@
   </div>
 
   <script src="js/telemetry-client.js"></script>
+  <script src="js/shell.js"></script>
   <script src="js/app.js" type="module"></script>
   <script src="js/dashboard.js"></script>
   <script src="js/telemetry-dashboard.js"></script>

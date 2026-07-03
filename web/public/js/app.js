@@ -13,7 +13,9 @@ const state = {
   processId: null,
   runId: null,
   showingAllGames: false,
-  lastSummary: null
+  lastSummary: null,
+  traceLog: [],
+  traceStartedAt: null
 };
 
 // Player type: 'llm' (model plays) or 'human' (keyboard play)
@@ -141,6 +143,15 @@ const scoreEl = document.getElementById('score');
 const healthEl = document.getElementById('health');
 const maxHealthEl = document.getElementById('max-health');
 const tickEl = document.getElementById('tick');
+
+// Cabinet status strip + session controls (shell chrome)
+const lastActionEl = document.getElementById('last-action');
+const frameLatencyEl = document.getElementById('frame-latency');
+const modelChips = document.getElementById('model-chips');
+const backendLabel = document.getElementById('backend-label');
+const copySessionLinkBtn = document.getElementById('copy-session-link');
+const fullscreenBtn = document.getElementById('fullscreen-btn');
+const exportTraceBtn = document.getElementById('export-trace');
 const navLinks = Array.from(document.querySelectorAll('#main-nav .nav-link'));
 const topLevelSections = Array.from(document.querySelectorAll('#app > .section'));
 const canvasCtx = gameCanvas.getContext('2d', { alpha: false });
@@ -161,6 +172,45 @@ async function init() {
   renderStrategyCards();
   setupEventListeners();
   setupWebSocket();
+  applySessionParams();
+}
+
+// Session links: ?game=&level=&model=&strategy= preselects a cabinet so a
+// copied link drops the next player at step 2 with everything dialed in.
+function applySessionParams() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('game')) return;
+
+  const gameId = parseInt(params.get('game'), 10);
+  if (!state.games.some(g => g.id === gameId)) return;
+  selectGame(gameId);
+
+  const model = params.get('model');
+  if (model && [...modelSelect.options].some(o => o.value === model)) {
+    modelSelect.value = model;
+    syncModelChips();
+  }
+
+  const level = params.get('level');
+  if (level !== null && [...levelSelect.options].some(o => o.value === level)) {
+    levelSelect.value = level;
+  }
+
+  const strategy = params.get('strategy');
+  if (strategy && strategyText) {
+    strategyText.value = strategy.slice(0, 240);
+    updateStrategyWarn();
+  }
+}
+
+function buildSessionLink() {
+  const params = new URLSearchParams();
+  if (state.selectedGame) params.set('game', state.selectedGame.id);
+  params.set('level', levelSelect.value || '0');
+  params.set('model', modelSelect.value || '');
+  const strategy = (strategyText?.value || '').trim();
+  if (strategy) params.set('strategy', strategy);
+  return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
 }
 
 // Load games from API
@@ -405,6 +455,57 @@ function renderModels(models) {
   `).join('');
   const defaultModel = models.find(m => m.featured) || models[0];
   if (defaultModel) modelSelect.value = defaultModel.id;
+  renderModelChips(models);
+}
+
+// Model chip rack — the cabinet's brains. The <select> stays in the DOM
+// (hidden) as the single source of truth that startGame() reads.
+const PROVIDER_LABELS = {
+  'ollama-cloud': 'Cloud',
+  'openrouter': 'OpenRouter',
+  'ollama-local': 'Local'
+};
+
+function renderModelChips(models) {
+  if (!modelChips) return;
+  modelChips.innerHTML = models.map(model => {
+    const tags = [
+      `<span class="chip-badge provider">${escapeHtml(PROVIDER_LABELS[model.provider] || model.provider)}</span>`,
+      /open.weight/i.test(model.description || '') ? '<span class="chip-badge">Open-weight</span>' : '',
+      model.speed ? `<span class="chip-badge">${escapeHtml(model.speed)} speed</span>` : '',
+      model.cost ? `<span class="chip-badge">${escapeHtml(model.cost)} cost</span>` : ''
+    ].filter(Boolean).join('');
+    return `
+      <button type="button" class="model-chip" data-model-id="${escapeHtml(model.id)}">
+        <span class="model-chip-name">${escapeHtml(model.name)}${model.featured ? ' ★' : ''}</span>
+        <span class="chip-tags">${tags}</span>
+      </button>
+    `;
+  }).join('');
+
+  modelChips.querySelectorAll('.model-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      modelSelect.value = chip.dataset.modelId;
+      syncModelChips();
+      trackUx('model_chip_selected', { modelId: chip.dataset.modelId });
+    });
+  });
+
+  modelSelect.classList.add('hidden');
+  syncModelChips();
+}
+
+function syncModelChips() {
+  if (!modelChips) return;
+  modelChips.querySelectorAll('.model-chip').forEach(chip => {
+    chip.classList.toggle('selected', chip.dataset.modelId === modelSelect.value);
+  });
+  const model = state.models.find(m => m.id === modelSelect.value);
+  if (backendLabel && model) {
+    backendLabel.textContent = PROVIDER_LABELS[model.provider] === 'Local'
+      ? 'Local Ollama'
+      : (model.provider === 'openrouter' ? 'OpenRouter' : 'Ollama Cloud');
+  }
 }
 
 // Select a game
@@ -534,60 +635,6 @@ async function populateControlReference(gameId) {
 
 // --- Human play keyboard handlers -----------------------------------------
 
-// Browser KeyboardEvent.code → GVGAI internal action name.
-// Must stay in sync with web/lib/key-mapping.js FULL_KEY_MAP.
-const HUMAN_KEY_MAP = {
-  ArrowLeft: 'ACTION_LEFT', ArrowRight: 'ACTION_RIGHT',
-  ArrowUp: 'ACTION_UP', ArrowDown: 'ACTION_DOWN',
-  Space: 'ACTION_USE', Enter: 'ACTION_USE',
-  KeyA: 'ACTION_LEFT', KeyD: 'ACTION_RIGHT',
-  KeyW: 'ACTION_UP', KeyS: 'ACTION_DOWN',
-};
-
-function preventDefaultArrowKeys(e) {
-  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].includes(e.code)) {
-    e.preventDefault();
-  }
-}
-
-function handleHumanKeyDown(e) {
-  if (playerType !== 'human' || !state.processId) return;
-  if (heldKeys.has(e.code)) return;  // suppress key repeat
-  heldKeys.add(e.code);
-  const action = HUMAN_KEY_MAP[e.code];
-  if (action) {
-    socket.emit('human-action', { action });
-    addHumanMoveToTrace(action);
-  }
-}
-
-function handleHumanKeyUp(e) {
-  heldKeys.delete(e.code);
-}
-
-function addHumanMoveToTrace(action) {
-  if (!reasoningLog) return;
-  const entry = document.createElement('div');
-  entry.className = 'reasoning-entry human-entry';
-  const label = action.replace(/^ACTION_/, '');
-  entry.textContent = `YOU: ${label}`;
-  reasoningLog.appendChild(entry);
-  reasoningLog.scrollTop = reasoningLog.scrollHeight;
-}
-
-function attachHumanPlayListeners() {
-  document.addEventListener('keydown', handleHumanKeyDown);
-  document.addEventListener('keyup', handleHumanKeyUp);
-  document.addEventListener('keydown', preventDefaultArrowKeys);
-}
-
-function cleanupHumanPlay() {
-  document.removeEventListener('keydown', handleHumanKeyDown);
-  document.removeEventListener('keyup', handleHumanKeyUp);
-  document.removeEventListener('keydown', preventDefaultArrowKeys);
-  heldKeys.clear();
-}
-
 // Start game
 async function startGame() {
   if (!state.selectedGame) {
@@ -620,6 +667,12 @@ async function startGame() {
   try {
     startGameBtn.disabled = true;
     startGameBtn.textContent = 'Starting run...';
+
+    // Fresh trace + status strip for this run
+    state.traceLog = [];
+    state.traceStartedAt = new Date().toISOString();
+    if (lastActionEl) lastActionEl.textContent = '—';
+    if (frameLatencyEl) frameLatencyEl.textContent = '—';
 
     const response = await fetch('/api/game/start', {
       method: 'POST',
@@ -820,6 +873,61 @@ function setupEventListeners() {
 
   if (strategyText) strategyText.addEventListener('input', updateStrategyWarn);
   backToGamesBtn.addEventListener('click', () => showStep(gameSelector));
+
+  // Session affordances on the cabinet
+  if (copySessionLinkBtn) {
+    copySessionLinkBtn.addEventListener('click', async () => {
+      const link = buildSessionLink();
+      try {
+        await navigator.clipboard.writeText(link);
+        copySessionLinkBtn.textContent = 'Copied ✓';
+      } catch (_) {
+        window.prompt('Copy this session link:', link);
+      }
+      setTimeout(() => { copySessionLinkBtn.textContent = 'Copy session link'; }, 1600);
+      trackUx('session_link_copied', { gameId: state.selectedGame?.id ?? null });
+    });
+  }
+
+  if (fullscreenBtn) {
+    fullscreenBtn.addEventListener('click', () => {
+      const display = document.querySelector('.game-display');
+      if (!display) return;
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else if (display.requestFullscreen) {
+        display.requestFullscreen();
+      }
+    });
+  }
+
+  if (exportTraceBtn) {
+    exportTraceBtn.addEventListener('click', () => {
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        startedAt: state.traceStartedAt,
+        game: state.selectedGame
+          ? { id: state.selectedGame.id, name: state.selectedGame.name, archetype: state.selectedGame.archetype || null }
+          : null,
+        level: parseInt(levelSelect.value, 10) || 0,
+        model: modelSelect.value || null,
+        playerType,
+        strategy: (strategyText?.value || '').trim() || null,
+        summary: state.lastSummary || null,
+        decisions: state.traceLog
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `arcade-trace-${state.selectedGame?.name || 'run'}-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      trackUx('trace_exported', { decisions: state.traceLog.length });
+    });
+  }
+
+
   playAgainBtn.addEventListener('click', () => {
     showStep(modelSelector);
     gameEndMessage.classList.add('hidden');
@@ -880,6 +988,25 @@ function setupWebSocket() {
     if (scoreEl) scoreEl.textContent = data.gameState?.score || 0;
     if (healthEl) healthEl.textContent = data.gameState?.health || 0;
     if (tickEl) tickEl.textContent = data.gameState?.tick || 0;
+
+    // Cabinet status strip: last decision + decision latency
+    if (lastActionEl) lastActionEl.textContent = String(data.action || '—').replace(/^ACTION_/, '');
+    if (frameLatencyEl) frameLatencyEl.textContent = data.elapsed != null ? `${data.elapsed}ms` : '—';
+
+    // Accumulate the run's trace for "Export trace"
+    if (state.traceLog.length < 500) {
+      state.traceLog.push({
+        tick: data.gameState?.tick ?? null,
+        score: data.gameState?.score ?? null,
+        action: data.action || null,
+        reason: data.reason || null,
+        response: data.response || null,
+        plan: data.plan || null,
+        elapsedMs: data.elapsed ?? null,
+        provider: data.provider || null,
+        modelUsed: data.modelUsed || null
+      });
+    }
 
     // Live adherence ribbon (running "followed the strategy" rate).
     updateAdherenceRibbon(data);

@@ -4,61 +4,110 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Inference Arcade — Marble Run</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%2308110E'/%3E%3Cpath d='M8 2 L14 8 L8 14 L2 8 Z' fill='%237BEFC3'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Silkscreen:wght@400;700&display=swap">
+  <link rel="stylesheet" href="/css/theme.css">
   <style>
-    :root {
-      --bg: #0b0d17; --panel: #141726; --border: #2a2f45;
-      --text: #e6e8f0; --dim: #9aa0b4; --accent: #78dcc8; --secondary: #bc8cff;
+    /* Marquee layout — spectator page, tokens come from theme.css */
+    .marquee {
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      height: 100vh;
+      gap: 12px;
+      padding: 14px;
     }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    .marquee { display: grid; grid-template-rows: auto auto 1fr auto; height: 100vh; gap: 12px; padding: 14px; }
     header { display: flex; align-items: center; justify-content: space-between; }
-    .title { font-weight: 800; letter-spacing: 0.08em; font-size: 14px; text-transform: uppercase; }
-    .title .dot { color: var(--accent); }
-    .live { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.05em; }
-    .live .pip { width: 8px; height: 8px; border-radius: 50%; background: #555; transition: background .2s; }
-    .live.on .pip { background: #ff5c72; box-shadow: 0 0 8px #ff5c72; }
-    .nowplaying { font-size: 14px; color: var(--dim); }
-    .nowplaying strong { color: var(--secondary); }
+    .title {
+      font-family: var(--font-display);
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--foam);
+    }
+    .title .dot { color: var(--mint); text-shadow: var(--lamp-glow); }
+    .live {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem; color: var(--foam-dim);
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .live .pip { width: 8px; height: 8px; border-radius: 50%; background: var(--arcade-text-dim); transition: background .2s, box-shadow .2s; }
+    .live.on .pip { background: var(--mint); box-shadow: var(--lamp-glow); }
+    .nowplaying { font-family: var(--font-mono); font-size: 0.8rem; color: var(--foam-dim); }
+    .nowplaying strong { color: var(--mint); }
     .stage { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; min-height: 0; }
-    .screen { position: relative; background: #000; border: 1px solid var(--border);
-      border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .screen {
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      background: #000;
+      border: 1px solid var(--mint-dim);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    /* glass scanlines, same treatment as the arcade cabinet */
+    .screen::after {
+      content: "";
+      position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background: repeating-linear-gradient(0deg,
+        rgba(0, 0, 0, 0.2) 0px, rgba(0, 0, 0, 0.2) 1px,
+        transparent 1px, transparent 3px);
+    }
     canvas { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
-    .overlay { position: absolute; top: 8px; left: 8px; display: flex; gap: 14px;
-      font-size: 12px; background: rgba(0,0,0,0.55); padding: 5px 10px; border-radius: 6px; }
-    .overlay span { color: var(--dim); } .overlay strong { color: var(--text); margin-left: 4px; }
+    .overlay {
+      position: absolute; top: 8px; left: 8px; z-index: 3;
+      display: flex; gap: 14px;
+      padding: 5px 10px;
+      background: rgba(5, 11, 9, 0.85);
+      border: 1px solid var(--arcade-border-soft);
+      font-family: var(--font-mono); font-size: 0.68rem;
+    }
+    .overlay span { color: var(--arcade-text-dim); text-transform: uppercase; }
+    .overlay strong { color: var(--mint); margin-left: 4px; font-variant-numeric: tabular-nums; }
     .side { display: grid; grid-template-rows: auto 1fr auto; gap: 12px; min-height: 0; }
-    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; min-height: 0; }
-    .panel h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); }
+    .panel {
+      min-height: 0;
+      padding: 10px;
+      background: var(--deck);
+      border: 1px solid var(--arcade-border-soft);
+      border-radius: var(--radius-lg);
+    }
+    .panel h3 {
+      margin: 0 0 8px;
+      font-family: var(--font-display);
+      font-size: 0.56rem; font-weight: 400;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--mint);
+    }
     .narration { overflow-y: auto; }
     #narration { overflow-y: auto; max-height: 100%; }
-    .entry { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
-    .entry:first-child .reason { color: #fff; }
-    .entry .reason { color: var(--text); line-height: 1.45; }
-    .entry .act { color: var(--dim); margin-top: 3px; }
-    .entry .act b { color: var(--secondary); }
+    .entry { padding: 6px 0; border-bottom: 1px dashed var(--arcade-border-soft); font-size: 0.74rem; }
+    .entry .reason { color: var(--foam-dim); font-family: var(--font-mono); line-height: 1.45; }
+    .entry:first-child .reason { color: var(--foam); }
+    .entry .act { color: var(--arcade-text-dim); font-family: var(--font-mono); margin-top: 3px; }
+    .entry .act b { color: var(--mint); }
     .plan-tape { display: flex; flex-wrap: nowrap; align-items: center; margin-top: 4px;
       overflow-x: auto; scrollbar-width: none; }
     .plan-tape::-webkit-scrollbar { display: none; }
     .plan-cell { flex: 0 0 auto; padding: 2px 7px; margin-left: -1px;
-      border: 1px solid var(--border); background: rgba(255, 255, 255, 0.03);
-      color: var(--dim); font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+      border: 1px solid var(--arcade-border-soft); background: var(--well);
+      color: var(--arcade-text-dim); font-family: var(--font-mono);
       font-size: 10px; text-transform: uppercase; white-space: nowrap; }
-    .plan-cell:first-child { margin-left: 0; border-radius: 3px 0 0 3px; }
-    .plan-cell:nth-last-child(2) { border-radius: 0 3px 3px 0; }
-    .plan-cell.is-live { position: relative; z-index: 1; border-color: var(--accent);
-      color: var(--accent); background: rgba(120, 220, 200, 0.08); }
-    .plan-cell.is-done { color: var(--dim); opacity: 0.55;
-      background: repeating-linear-gradient(135deg, rgba(255,255,255,0.07) 0 2px, transparent 2px 6px); }
-    .plan-count { flex: 0 0 auto; margin-left: 7px; color: var(--dim);
-      font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px;
-      font-variant-numeric: tabular-nums; }
-    .upnext-item { font-size: 12px; color: var(--dim); padding: 3px 0; }
-    .upnext-item b { color: var(--text); }
-    footer { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); }
-    .ticker b { color: var(--accent); }
-    .loop { color: var(--secondary); font-weight: 700; letter-spacing: 0.05em; }
+    .plan-cell:first-child { margin-left: 0; }
+    .plan-cell.is-live { position: relative; z-index: 1; border-color: var(--mint);
+      color: var(--mint); background: var(--mint-faint); }
+    .plan-cell.is-done { color: var(--arcade-text-dim); opacity: 0.55;
+      background: repeating-linear-gradient(135deg, rgba(228, 251, 240, 0.07) 0 2px, transparent 2px 6px); }
+    .plan-count { flex: 0 0 auto; margin-left: 7px; color: var(--arcade-text-dim);
+      font-family: var(--font-mono); font-size: 10px; font-variant-numeric: tabular-nums; }
+    .upnext-item { font-family: var(--font-mono); font-size: 0.72rem; color: var(--foam-dim); padding: 3px 0; }
+    .upnext-item b { color: var(--foam); }
+    footer { display: flex; justify-content: space-between;
+      font-family: var(--font-mono); font-size: 0.72rem; color: var(--foam-dim); }
+    .ticker { font-family: var(--font-mono); }
+    .ticker b { color: var(--mint); }
+    .loop { color: var(--brass); font-weight: 700; letter-spacing: 0.05em; }
   </style>
 </head>
 <body>
