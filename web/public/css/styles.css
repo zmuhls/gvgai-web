@@ -2205,8 +2205,11 @@ label {
 }
 
 @media (max-width: 900px) {
+  /* minmax(0, 1fr) rather than 1fr: a plain 1fr keeps an `auto` minimum,
+     so a wide child (event table, code editor) can force the collapsed
+     column past the viewport */
   .game-container {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .reasoning-panel {
@@ -2214,7 +2217,7 @@ label {
   }
 
   .dashboard-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .dashboard-sidebar {
@@ -2222,11 +2225,11 @@ label {
   }
 
   .leaderboard-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .telemetry-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .telemetry-status-strip {
@@ -2281,6 +2284,20 @@ label {
   .game-overlay {
     grid-auto-flow: row;
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* the event log keeps its five columns and scrolls inside its own box */
+  .telemetry-event-table {
+    overflow-x: auto;
+  }
+
+  .telemetry-event-row {
+    min-width: 330px;
+  }
+
+  .flow-lane {
+    grid-template-columns: 84px minmax(0, 1fr) 34px;
+    gap: var(--space-2);
   }
 }
 

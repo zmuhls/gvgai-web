@@ -201,15 +201,27 @@ function applySessionParams() {
     strategyText.value = strategy.slice(0, 240);
     updateStrategyWarn();
   }
+
+  // Human-play links restore the "I'll play" toggle state
+  if (params.get('player') === 'human') {
+    playerType = 'human';
+    document.querySelectorAll('.toggle-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.playerType === 'human'));
+    updatePlayerTypeUI();
+  }
 }
 
 function buildSessionLink() {
   const params = new URLSearchParams();
   if (state.selectedGame) params.set('game', state.selectedGame.id);
   params.set('level', levelSelect.value || '0');
-  params.set('model', modelSelect.value || '');
-  const strategy = (strategyText?.value || '').trim();
-  if (strategy) params.set('strategy', strategy);
+  if (playerType === 'human') {
+    params.set('player', 'human');
+  } else {
+    params.set('model', modelSelect.value || '');
+    const strategy = (strategyText?.value || '').trim();
+    if (strategy) params.set('strategy', strategy);
+  }
   return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
 }
 
@@ -1423,9 +1435,22 @@ function cleanupHumanPlay() {
 
 // Add a "YOU: ACTION_X" entry to the reasoning log panel for human moves.
 function addHumanMoveToTrace(action) {
+  const label = String(action).replace(/^ACTION_/, '');
+
+  // Mirror the LLM path: status strip + export trace cover human runs too
+  if (lastActionEl) lastActionEl.textContent = label;
+  if (state.traceLog.length < 500) {
+    state.traceLog.push({
+      tick: parseInt(tickEl?.textContent, 10) || 0,
+      score: parseInt(scoreEl?.textContent, 10) || 0,
+      action,
+      human: true
+    });
+  }
+
   if (!reasoningLog) return;
   const entry = document.createElement('div');
-  entry.className = 'reasoning-entry';
+  entry.className = 'reasoning-entry human-entry';
 
   const youLine = document.createElement('div');
   youLine.className = 'narration';
@@ -1433,7 +1458,7 @@ function addHumanMoveToTrace(action) {
 
   const actDiv = document.createElement('div');
   actDiv.className = 'action fast';
-  actDiv.textContent = `→ ${String(action).replace(/^ACTION_/, '')}`;
+  actDiv.textContent = `→ ${label}`;
 
   entry.append(youLine, actDiv);
   reasoningLog.insertBefore(entry, reasoningLog.firstChild);
