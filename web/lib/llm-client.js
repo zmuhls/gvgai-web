@@ -6,6 +6,7 @@ const { parseStructured } = require('./response-parser');
 const { resolveModel } = require('./models');
 const promptStore = require('./prompt-store');
 const telemetry = require('./telemetry-store');
+const traceStore = require('./play-trace-store');
 const { getCachedClassification } = require('./game-classifier');
 
 // Macro-action executor tuning. The plan queue is a bridge across LLM latency,
@@ -101,6 +102,7 @@ class LLMClient {
     this.clearPlan();
     this.runLog = [];
     this.runStartScore = null;
+    this.lastRunOutcome = null;  // { finalScore, won, topAction, actionCounts } from previous level/run
     this.lastProvider = null;
     this.lastModelUsed = null;
     this.lastSso = null;
@@ -707,11 +709,25 @@ class LLMClient {
     } = buildPrompt(sso, this.promptConfig, this.stateTracker, this.sessionStrategy);
     const prompt = userMessage;
 
+    // Cross-run learning: tell the model how its last run went so it can adjust.
+    // This is the within-session reward signal — the model sees its own outcome
+    // history and can break out of a stale action loop.
+    let outcomeContext = '';
+    if (this.lastRunOutcome) {
+      const o = this.lastRunOutcome;
+      const verdict = o.won ? 'WON' : 'LOST';
+      outcomeContext = `LAST RUN OUTCOME — you ${verdict} with ${o.finalScore} points in ${o.ticks} ticks. Your most-used action was ${o.topAction} (${o.topActionCount}x).`;
+      if (!o.won) {
+        outcomeContext += ' Try a different approach this time.';
+      }
+    }
+
     const messages = [];
     if (systemMessage) {
       messages.push({ role: 'system', content: systemMessage });
     }
-    messages.push({ role: 'user', content: userMessage });
+    const userContent = [outcomeContext, userMessage].filter(Boolean).join('\n\n');
+    messages.push({ role: 'user', content: userContent });
 
     const settings = this.promptConfig?.llmSettings || {};
     const resolved = resolveModel(this.model);
@@ -871,6 +887,7 @@ class LLMClient {
         elapsed,
         provider: usedProvider,
         modelUsed: usedModel,
+        lastRunOutcome: this.lastRunOutcome || null,
         gameState: {
           score: sso.gameScore,
           health: sso.avatarHealthPoints,
@@ -948,6 +965,51 @@ class LLMClient {
         ticks: sso.gameTick || 0
       }
     });
+
+    // Save the LLM play trace — these are the "model played" traces that the
+    // trace summary builder compares against human traces to give the model
+    // reward signals and operational patterns grounded in observed gameplay.
+    const llmTrace = {
+      gameId: this.gameId,
+      gameName: this.gameName,
+      levelId: this.levelCount,
+      playerType: 'llm',
+      modelId: this.model,
+      strategy: this.sessionStrategy,
+      actionHistory: this.runLog.map(e => ({
+        tick: e.tick,
+        action: e.action,
+        scoreDelta: e.scoreDelta
+      })),
+      finalScore: sso.gameScore || 0,
+      winner: sso.gameWinner,
+      won: sso.gameWinner === 'PLAYER_WINS' || sso.gameWinner === true,
+      ticks: sso.gameTick || 0,
+      scoreEvents: this.runLog
+        .filter(e => e.scoreDelta !== 0)
+        .map(e => ({ tick: e.tick, action: e.action, scoreDelta: e.scoreDelta }))
+    };
+    try {
+      traceStore.saveTrace(llmTrace);
+    } catch (err) {
+      console.error('[LLMClient] Failed to save trace:', err.message);
+    }
+
+    // Store the outcome for the next run's prompt (cross-run learning signal)
+    const actionCounts = {};
+    for (const entry of this.runLog) {
+      actionCounts[entry.action] = (actionCounts[entry.action] || 0) + 1;
+    }
+    const topAction = Object.entries(actionCounts).sort((a, b) => b[1] - a[1])[0];
+    this.lastRunOutcome = {
+      finalScore: sso.gameScore || 0,
+      won: sso.gameWinner === 'PLAYER_WINS' || sso.gameWinner === true,
+      winner: sso.gameWinner,
+      ticks: sso.gameTick || 0,
+      actionCounts,
+      topAction: topAction ? topAction[0] : null,
+      topActionCount: topAction ? topAction[1] : 0
+    };
 
     // Reset run accumulation + history for the next level
     this.runLog = [];

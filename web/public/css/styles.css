@@ -181,6 +181,100 @@ button {
   box-shadow: 0 0 16px rgba(248, 81, 73, 0.4);
 }
 
+/* Player-type toggle (Model plays / I'll play) */
+.player-type-toggle {
+  margin-bottom: var(--space-4);
+}
+
+.player-type-toggle > label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+  color: var(--arcade-accent);
+  font-size: 0.9em;
+  letter-spacing: -0.01em;
+}
+
+.toggle-group {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.toggle-btn {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--arcade-border);
+  border-radius: var(--radius-md);
+  background: var(--arcade-panel);
+  color: var(--arcade-text-dim);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-bottom: 0;
+}
+
+.toggle-btn:hover {
+  border-color: var(--arcade-accent);
+  color: var(--arcade-text);
+}
+
+.toggle-btn.active {
+  background: var(--arcade-accent);
+  border-color: var(--arcade-accent);
+  color: var(--arcade-bg);
+}
+
+/* Human controls reference (key legend shown when "I'll play" is active) */
+.human-controls-ref {
+  padding: var(--space-4);
+  background: var(--arcade-bg);
+  border: 1px solid var(--arcade-border);
+  border-left: 3px solid var(--arcade-accent);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+
+.human-controls-ref h4 {
+  color: var(--arcade-accent);
+  font-size: 0.9em;
+  font-weight: 600;
+  margin-bottom: var(--space-3);
+}
+
+.control-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.control-key {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--arcade-panel);
+  border: 1px solid var(--arcade-border);
+  border-radius: var(--radius-sm);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--arcade-text);
+}
+
+.control-key .key-cap {
+  font-weight: 600;
+  color: var(--arcade-accent);
+}
+
+.control-key .key-label {
+  color: var(--arcade-text-dim);
+}
+
+.control-note {
+  font-size: 12px;
+  color: var(--arcade-text-dim);
+}
+
 /* Game Search */
 #game-search {
   width: 100%;
@@ -2382,6 +2476,16 @@ button:hover {
   color: inherit;
   font-family: var(--font-mono);
   font-size: 0.66rem;
+}
+
+.trace-badge {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.6rem;
+  color: var(--accent, #0ea5e9);
+  border: 1px solid var(--accent, #0ea5e9);
+  border-radius: 3px;
+  white-space: nowrap;
 }
 
 #model-selector.step,

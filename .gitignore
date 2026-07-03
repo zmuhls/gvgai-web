@@ -78,6 +78,8 @@ logs/
 web/.gvgai-runtime/
 web/data/telemetry-events.jsonl
 web/data/eval-runs/
+web/data/play-traces/
+!web/data/play-traces/.gitkeep
 web/evals/
 output/
 telemetry.png

@@ -1,6 +1,7 @@
 // Convert GVGAI SerializableStateObservation to LLM prompt
 const { renderAsciiGrid, detectBackgroundItypes, DEFAULT_LEGEND } = require('./grid-renderer');
 const { buildCodePrompt } = require('./code-protocol');
+const { buildTraceSummary } = require('./trace-summary-builder');
 
 // Rolling game state tracker for iterative, context-aware prompts
 class GameStateTracker {
@@ -51,20 +52,24 @@ class GameStateTracker {
     }
   }
 
-  // Build a compact history string for inclusion in prompts
+  // Build a compact history string for inclusion in prompts.
+  // Includes explicit reward attribution: "ACTION_USE → +10 score (this action scored)"
+  // so the model can correlate actions with outcomes — the core reward signal.
   buildHistoryContext() {
     if (this.actionHistory.length === 0) return '';
 
     const lines = this.actionHistory.map(a => {
       const parts = [`Tick ${a.tick}: ${a.action}`];
-      if (a.scoreDelta !== 0) parts.push(`score ${a.scoreDelta > 0 ? '+' : ''}${a.scoreDelta}`);
-      if (a.healthDelta !== 0) parts.push(`health ${a.healthDelta > 0 ? '+' : ''}${a.healthDelta}`);
+      if (a.scoreDelta > 0) parts.push(`score +${a.scoreDelta} (this action scored)`);
+      else if (a.scoreDelta < 0) parts.push(`score ${a.scoreDelta} (this action lost points)`);
+      if (a.healthDelta < 0) parts.push(`health ${a.healthDelta} (took damage)`);
+      else if (a.healthDelta > 0) parts.push(`health +${a.healthDelta}`);
       if (a.positionDelta !== '(0, 0)') parts.push(`moved ${a.positionDelta}`);
-      if (a.scoreDelta === 0 && a.healthDelta === 0 && a.positionDelta === '(0, 0)') parts.push('no change');
+      if (a.scoreDelta === 0 && a.healthDelta === 0 && a.positionDelta === '(0, 0)') parts.push('no effect');
       return `- ${parts.join(', ')}`;
     });
 
-    return `Recent history:\n${lines.join('\n')}`;
+    return `Recent actions and their outcomes:\n${lines.join('\n')}`;
   }
 
   // Compute deltas from last recorded state to current
@@ -368,6 +373,23 @@ function buildPrompt(sso, promptConfig, stateTracker, sessionStrategy) {
   // Layer 2: Game context
   const gameContext = resolveTemplate(promptConfig.gameContent, sso, extraVars);
 
+  // Layer 2b: Play trace summary (operational knowledge from human demonstrations)
+  // Only injected when human traces exist for this game. This is the reward
+  // signal: the model sees what high-scoring players did and what led to losses.
+  const traceGameId = promptConfig.gameId ?? null;
+  let traceLayer = '';
+  if (traceGameId !== null) {
+    try {
+      const traceSummary = buildTraceSummary(traceGameId);
+      if (traceSummary) {
+        traceLayer = `PLAY HISTORY — observations from human players of this game:\n${traceSummary.text}`;
+      }
+    } catch (e) {
+      // Trace store errors should never break the prompt
+      console.warn('[state-converter] Trace summary build failed:', e.message);
+    }
+  }
+
   // Layer 3: Progression/level context
   const levelContext = resolveTemplate(promptConfig.levelContent, sso, extraVars);
 
@@ -448,7 +470,7 @@ ${loopWarning ? '\n' + loopWarning + '\n' : ''}
 ${closing}`;
 
   // Combine layers into user message
-  const userMessage = [gameContext, levelContext, strategyLayer, historyContext, gridContext, tickState]
+  const userMessage = [gameContext, traceLayer, levelContext, strategyLayer, historyContext, gridContext, tickState]
     .filter(Boolean)
     .join('\n\n');
 
@@ -457,6 +479,7 @@ ${closing}`;
   const promptLayers = [
     { name: 'System', text: systemMessage },
     { name: 'Game rules', text: gameContext },
+    { name: 'Play history', text: traceLayer },
     { name: 'Progression', text: levelContext },
     { name: 'Player tactic', text: strategyLayer },
     { name: 'History', text: historyContext },

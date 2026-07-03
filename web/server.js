@@ -14,11 +14,13 @@ const telemetry = require('./lib/telemetry-store');
 
 let gameManager = null;
 let LLMClient = null;
+let HumanPlayClient = null;
 
 function loadRuntimeModules() {
   if (!gameManager) gameManager = require('./lib/game-manager');
   if (!LLMClient) LLMClient = require('./lib/llm-client');
-  return { gameManager, LLMClient };
+  if (!HumanPlayClient) HumanPlayClient = require('./lib/human-play-client');
+  return { gameManager, LLMClient, HumanPlayClient };
 }
 
 const app = express();
@@ -203,6 +205,7 @@ app.use('/api/prompts', require('./routes/prompts-local'));
 app.use('/api/evals', require('./routes/evals'));
 app.use('/api/telemetry', require('./routes/telemetry'));
 app.use('/api/marble', require('./routes/marble'));
+app.use('/api/traces', require('./routes/traces-local'));
 
 // Clean URL for the embeddable spectator page (also served as /marquee.html).
 app.get('/marquee', (req, res) => res.sendFile(path.join(__dirname, 'public', 'marquee.html')));
@@ -212,7 +215,8 @@ const activeGames = new Map();
 
 // Start game endpoint (API key loaded from environment)
 app.post('/api/game/start', async (req, res) => {
-  const { gameId, levelId, model, strategy } = req.body;
+  const { gameId, levelId, model, strategy, playerType } = req.body;
+  const isHumanPlay = playerType === 'human';
   // Neutralize the walk-up player's free-text tactic before it enters any prompt.
   const { text: cleanStrategy, warnings: strategyWarnings } = sanitizeStrategy(strategy);
 
@@ -220,8 +224,8 @@ app.post('/api/game/start', async (req, res) => {
     // A walk-up player takes priority: pause the marble run and free port 8080.
     await coordinator.beginWalkup();
     const runtime = loadRuntimeModules();
-    console.log(`[Server] Starting game ${gameId} (level ${levelId}) with model ${model}`);
-    const runId = telemetry.createRunId(`game-${gameId}`);
+    console.log(`[Server] Starting game ${gameId} (level ${levelId}) — ${isHumanPlay ? 'human play' : `model ${model}`}`);
+    const runId = telemetry.createRunId(isHumanPlay ? `human-${gameId}` : `game-${gameId}`);
     telemetry.track({
       eventFamily: 'evaluation',
       eventType: 'game_start_requested',
@@ -229,16 +233,17 @@ app.post('/api/game/start', async (req, res) => {
       runId,
       gameId,
       levelId: levelId || 0,
-      modelId: model,
+      modelId: isHumanPlay ? 'human' : model,
       payload: {
-        strategy_present: Boolean(strategy)
+        strategy_present: Boolean(strategy),
+        playerType: isHumanPlay ? 'human' : 'llm'
       }
     });
 
     // Kill any existing games first to free port 8080
     for (const [pid, game] of activeGames) {
       console.log(`[Server] Cleaning up previous game ${pid}`);
-      game.llmClient.disconnect();
+      game.client.disconnect();
       runtime.gameManager.stopGame(pid);
       activeGames.delete(pid);
     }
@@ -254,20 +259,19 @@ app.post('/api/game/start', async (req, res) => {
       return res.status(500).json({ error: 'Java game process failed to start' });
     }
 
-    // Start screenshot streaming BEFORE LLM connects (screenshots begin on first ACT tick)
+    // Start screenshot streaming BEFORE the client connects (screenshots begin on first ACT tick)
     startScreenshotStreaming();
 
-    // Create and connect LLM client. strategyMemory 'accepted' makes the live
-    // gate explicit: only eval-accepted strategy-memory records may replace the
-    // game-rules prompt layer (candidates stay invisible; STRATEGY_MEMORY_DISABLED=1
-    // switches memory off entirely).
-    const llmClient = new runtime.LLMClient({
-      runId,
-      promptConfigOptions: { strategyMemory: 'accepted' }
-    });
+    // Create the appropriate client based on playerType.
+    // Human play: HumanPlayClient sends keyboard actions via Socket.IO (no LLM calls).
+    // LLM play: LLMClient with strategyMemory 'accepted' — only eval-accepted
+    // strategy-memory records may replace the game-rules prompt layer.
+    const client = isHumanPlay
+      ? new runtime.HumanPlayClient({ runId })
+      : new runtime.LLMClient({ runId, promptConfigOptions: { strategyMemory: 'accepted' } });
 
-    // Wire session-end cleanup
-    llmClient.onSessionEnd = () => {
+    // Wire session-end cleanup (same for both client types)
+    client.onSessionEnd = () => {
       console.log(`[Server] Session ended for ${gameProcess.processId}, cleaning up`);
       activeGames.delete(gameProcess.processId);
       stopScreenshotStreaming();
@@ -275,11 +279,15 @@ app.post('/api/game/start', async (req, res) => {
       coordinator.endWalkup(); // resume the marble run after the walk-up finishes
     };
 
-    // Connect LLM client to GVGAI socket
+    // Connect client to GVGAI socket
     try {
       const gameName = resolveGameName(gameId);
-      await llmClient.connect(config.gvgai.socketPort, model, io, gameId, gameName, cleanStrategy);
-      console.log('[Server] LLM client connected successfully');
+      if (isHumanPlay) {
+        await client.connect(config.gvgai.socketPort, io, gameId, gameName);
+      } else {
+        await client.connect(config.gvgai.socketPort, model, io, gameId, gameName, cleanStrategy);
+      }
+      console.log(`[Server] ${isHumanPlay ? 'Human play' : 'LLM'} client connected successfully`);
       telemetry.track({
         eventFamily: 'evaluation',
         eventType: 'run_started',
@@ -287,19 +295,20 @@ app.post('/api/game/start', async (req, res) => {
         runId,
         gameId,
         levelId: levelId || 0,
-        modelId: model,
+        modelId: isHumanPlay ? 'human' : model,
         payload: {
           gameName,
           processId: gameProcess.processId,
+          playerType: isHumanPlay ? 'human' : 'llm',
           strategy_present: Boolean(strategy),
           strategy_sanitized: strategyWarnings.length > 0,
           strategy_warning_types: strategyWarnings.map(w => w.type),
-          archetype: llmClient.promptConfig?.classification?.archetype || null,
-          strategic_digest_memory: llmClient.promptConfig?.strategicDigestMemory || null
+          archetype: client.promptConfig?.classification?.archetype || null,
+          strategic_digest_memory: client.promptConfig?.strategicDigestMemory || null
         }
       });
     } catch (error) {
-      console.error('[Server] Failed to connect LLM client:', error);
+      console.error(`[Server] Failed to connect ${isHumanPlay ? 'human play' : 'LLM'} client:`, error);
       telemetry.track({
         eventFamily: 'evaluation',
         eventType: 'run_start_failed',
@@ -307,7 +316,7 @@ app.post('/api/game/start', async (req, res) => {
         runId,
         gameId,
         levelId: levelId || 0,
-        modelId: model,
+        modelId: isHumanPlay ? 'human' : model,
         payload: {
           message: error.message
         }
@@ -319,14 +328,16 @@ app.post('/api/game/start', async (req, res) => {
 
     activeGames.set(gameProcess.processId, {
       gameProcess,
-      llmClient
+      client,
+      llmClient: isHumanPlay ? null : client  // backward compat for code that reads game.llmClient
     });
 
     res.json({
       status: 'started',
       processId: gameProcess.processId,
       gameId,
-      model,
+      model: isHumanPlay ? 'human' : model,
+      playerType: isHumanPlay ? 'human' : 'llm',
       runId,
       strategyWarnings
     });
@@ -354,7 +365,7 @@ app.post('/api/game/stop', (req, res) => {
 
   const game = activeGames.get(processId);
   if (game) {
-    game.llmClient.disconnect();
+    game.client.disconnect();
     if (gameManager) gameManager.stopGame(processId);
     activeGames.delete(processId);
     stopScreenshotStreaming();
@@ -363,9 +374,9 @@ app.post('/api/game/stop', (req, res) => {
       eventFamily: 'evaluation',
       eventType: 'run_stopped',
       source: 'server',
-      runId: game.llmClient.runId,
-      gameId: game.llmClient.gameId,
-      modelId: game.llmClient.model,
+      runId: game.client.runId,
+      gameId: game.client.gameId,
+      modelId: game.client.model || (game.client.playerType === 'human' ? 'human' : null),
       payload: { processId }
     });
 
@@ -409,6 +420,16 @@ io.on('connection', (socket) => {
   socket.on('error', (error) => {
     console.error('[Server] Socket error:', socket.id, error);
   });
+
+  // Human play: forward keyboard actions from the browser to the active HumanPlayClient
+  socket.on('human-action', (data) => {
+    for (const [, game] of activeGames) {
+      if (game.client && game.client.playerType === 'human' && game.client.gameActive) {
+        game.client.setAction(data.action);
+        break;
+      }
+    }
+  });
 });
 
 // Cleanup on server shutdown
@@ -417,7 +438,7 @@ process.on('SIGINT', () => {
 
   // Stop all games
   for (const [processId, game] of activeGames) {
-    game.llmClient.disconnect();
+    game.client.disconnect();
     if (gameManager) gameManager.stopGame(processId);
   }
 

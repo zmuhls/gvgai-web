@@ -4,6 +4,7 @@ const path = require('path');
 
 const { buildStrategicDigestFromFile } = require('../lib/vgdl-digest');
 const { getCachedClassification } = require('../lib/game-classifier');
+const traceStore = require('../lib/play-trace-store');
 
 const router = express.Router();
 const PROJECT_ROOT = path.join(__dirname, '../..');
@@ -89,7 +90,10 @@ router.get('/:id/digest', (req, res) => {
       return res.status(400).json({ error: 'Invalid game id' });
     }
     if (digestCache.has(gameId)) {
-      return res.json(digestCache.get(gameId));
+      const cached = digestCache.get(gameId);
+      // Trace stats are NOT cached — they change as people play
+      const traceStats = traceStore.getTraceStats(gameId) || { traceCount: 0, humanTraceCount: 0 };
+      return res.json({ ...cached, traceStats });
     }
 
     const game = resolveGameFile(gameId);
@@ -115,7 +119,9 @@ router.get('/:id/digest', (req, res) => {
       classification: getCachedClassification(gameId)
     };
     digestCache.set(gameId, facets);
-    res.json(facets);
+    // Trace stats are NOT cached — they change as people play
+    const traceStats = traceStore.getTraceStats(gameId) || { traceCount: 0, humanTraceCount: 0 };
+    res.json({ ...facets, traceStats });
   } catch (error) {
     console.error('Error building digest:', error);
     res.status(500).json({ error: 'Failed to build digest' });

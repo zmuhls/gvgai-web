@@ -244,6 +244,7 @@ function resolveGamePromptConfig(gameId, levelId, options = {}) {
   const effective = applyClassDefaults(config, classification);
 
   return {
+    gameId,
     systemContent,
     gameContent,
     levelContent,

@@ -16,6 +16,34 @@ const state = {
   lastSummary: null
 };
 
+// Player type: 'llm' (model plays) or 'human' (keyboard play)
+let playerType = 'llm';
+
+// Track currently held keys to suppress key-repeat during human play
+const heldKeys = new Set();
+
+// Map KeyboardEvent.code → GVGAI action constant
+const KEY_ACTION_MAP = {
+  ArrowLeft:  'ACTION_LEFT',
+  ArrowRight: 'ACTION_RIGHT',
+  ArrowUp:    'ACTION_UP',
+  ArrowDown:  'ACTION_DOWN',
+  Space:      'ACTION_USE',
+  KeyA:       'ACTION_LEFT',
+  KeyD:       'ACTION_RIGHT',
+  KeyW:       'ACTION_UP',
+  KeyS:       'ACTION_DOWN'
+};
+
+// Keys whose default browser behaviour (scroll, page-nav) we suppress during play
+const PREVENT_DEFAULT_KEYS = new Set([
+  'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'
+]);
+
+// Named keyboard handler refs so we can remove them on cleanup
+let humanKeydownHandler = null;
+let humanKeyupHandler = null;
+
 // Preset strategy cards — tap to pre-fill the editable text box. Each preset
 // lists the game archetypes (from /api/games) it suits best; on game select
 // the cards re-rank so affine presets come first (never hidden).
@@ -103,6 +131,10 @@ const summaryHighlights = document.getElementById('summary-highlights');
 const strategyWarn = document.getElementById('strategy-warn');
 const unfoldRules = document.getElementById('unfold-rules');
 const unfoldChips = document.getElementById('unfold-chips');
+
+// Player-type toggle + human controls reference
+const humanControlsRef = document.getElementById('human-controls-ref');
+const controlKeys = document.getElementById('control-keys');
 
 // Additional stat elements
 const scoreEl = document.getElementById('score');
@@ -338,6 +370,32 @@ function renderGames(games) {
   gamesGrid.querySelectorAll('.game-card').forEach(card => {
     card.addEventListener('click', () => selectGame(parseInt(card.dataset.gameId)));
   });
+
+  // Annotate cards that have human play traces
+  annotateGameCardsWithTraces();
+}
+
+// Fetch trace stats for visible game cards and show a badge with play count + best score
+function annotateGameCardsWithTraces() {
+  document.querySelectorAll('.game-card[data-game-id]').forEach(card => {
+    const gameId = parseInt(card.dataset.gameId, 10);
+    if (!Number.isInteger(gameId)) return;
+    fetch(`/api/traces/${gameId}/stats`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data || !data.traceCount || data.traceCount === 0) return;
+        // Don't add duplicate badges
+        if (card.querySelector('.trace-badge')) return;
+        const meta = card.querySelector('.game-card-meta');
+        if (!meta) return;
+        const badge = document.createElement('span');
+        badge.className = 'trace-badge';
+        const humanCount = data.humanTraceCount || 0;
+        badge.textContent = `${humanCount} play${humanCount !== 1 ? 's' : ''} · best ${data.bestScore}`;
+        meta.appendChild(badge);
+      })
+      .catch(() => {});
+  });
 }
 
 // Render models dropdown (featured frontier models first, one selected by default)
@@ -389,6 +447,147 @@ function selectGame(gameId) {
   showStep(modelSelector);
 }
 
+// Show/hide UI elements based on the current player type.
+// In human mode the model selector, strategy textarea, strategy cards,
+// unfold-rules, and human controls ref are all adjusted.
+function updatePlayerTypeUI() {
+  const isHuman = playerType === 'human';
+
+  // Toggle the model selector dropdown
+  const modelFormGroup = modelSelect?.closest('.form-group');
+  if (modelFormGroup) modelFormGroup.classList.toggle('hidden', isHuman);
+
+  // Toggle strategy textarea
+  if (strategyText) strategyText.classList.toggle('hidden', isHuman);
+
+  // Toggle strategy cards
+  if (strategyCards) strategyCards.classList.toggle('hidden', isHuman);
+
+  // Toggle unfold-rules
+  if (unfoldRules) unfoldRules.classList.toggle('hidden', isHuman);
+
+  // Toggle human controls reference
+  if (humanControlsRef) humanControlsRef.classList.toggle('hidden', !isHuman);
+
+  // Update start button text
+  if (startGameBtn) {
+    startGameBtn.textContent = isHuman ? 'Play the Cabinet' : 'Run the Cabinet';
+  }
+
+  // Populate the key reference when switching to human mode
+  if (isHuman && state.selectedGame) {
+    populateControlReference(state.selectedGame.id);
+  }
+}
+
+// Fetch the game digest and build a key reference from the available actions.
+// The digest returns controls.actions (labels like 'LEFT','SHOOT','WAIT') and
+// controls.useLabel. We map those to keyboard keys and render them in #control-keys.
+async function populateControlReference(gameId) {
+  if (!controlKeys) return;
+  controlKeys.innerHTML = '';
+  try {
+    const response = await fetch(`/api/games/${gameId}/digest`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const digest = await response.json();
+
+    // Build a label → key-display map from the digest's controls.
+    // digest.controls.actions is e.g. ['LEFT','RIGHT','SHOOT','WAIT']
+    // digest.controls.useLabel is e.g. 'SHOOT'
+    const controls = digest.controls || {};
+    const actions = controls.actions || [];
+    const useLabel = controls.useLabel || 'USE';
+
+    // Keyboard display for each action label
+    const labelKeyMap = {
+      UP: ['↑ / W'],
+      DOWN: ['↓ / S'],
+      LEFT: ['← / A'],
+      RIGHT: ['→ / D'],
+      WAIT: ['—']
+    };
+    // The use action maps to Space
+    labelKeyMap[useLabel] = ['Space'];
+
+    const frag = document.createDocumentFragment();
+    for (const action of actions) {
+      const keys = labelKeyMap[action];
+      if (!keys) continue;
+      for (const key of keys) {
+        const span = document.createElement('span');
+        span.className = 'control-key';
+        const cap = document.createElement('span');
+        cap.className = 'key-cap';
+        cap.textContent = key;
+        const lbl = document.createElement('span');
+        lbl.className = 'key-label';
+        lbl.textContent = action;
+        span.append(cap, lbl);
+        frag.appendChild(span);
+      }
+    }
+    controlKeys.appendChild(frag);
+  } catch (err) {
+    console.warn('[App] Could not load control reference:', err.message);
+  }
+}
+
+// --- Human play keyboard handlers -----------------------------------------
+
+// Browser KeyboardEvent.code → GVGAI internal action name.
+// Must stay in sync with web/lib/key-mapping.js FULL_KEY_MAP.
+const HUMAN_KEY_MAP = {
+  ArrowLeft: 'ACTION_LEFT', ArrowRight: 'ACTION_RIGHT',
+  ArrowUp: 'ACTION_UP', ArrowDown: 'ACTION_DOWN',
+  Space: 'ACTION_USE', Enter: 'ACTION_USE',
+  KeyA: 'ACTION_LEFT', KeyD: 'ACTION_RIGHT',
+  KeyW: 'ACTION_UP', KeyS: 'ACTION_DOWN',
+};
+
+function preventDefaultArrowKeys(e) {
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].includes(e.code)) {
+    e.preventDefault();
+  }
+}
+
+function handleHumanKeyDown(e) {
+  if (playerType !== 'human' || !state.processId) return;
+  if (heldKeys.has(e.code)) return;  // suppress key repeat
+  heldKeys.add(e.code);
+  const action = HUMAN_KEY_MAP[e.code];
+  if (action) {
+    socket.emit('human-action', { action });
+    addHumanMoveToTrace(action);
+  }
+}
+
+function handleHumanKeyUp(e) {
+  heldKeys.delete(e.code);
+}
+
+function addHumanMoveToTrace(action) {
+  if (!reasoningLog) return;
+  const entry = document.createElement('div');
+  entry.className = 'reasoning-entry human-entry';
+  const label = action.replace(/^ACTION_/, '');
+  entry.textContent = `YOU: ${label}`;
+  reasoningLog.appendChild(entry);
+  reasoningLog.scrollTop = reasoningLog.scrollHeight;
+}
+
+function attachHumanPlayListeners() {
+  document.addEventListener('keydown', handleHumanKeyDown);
+  document.addEventListener('keyup', handleHumanKeyUp);
+  document.addEventListener('keydown', preventDefaultArrowKeys);
+}
+
+function cleanupHumanPlay() {
+  document.removeEventListener('keydown', handleHumanKeyDown);
+  document.removeEventListener('keyup', handleHumanKeyUp);
+  document.removeEventListener('keydown', preventDefaultArrowKeys);
+  heldKeys.clear();
+}
+
 // Start game
 async function startGame() {
   if (!state.selectedGame) {
@@ -429,7 +628,8 @@ async function startGame() {
         gameId: state.selectedGame.id,
         levelId: level,
         model,
-        strategy
+        strategy,
+        playerType
       })
     });
 
@@ -474,6 +674,11 @@ async function startGame() {
     }
 
     showStep(gameViewer);
+
+    // Attach keyboard listeners for human play mode
+    if (playerType === 'human') {
+      attachHumanPlayListeners();
+    }
   } catch (error) {
     console.error('[App] Error starting game:', error);
     trackUx('game_start_failed', {
@@ -487,13 +692,14 @@ async function startGame() {
     alert('Failed to start game: ' + error.message);
   } finally {
     startGameBtn.disabled = false;
-    startGameBtn.textContent = 'Run the Cabinet';
+    startGameBtn.textContent = playerType === 'human' ? 'Play the Cabinet' : 'Run the Cabinet';
   }
 }
 
 // Stop game
 async function stopGame() {
   if (!state.processId) return;
+  cleanupHumanPlay();
 
   try {
     trackUx('game_stop_clicked', {
@@ -599,6 +805,19 @@ function setupEventListeners() {
 
   startGameBtn.addEventListener('click', startGame);
   stopGameBtn.addEventListener('click', stopGame);
+
+  // Player-type toggle: "Model plays" vs "I'll play"
+  document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const type = btn.dataset.playerType;
+      if (!type || type === playerType) return;
+      playerType = type;
+      document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      updatePlayerTypeUI();
+    });
+  });
+
   if (strategyText) strategyText.addEventListener('input', updateStrategyWarn);
   backToGamesBtn.addEventListener('click', () => showStep(gameSelector));
   playAgainBtn.addEventListener('click', () => {
@@ -768,6 +987,7 @@ function setupWebSocket() {
   // End-of-run summary card (fires on level end, carries adherence + highlights)
   socket.on('run-summary', (data) => {
     console.log('[App] Run summary:', data);
+    cleanupHumanPlay();
     state.lastSummary = data;
     trackUx('run_summary_viewed', {
       winner: data.winner,
@@ -788,6 +1008,7 @@ function setupWebSocket() {
   // Full session end (all levels done)
   socket.on('session-end', (data) => {
     console.log('[App] Session ended:', data);
+    cleanupHumanPlay();
 
     // If a run-summary already populated the card, leave it as-is
     if (!state.lastSummary) {
@@ -1020,6 +1241,80 @@ function sharesStrategyKeyword(reason, strategy) {
   const words = (strategy.toLowerCase().match(/[a-z]+/g) || [])
     .filter(w => w.length >= 4 && !BADGE_STOPWORDS.has(w));
   return words.some(w => r.includes(w));
+}
+
+// ─── Human play: keyboard capture ───────────────────────────────────────────
+
+// Attach keydown/keyup listeners for human play mode. Called from startGame()
+// after the game viewer is shown, only when playerType === 'human'.
+function attachHumanPlayListeners() {
+  // Remove any existing listeners first (idempotent)
+  cleanupHumanPlay();
+
+  humanKeydownHandler = (e) => {
+    // Prevent page scrolling for arrow keys + space during play
+    if (PREVENT_DEFAULT_KEYS.has(e.code)) e.preventDefault();
+
+    // Suppress key repeat: only fire on the initial press
+    if (heldKeys.has(e.code)) return;
+
+    const action = KEY_ACTION_MAP[e.code];
+    if (!action) return;
+
+    heldKeys.add(e.code);
+
+    // Emit the action to the server via socket
+    if (socket && socket.connected) {
+      socket.emit('human-action', { action });
+    }
+
+    // Add a "YOU: ACTION_X" entry to the move trace
+    addHumanMoveToTrace(action);
+  };
+
+  humanKeyupHandler = (e) => {
+    heldKeys.delete(e.code);
+  };
+
+  window.addEventListener('keydown', humanKeydownHandler);
+  window.addEventListener('keyup', humanKeyupHandler);
+}
+
+// Remove keyboard listeners and reset held-keys state. Called from stopGame(),
+// 'run-summary', and 'session-end' handlers.
+function cleanupHumanPlay() {
+  if (humanKeydownHandler) {
+    window.removeEventListener('keydown', humanKeydownHandler);
+    humanKeydownHandler = null;
+  }
+  if (humanKeyupHandler) {
+    window.removeEventListener('keyup', humanKeyupHandler);
+    humanKeyupHandler = null;
+  }
+  heldKeys.clear();
+}
+
+// Add a "YOU: ACTION_X" entry to the reasoning log panel for human moves.
+function addHumanMoveToTrace(action) {
+  if (!reasoningLog) return;
+  const entry = document.createElement('div');
+  entry.className = 'reasoning-entry';
+
+  const youLine = document.createElement('div');
+  youLine.className = 'narration';
+  youLine.textContent = 'YOU';
+
+  const actDiv = document.createElement('div');
+  actDiv.className = 'action fast';
+  actDiv.textContent = `→ ${String(action).replace(/^ACTION_/, '')}`;
+
+  entry.append(youLine, actDiv);
+  reasoningLog.insertBefore(entry, reasoningLog.firstChild);
+
+  // Keep only last 20 entries (same trim as LLM reasoning entries)
+  while (reasoningLog.children.length > 20) {
+    reasoningLog.removeChild(reasoningLog.lastChild);
+  }
 }
 
 // Utility function
