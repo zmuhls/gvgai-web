@@ -13,7 +13,7 @@
   },
   "openrouter": {
     "apiUrl": "https://openrouter.ai/api/v1/chat/completions",
-    "defaultModel": "gpt-oss:120b"
+    "defaultModel": "google/gemini-2.5-flash"
   },
   "ollamaCloud": {
     "apiUrl": "https://ollama.com/v1/chat/completions"

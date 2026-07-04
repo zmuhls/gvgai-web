@@ -650,10 +650,6 @@ class LLMClient {
     if (provider === 'ollama-cloud') {
       apiUrl = config.ollamaCloud.apiUrl;
       if (this.ollamaApiKey) headers['Authorization'] = `Bearer ${this.ollamaApiKey}`;
-      // Many Ollama Cloud models (e.g. gpt-oss) are reasoning models that burn the
-      // token budget on hidden reasoning, leaving content empty. Low effort keeps
-      // them fast (~876ms vs ~1460ms) and the visible answer non-empty.
-      body.reasoning_effort = 'low';
     } else if (provider === 'ollama-local') {
       apiUrl = config.ollama.apiUrl;
     } else { // openrouter

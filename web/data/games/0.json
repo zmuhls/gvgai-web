@@ -8,7 +8,7 @@
   },
   "progressionContexts": {},
   "llmSettings": {
-    "maxTokens": 8,
+    "maxTokens": 50,
     "temperature": 0.1
   },
   "actionAliases": {
@@ -47,8 +47,7 @@
       "DODGE_NEAR",
       "CLEAR_LOW"
     ],
-    "forceActionCode": "U",
-    "authoritative": true,
+    "authoritative": false,
     "preferFire": true,
     "dodgeLookaheadRows": 3,
     "entityLimit": 5,

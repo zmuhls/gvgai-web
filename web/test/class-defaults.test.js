@@ -119,7 +119,7 @@ test('resolveGamePromptConfig applies class defaults beneath explicit config', (
   const aliens = promptStore.resolveGamePromptConfig(0, 0);
   assert.equal(aliens.classification.archetype, 'shooter-lane');
   assert.equal(aliens.macroActions, null);
-  assert.equal(aliens.llmSettings.maxTokens, 8);
+  assert.equal(aliens.llmSettings.maxTokens, 50);
 
   withEnv('CLASS_DEFAULTS_DISABLED', '1', () => {
     promptStore.invalidateCache();

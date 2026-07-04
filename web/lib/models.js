@@ -10,43 +10,43 @@
 // for Ollama-primary models the fallback simply takes over.
 
 const MODELS = [
-  // --- Ollama Cloud primaries (OpenRouter fallback slug) ---
+  // --- OpenRouter frontier (direct; non-reasoning, works with code protocol) ---
   {
-    id: 'gpt-oss:120b', name: 'GPT-OSS 120B',
-    provider: 'ollama-cloud', fallback: 'openai/gpt-oss-120b:exacto',
-    description: 'Open-weight · Ollama Cloud (OpenRouter fallback)',
-    speed: 'medium', cost: 'low', featured: true
+    id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash',
+    provider: 'openrouter', fallback: null,
+    description: 'Frontier · fast, non-reasoning (OpenRouter)',
+    speed: 'fast', cost: 'low', featured: true
   },
   {
-    id: 'deepseek-v3.1:671b', name: 'DeepSeek v3.1',
-    provider: 'ollama-cloud', fallback: 'deepseek/deepseek-v3.1-terminus:exacto',
-    description: 'Open-weight · Ollama Cloud (OpenRouter fallback)',
-    speed: 'medium', cost: 'low', featured: true
+    id: 'openai/gpt-4o', name: 'GPT-4o',
+    provider: 'openrouter', fallback: null,
+    description: 'Frontier · all-rounder (OpenRouter)',
+    speed: 'medium', cost: 'mid', featured: true
   },
-  {
-    id: 'qwen3-coder:480b', name: 'Qwen3 Coder 480B',
-    provider: 'ollama-cloud', fallback: 'qwen/qwen3-coder',
-    description: 'Open-weight · Ollama Cloud (OpenRouter fallback)',
-    speed: 'medium', cost: 'low', featured: true
-  },
-  // --- OpenRouter frontier (direct; no Ollama Cloud equivalent) ---
   {
     id: 'anthropic/claude-sonnet-4.5', name: 'Claude Sonnet 4.5',
     provider: 'openrouter', fallback: null,
     description: 'Frontier · strongest reasoning (OpenRouter)',
     speed: 'medium', cost: 'mid', featured: false
   },
+  // --- Ollama Cloud (reasoning models — incompatible with compact code protocol) ---
   {
-    id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash',
-    provider: 'openrouter', fallback: null,
-    description: 'Frontier · fast (OpenRouter)',
-    speed: 'fast', cost: 'low', featured: false
+    id: 'gpt-oss:120b', name: 'GPT-OSS 120B',
+    provider: 'ollama-cloud', fallback: 'openai/gpt-oss-120b:exacto',
+    description: 'Reasoning model · Ollama Cloud (use with prose-prompt games only)',
+    speed: 'medium', cost: 'low', featured: false
   },
   {
-    id: 'openai/gpt-4o', name: 'GPT-4o',
-    provider: 'openrouter', fallback: null,
-    description: 'Frontier · all-rounder (OpenRouter)',
-    speed: 'medium', cost: 'mid', featured: false
+    id: 'deepseek-v3.1:671b', name: 'DeepSeek v3.1',
+    provider: 'ollama-cloud', fallback: 'deepseek/deepseek-v3.1-terminus:exacto',
+    description: 'Reasoning model · Ollama Cloud (use with prose-prompt games only)',
+    speed: 'medium', cost: 'low', featured: false
+  },
+  {
+    id: 'qwen3-coder:480b', name: 'Qwen3 Coder 480B',
+    provider: 'ollama-cloud', fallback: 'qwen/qwen3-coder',
+    description: 'Reasoning model · Ollama Cloud (use with prose-prompt games only)',
+    speed: 'medium', cost: 'low', featured: false
   },
   // --- Local Ollama (no key) ---
   {

@@ -8,14 +8,14 @@
   },
   "progressionContexts": {},
   "llmSettings": {
-    "maxTokens": 8,
+    "maxTokens": 50,
     "temperature": 0.1
   },
   "codeProtocol": {
     "enabled": true,
     "id": "GV1",
     "policyId": "fixed-code",
-    "authoritative": true,
+    "authoritative": false,
     "fixedActionCode": "R",
     "actionCodes": {
       "U": "ACTION_UP",

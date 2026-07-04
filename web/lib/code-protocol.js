@@ -619,7 +619,7 @@ function buildCodePrompt(sso, promptConfig = {}, stateTracker) {
     fallbackAction: codes[best] || codes.N || 'ACTION_NIL',
     fallbackActionCode: best,
     policyReason: policy?.reason || null,
-    policyAuthoritative: protocol.authoritative === true || Boolean(protocol.forceActionCode)
+    policyAuthoritative: protocol.authoritative === true
   };
 }
 

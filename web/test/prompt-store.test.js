@@ -12,8 +12,7 @@ test('aliens prompt config enables the GV1 code protocol', () => {
   assert.equal(config.codeProtocol.policyId, 'aliens-opening-move');
   assert.deepEqual(config.codeProtocol.movementCodes, ['R', 'L']);
   assert.equal(config.codeProtocol.movementIntervalTicks, 6);
-  assert.equal(config.codeProtocol.forceActionCode, 'U');
-  assert.equal(config.codeProtocol.authoritative, true);
+  assert.equal(config.codeProtocol.authoritative, false);
   assert.deepEqual(config.codeProtocol.actionCodes, {
     N: 'ACTION_NIL',
     L: 'ACTION_LEFT',
@@ -28,7 +27,7 @@ test('aliens prompt config enables the GV1 code protocol', () => {
   });
 });
 
-test('selected arcade games resolve authoritative code protocols', () => {
+test('selected arcade games resolve non-authoritative code protocols', () => {
   const expectations = [
     [4, 'bait', 'bait-level0'],
     [13, 'butterflies', 'grid-target'],
@@ -42,6 +41,6 @@ test('selected arcade games resolve authoritative code protocols', () => {
     assert.equal(config.codeProtocol.enabled, true);
     assert.equal(config.codeProtocol.id, 'GV1');
     assert.equal(config.codeProtocol.policyId, policyId);
-    assert.equal(config.codeProtocol.authoritative, true);
+    assert.equal(config.codeProtocol.authoritative, false);
   }
 });

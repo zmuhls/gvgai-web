@@ -8,14 +8,14 @@
   },
   "progressionContexts": {},
   "llmSettings": {
-    "maxTokens": 8,
+    "maxTokens": 50,
     "temperature": 0.1
   },
   "codeProtocol": {
     "enabled": true,
     "id": "GV1",
     "policyId": "bait-level0",
-    "authoritative": true,
+    "authoritative": false,
     "actionCodes": {
       "U": "ACTION_UP",
       "D": "ACTION_DOWN",
