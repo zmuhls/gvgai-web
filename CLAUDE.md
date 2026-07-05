@@ -12,7 +12,7 @@ GVGAI (General Video Game AI) framework with a web-based LLM agent integration l
 
 ## Git Workflow
 
-- **Location.** This repo lives at `~/Projects/gvgai` (outside iCloud). Do **not** keep it under `~/Desktop` or `~/Documents` — those are iCloud-synced with "Optimize Mac Storage," which evicts `.git` refs/objects to dataless placeholders mid-operation and corrupts git commands.
+- **Location.** This repo belongs at `~/Projects/gvgai` (outside iCloud). Do **not** keep it under `~/Desktop` or `~/Documents` — those are iCloud-synced with "Optimize Mac Storage," which evicts `.git` refs/objects to dataless placeholders mid-operation and corrupts git commands. The failure signature on an iCloud clone: ordinary git commands hang for minutes, killed commands leave stale `.git/*.lock` files that block everything after (delete the lock files and retry), and git processes get stuck in uninterruptible sleep. If you hit this, finish the immediate task with background commands and long timeouts, then move the clone.
 - **Push when finished.** When a task is complete and you have committed work, push to `origin` without waiting to be asked. "Finished" means the requested change is done, committed, and verified — not after every intermediate commit. If the push is not a fast-forward, stop and report rather than force-pushing.
 
 ## Build & Run Commands
@@ -64,7 +64,7 @@ The web frontend spawns the Java process automatically via `game-manager.js` whe
 
 ### Frontend assets are `public/`; API routes are the `-local` variants
 
-The `public-local/` static split was removed (commit ccf1c10b) — `web/public/` is served directly and is the only copy. But `server.js` still mounts the **`-local` route variants** (`routes/{games,models,prompts}-local.js`) for those three API groups; the plain `routes/games.js`/`models.js`/`prompts.js` files still exist and have **diverged** from their `-local` counterparts. Editing the plain files does not change live behavior — edit the `-local` ones. When a route change "doesn't take," check which variant `server.js` actually requires.
+The `public-local/` static split was removed (commit ccf1c10b) — `web/public/` is served directly and is the only copy. But `server.js` still mounts the **`-local` route variants** (`routes/{games,models,prompts,traces}-local.js`) for those four API groups; the plain `routes/games.js`/`models.js`/`prompts.js` files still exist and have **diverged** from their `-local` counterparts. Editing the plain files does not change live behavior — edit the `-local` ones. When a route change "doesn't take," check which variant `server.js` actually requires.
 
 `.gitignore` has aggressive global patterns (`*.html`, `*.xml`, `*.gif`). Tracked HTML under `web/public/` survives only via explicit `!` exceptions — currently `!web/public/index.html` and `!web/public/marquee.html`. **Any new HTML page needs its own exception** or it silently falls out of version control.
 
@@ -257,6 +257,7 @@ These three subsystems are all newer than the original arcade core loop and live
 The arcade is live at **https://inference-arcade.com** (Cloudflare-proxied apex CNAME → `gaaqisv1.up.railway.app`; the Railway-generated domain is `inference-arcade-production.up.railway.app`).
 
 - **Railway**: project/service `inference-arcade`, built from the root `Dockerfile` per `railway.json` (healthcheck `/api/games`). GitHub push-to-deploy is connected (since July 5 2026): the service's source is `zmuhls/gvgai-web` branch `master`, so every push to master triggers a full rebuild and deploy — including docs-only commits. `railway up --service inference-arcade --detach` from the repo root still works for deploying uncommitted local state.
+- **The Railway↔GitHub link runs through the `milwrite` identity, not `zmuhls`.** The Railway account's GitHub OAuth is `milwrite`; the repo owner is `zmuhls`. The connection works because `milwrite` has collaborator (write) access on `zmuhls/gvgai-web`. If Railway ever stops seeing the repo (empty repo picker, failed source connect), check that collaborator grant first — and note Railway's repo list caches, so a fresh grant may not appear immediately even though a direct source-connect succeeds.
 - **`PORT=3000` is a pinned Railway variable — do not remove it.** Railway injects `PORT=8080` by default, which collides with the Java engine's fixed socket port 8080 and makes every game start fail with `BindException: Address already in use`.
 - **`MARBLE_RUN_AUTOSTART=false`** is set on Railway so the attract-mode marble run doesn't burn LLM tokens continuously; enable deliberately via `POST /api/marble/start`.
 - **Dockerfile shape**: stage 1 compiles the engine with JDK 11; stage 2 (JRE 11 + Node 22) bakes the hydrated runtime layout at `web/.gvgai-runtime/` (classes + source tree + `runtime.json`) so `game-manager.js` never runs the git-dependent prepare script, **and** copies `examples/` to the project root a second time — the Node layer (`game-registry.js`, `vgdl-digest.js`) reads the game CSV and VGDL files from the project root, not the runtime dir.
