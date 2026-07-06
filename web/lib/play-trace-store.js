@@ -188,6 +188,15 @@ function getTraceStats(gameId) {
   };
 }
 
+// Strip the screenshot byte array before an SSO lands in a trace file — under
+// the default BOTH act-response mode it is hundreds of KB per tick, and the
+// frame already reaches the browser via the PNG stream.
+function pruneSsoForTrace(sso) {
+  if (!sso || typeof sso !== 'object') return null;
+  const { imageArray, ...rest } = sso;
+  return rest;
+}
+
 module.exports = {
   saveTrace,
   getTracesForGame,
@@ -196,5 +205,6 @@ module.exports = {
   getBestTraces,
   getTraceStats,
   clearCache,
+  pruneSsoForTrace,
   TRACE_DIR
 };
