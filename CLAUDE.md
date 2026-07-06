@@ -52,6 +52,7 @@ npm run eval:arcade          # dry-run arcade eval plan (--dry-run --all)
 npm run eval:arcade:execute  # actually run the arcade eval batch (spawns Java + LLM calls)
 npm run telemetry:check      # verify Supabase telemetry connectivity
 npm run telemetry:backfill   # replay local telemetry-events.jsonl into Supabase
+npm run finetune:prepare -- --gameId=0   # traces with SSO -> training JSONL (see Fine-Tune Pipeline)
 
 node scripts/classify-games.js --dry-run --all   # print archetype/pace for all 122 games
 node scripts/classify-games.js --write --all     # backfill classification blocks into data/games/*.json
@@ -192,6 +193,8 @@ The walk-up handoff only protects sessions that go through the server. **Standal
 | `strategy-memory-store.js` + `strategy-memory-evaluator.js` | Per-game strategy "memory" records (built from VGDL digest), cached CRUD under `data/strategy-memory/`, and A/B evaluation (baseline vs digest-memory prompt) |
 | `eval-plan.js` + `batch-evaluator.js` + `offline-game-evaluator.js` | Arcade eval harness: build game×model×strategy plans, run batches (spawns Java + real LLM via `game-manager`/`llm-client`), and an offline scripted-policy evaluator for prompt-pipeline tests without a live model. `createEventSink(broadcastIo)` + `runEvalCase`'s `onCaseStart` are the seams the marble run reuses to broadcast live |
 | `attract-coordinator.js` | Attract-mode "marble run" singleton: serial playlist broadcast on the single Java process, walk-up interrupt/resume state machine, consecutive-error backstop; emits `marble-run-state`/`case-started`/`case-completed` |
+| `finetune-pipeline.js` | Fine-tune orchestrator singleton (see Fine-Tune Pipeline section): data prep in-process, python training child with JSON-line progress, Ollama load, opt-in auto-trigger; emits `finetune-progress`/`finetune-complete`/`finetune-error` |
+| `ollama-loader.js` | `isOllamaAvailable()` + `loadModel()` — GGUF → local Ollama via `ollama create` with Modelfile resolution (no TEMPLATE override, `num_predict` not `max_tokens`) |
 
 ### Data (web/data/)
 | Path | Purpose |
@@ -257,6 +260,19 @@ These three subsystems are all newer than the original arcade core loop and live
 - **Strategy memory (`strategy-memory-store.js`, `vgdl-digest.js`)** — derives a structural digest from each game's VGDL and stores a per-game "memory" record under `web/data/strategy-memory/` (schema v2 records carry the game's `classification`). `strategy-memory-evaluator.js` A/B-tests a `baseline` prompt vs a `digest-memory` prompt and flips each record's `evaluationStatus` to accepted/rejected; gate thresholds come per-archetype from `class-defaults.json` `memoryGate`. **The live path is gated**: `server.js` constructs the walk-up `LLMClient` with `strategyMemory: 'accepted'`, so only accepted records replace the game-context prompt layer (candidates are invisible; `STRATEGY_MEMORY_DISABLED=1` switches injection off; code-protocol games never inject). Generate/evaluate via `scripts/generate-strategy-memory.js` and `scripts/evaluate-strategy-memory.js` (the evaluator loads root `.env` itself and takes `--max-actions` — the default 40-action eval cap makes tick/score gains hard to observe on puzzle games).
 - **Eval harness (`eval-plan.js`, `batch-evaluator.js`, `offline-game-evaluator.js`, `routes/evals.js`)** — `buildArcadeEvalPlan()` enumerates game × model × strategy cases (each carries the game's `archetype`, with a `byArchetype` rollup on the plan); `runArcadeBatchEvaluation()` executes them by spawning real Java game sessions and real LLM calls (slow, costs tokens — `npm run eval:arcade:execute`). Survival/nil-loop thresholds in `normalizeEvalResult` resolve per-archetype from `class-defaults.json` before falling back to the global constants, and the eval report groups results by archetype (cross-archetype score averages aren't comparable). `offline-game-evaluator.js` is the scripted-policy stand-in used by tests and dry runs so the prompt/parse pipeline can be exercised without a live model. Output artifacts land in `web/evals/` and `web/data/eval-runs/`; the `/api/evals/arcade` route serves the plan and `/api/evals/arcade/run` triggers a batch.
 
+## Fine-Tune Pipeline
+
+Human play traces → training data → QLoRA fine-tune → registry → the model appears in the arcade picker. Built 2026-07-06; training itself runs on an external CUDA box (the "Legion"), everything else runs anywhere. `web/scripts/FINETUNE.md` is the manual runbook.
+
+- **SSO capture** — `HumanPlayClient.recordActState` and `LLMClient.recordActionDecision` store the per-tick game state (`sso`, pruned of `imageArray` via `pruneSsoForTrace`) on each trace `actionHistory` entry. Traces recorded before this ship carry no `sso` and can't be used for training.
+- **Data prep (`scripts/prepare-finetune-data.js`, `npm run finetune:prepare -- --gameId=0`)** — replays `buildPrompt()` over the stored SSO in live-loop order (`recordTick` → `buildPrompt` → `recordAction`), pairs each prompt with the human action, and writes a chat-messages JSONL to `web/data/finetune/` (gitignored). Forces `codeProtocol` off so targets stay `ACTION_*` words; downsamples `ACTION_NIL` deterministically (`--max-nil-ratio`, default 0.3); errors are typed (`NO_TRACES | NO_SSO | TOO_FEW_EXAMPLES`). The prompt's PLAY HISTORY layer is reconstructed as-of-now — that matches what the tuned model sees at inference.
+- **Training (`scripts/finetune.py`, deps in `scripts/requirements.txt`)** — Unsloth + QLoRA on Gemma 3 4B, `train_on_responses_only` (the target is one action token), GGUF export, atomic registry append. Emits one JSON object per stdout line (`start … train_step … done`); `--dry-run` simulates the full sequence with stdlib only (works on this Mac's python3, no torch) and writes a `dryRun: true` registry entry.
+- **Registry + catalog (`web/data/finetune-models.json`, gitignored)** — `lib/models.js` merges registry entries into `getAllModels()` (served by `/api/models`) and, critically, into `resolveModel()`, which routes them to the existing `ollama-local` provider branch. Never featured, so the marble-run playlist is unaffected. `FINETUNE_REGISTRY_PATH` relocates the file (tests use this).
+- **Orchestration (`lib/finetune-pipeline.js`, `routes/finetune.js`)** — `POST /api/finetune/trigger {gameId, dryRun?}` → 202 and a fire-and-forget run through preparing → training (python child, progress parsed from stdout) → loading (`lib/ollama-loader.js` runs `ollama create`; skipped when the daemon is absent — the registry entry still stands) → complete/failed. `GET /api/finetune/status`, `POST /api/finetune/cancel`. Socket events: `finetune-progress`/`finetune-complete`/`finetune-error`; telemetry (`system` family): `finetune_started`/`finetune_stage`/`finetune_completed`/`finetune_error` (stage transitions only, never per train step). `shutdown()` kills an active training child. Missing python3 (Railway) fails the run gracefully — the route is deploy-safe.
+- **Auto-trigger is opt-in**: `FINETUNE_AUTO_ENABLED=1` checks featured games every 10 min and triggers when a game has `FINETUNE_MIN_NEW_TRACES` (default 10) new human traces since its last non-dry training (derived from the registry itself). Other env knobs: `FINETUNE_PYTHON`, `FINETUNE_DRY_RUN=1` (force dry-run server-wide), `FINETUNE_TIMEOUT_MS`, `FINETUNE_MIN_EXAMPLES`.
+- **Frontend** — telemetry dashboard has a Fine-Tune Pipeline panel (live stage + loss via socket events); the tote board annotates fine-tuned rows with a score delta vs the default featured model; game cards show "FT ready" at 3+ human plays; `app.js` refreshes the model picker on `finetune-complete`.
+- **Ollama Modelfile gotchas** (encoded in `ollama-loader.js`): `max_tokens` is not an Ollama parameter (use `num_predict`), and a `TEMPLATE {{ .Prompt }}` override breaks chat formatting — omit TEMPLATE and let Ollama read the GGUF's embedded chat template.
+
 ## Deployment (Railway + Cloudflare + Supabase)
 
 The arcade is live at **https://inference-arcade.com** (Cloudflare-proxied apex CNAME → `gaaqisv1.up.railway.app`; the Railway-generated domain is `inference-arcade-production.up.railway.app`).
@@ -270,7 +286,7 @@ The arcade is live at **https://inference-arcade.com** (Cloudflare-proxied apex 
 
 ## Development Notes
 
-- `imageArray` in SSO JSON is stripped before `JSON.parse` in `llm-client.js` (it's megabytes of base64 PNG)
+- `imageArray` in SSO JSON is **not** stripped from the socket payload — both clients `JSON.parse` the full ACT message every tick (it arrives as a JSON int array under the default `BOTH` mode). It is pruned only at trace-capture time (`pruneSsoForTrace` in `play-trace-store.js`) so stored traces don't balloon
 - `extractQuickState()` does fast field extraction from raw JSON strings to avoid full parsing on every tick — only LLM calls do full `JSON.parse`
 - The `observationGrid` is `[x][y][sprites]` (columns-first) — iterate `y` as outer loop for row-by-row display
 - `Observation` objects have `category` (0-6) and `itype` (game-specific sprite ID)
