@@ -7,6 +7,7 @@ const { resolveModel } = require('./models');
 const promptStore = require('./prompt-store');
 const telemetry = require('./telemetry-store');
 const traceStore = require('./play-trace-store');
+const guardrail = require('./usage-guardrail');
 const { getCachedClassification } = require('./game-classifier');
 
 // Macro-action executor tuning. The plan queue is a bridge across LLM latency,
@@ -648,6 +649,27 @@ class LLMClient {
     };
 
     if (provider === 'ollama-cloud') {
+      // Light usage guardrail on the Ollama Cloud key. A blocked call throws a
+      // flagged error so the caller skips the OpenRouter fallback (which would
+      // silently shift spend) and surfaces it via 'llm-error' instead.
+      const verdict = guardrail.admitOllamaCall(this.ollamaCloudCallCount || 0);
+      if (!verdict.allowed) {
+        telemetry.track({
+          eventFamily: 'system',
+          eventType: 'guardrail_block',
+          source: 'llm-client',
+          runId: this.runId,
+          gameId: this.gameId,
+          levelId: this.levelCount,
+          modelId,
+          provider: 'ollama-cloud',
+          payload: { scope: verdict.scope, message: verdict.reason }
+        });
+        const guardErr = new Error(`ollama-cloud usage guardrail: ${verdict.reason}`);
+        guardErr.guardrail = true;
+        throw guardErr;
+      }
+      this.ollamaCloudCallCount = (this.ollamaCloudCallCount || 0) + 1;
       apiUrl = config.ollamaCloud.apiUrl;
       if (this.ollamaApiKey) headers['Authorization'] = `Bearer ${this.ollamaApiKey}`;
     } else if (provider === 'ollama-local') {
@@ -750,7 +772,7 @@ class LLMClient {
           fallback: resolved.fallback || null
         }
       });
-      if (resolved.fallback) {
+      if (resolved.fallback && !primaryErr.guardrail) {
         usedProvider = 'openrouter';
         usedModel = resolved.fallback;
         try {

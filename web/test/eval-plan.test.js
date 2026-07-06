@@ -13,7 +13,7 @@ test('arcade eval plan covers the featured models across three arcade games', ()
   const { buildArcadeEvalPlan } = loadEvalPlan();
   const plan = buildArcadeEvalPlan({ gameCount: 3 });
 
-  assert.deepEqual(plan.modelIds, ['google/gemini-2.5-flash', 'openai/gpt-4o']);
+  assert.deepEqual(plan.modelIds, ['gemma3:27b', 'gemma3:12b']);
   assert.deepEqual(plan.gameIds, [0, 32, 4]);
   assert.equal(plan.games[0].name, 'aliens');
   assert.equal(plan.games[1].name, 'doorkoban');
@@ -34,7 +34,7 @@ test('arcade eval plan can include more games without changing model coverage', 
   const { buildArcadeEvalPlan } = loadEvalPlan();
   const plan = buildArcadeEvalPlan({ gameCount: 5 });
 
-  assert.deepEqual(plan.modelIds, ['google/gemini-2.5-flash', 'openai/gpt-4o']);
+  assert.deepEqual(plan.modelIds, ['gemma3:27b', 'gemma3:12b']);
   assert.deepEqual(plan.gameIds, [0, 32, 4, 11, 18]);
   assert.equal(plan.cases.length, plan.modelIds.length * plan.gameIds.length * plan.strategies.length);
 });
@@ -90,13 +90,13 @@ test('eval case filtering targets games, models, strategies, and caps run count'
 
   const cases = filterEvalCases(plan, {
     gameIds: [0, 4],
-    modelIds: ['google/gemini-2.5-flash'],
+    modelIds: ['gemma3:27b'],
     strategyIds: ['safe', 'puzzle'],
     maxCases: 3
   });
 
   assert.equal(cases.length, 3);
-  assert.deepEqual([...new Set(cases.map(evalCase => evalCase.modelId))], ['google/gemini-2.5-flash']);
+  assert.deepEqual([...new Set(cases.map(evalCase => evalCase.modelId))], ['gemma3:27b']);
   assert.ok(cases.every(evalCase => [0, 4].includes(evalCase.gameId)));
   assert.ok(cases.every(evalCase => ['safe', 'puzzle'].includes(evalCase.strategyId)));
 });

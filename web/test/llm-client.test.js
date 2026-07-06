@@ -36,7 +36,7 @@ test('authoritative code policy answers ACT ticks without provider latency', asy
   const sent = [];
   const emitted = [];
 
-  client.model = 'google/gemini-2.5-flash';
+  client.model = 'gemma3:27b';
   client.gameId = 4;
   client.gameName = 'bait';
   client.promptConfig = {
@@ -105,7 +105,7 @@ test('socket close emits a partial run summary from recorded fallback actions', 
       events.push({ event, payload });
     }
   };
-  client.model = 'gpt-oss:120b';
+  client.model = 'gemma3:12b';
   client.sessionStrategy = 'Play safely';
   client.runStartScore = 0;
   client.lastSso = {
@@ -132,7 +132,7 @@ test('socket close emits a partial run summary from init state before first acti
       events.push({ event, payload });
     }
   };
-  client.model = 'gpt-oss:120b';
+  client.model = 'gemma3:12b';
   client.lastSso = {
     gameScore: 0,
     gameWinner: 'NO_WINNER',
@@ -178,7 +178,7 @@ test('requestLLMAction sends GV1 code tape and maps compact output to GVGAI acti
   const client = new LLMClient({ actionTimeoutMs: 1000 });
   let capturedBody = null;
 
-  client.model = 'smollm2:135m';
+  client.model = 'ministral-3:3b';
   client.gameId = 0;
   client.levelCount = 0;
   client.promptConfig = {
@@ -250,7 +250,7 @@ test('requestLLMAction uses encoded best action when compact output is invalid',
   const originalFetch = global.fetch;
   const client = new LLMClient({ actionTimeoutMs: 1000 });
 
-  client.model = 'smollm2:135m';
+  client.model = 'ministral-3:3b';
   client.gameId = 0;
   client.levelCount = 0;
   client.promptConfig = {
@@ -303,7 +303,7 @@ test('requestLLMAction can let authoritative game code override a valid model ac
   const originalFetch = global.fetch;
   const client = new LLMClient({ actionTimeoutMs: 1000 });
 
-  client.model = 'google/gemini-2.5-flash';
+  client.model = 'gemma3:27b';
   client.gameId = 0;
   client.levelCount = 0;
   client.promptConfig = {
@@ -485,7 +485,7 @@ test('handleEnd clears the plan queue so plans never leak across levels', async 
 test('authoritative code policy bypasses a non-empty plan queue', async () => {
   const client = new LLMClient();
   const sent = [];
-  client.model = 'google/gemini-2.5-flash';
+  client.model = 'gemma3:27b';
   client.gameId = 4;
   client.gameName = 'bait';
   client.promptConfig = {
@@ -536,7 +536,7 @@ test('requestLLMAction queues a PLAN response and emits plan metadata', async ()
   const client = new LLMClient({ actionTimeoutMs: 1000 });
   const emitted = [];
 
-  client.model = 'gpt-oss:120b';
+  client.model = 'gemma3:12b';
   client.gameId = 0;
   client.levelCount = 0;
   client.sessionStrategy = 'rush left and shoot';
@@ -577,7 +577,7 @@ test('MACRO_ACTIONS_DISABLED=1 degrades a PLAN response to a single action', asy
   const originalFetch = global.fetch;
   const client = new LLMClient({ actionTimeoutMs: 1000 });
 
-  client.model = 'gpt-oss:120b';
+  client.model = 'gemma3:12b';
   client.gameId = 0;
   client.levelCount = 0;
   client.promptConfig = {

@@ -1,68 +1,62 @@
 // Shared model catalog + routing resolution.
 //
-// Primary inference provider is **Ollama Cloud**; **OpenRouter** is the per-call
-// fallback (used automatically when an Ollama Cloud call fails). Frontier models
-// that have no Ollama Cloud equivalent call OpenRouter directly. Local Ollama
-// (no key) is kept for offline/dev.
+// The catalog is open-weight small language models hosted on **Ollama Cloud**
+// (the primary inference provider, drawing on OLLAMA_API_KEY). **OpenRouter**
+// is the per-call fallback only — used automatically when an Ollama Cloud call
+// fails. Every entry is a non-reasoning model: nothing here has the `thinking`
+// capability flag on Ollama Cloud (/api/show), so no hidden reasoning-token
+// burn and no empty-content replies.
 //
 // NOTE: confirm exact Ollama Cloud tags and OpenRouter slugs near the event —
 // a stale id 404s at call time (surfaced via the 'llm-error' socket event), and
-// for Ollama-primary models the fallback simply takes over.
+// for Ollama-primary models the fallback simply takes over. Fallback slugs
+// below were verified against OpenRouter /api/v1/models on 2026-07-05.
 
 const MODELS = [
-  // --- OpenRouter frontier (direct; non-reasoning, works with code protocol) ---
+  // --- Gemma (Google) ---
   {
-    id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash',
-    provider: 'openrouter', fallback: null,
-    description: 'Frontier · fast, non-reasoning (OpenRouter)',
+    id: 'gemma3:27b', name: 'Gemma 3 27B',
+    provider: 'ollama-cloud', fallback: 'google/gemma-3-27b-it',
+    description: 'Open-weight · flagship small Gemma, non-reasoning',
     speed: 'fast', cost: 'low', featured: true
   },
   {
-    id: 'openai/gpt-4o', name: 'GPT-4o',
-    provider: 'openrouter', fallback: null,
-    description: 'Frontier · all-rounder (OpenRouter)',
-    speed: 'medium', cost: 'mid', featured: true
+    id: 'gemma3:12b', name: 'Gemma 3 12B',
+    provider: 'ollama-cloud', fallback: 'google/gemma-3-12b-it',
+    description: 'Open-weight · mid-size Gemma, non-reasoning',
+    speed: 'fast', cost: 'low', featured: true
+  },
+  // --- Qwen (Alibaba) ---
+  {
+    id: 'qwen3-coder-next', name: 'Qwen3 Coder Next',
+    provider: 'ollama-cloud', fallback: 'qwen/qwen3-coder-next',
+    description: 'Open-weight · MoE coder, non-reasoning (small active params)',
+    speed: 'fast', cost: 'low', featured: false
+  },
+  // --- Mistral small tier ---
+  {
+    id: 'ministral-3:14b', name: 'Ministral 3 14B',
+    provider: 'ollama-cloud', fallback: 'mistralai/ministral-14b-2512',
+    description: 'Open-weight · Mistral small tier, non-reasoning',
+    speed: 'fast', cost: 'low', featured: false
   },
   {
-    id: 'anthropic/claude-sonnet-4.5', name: 'Claude Sonnet 4.5',
-    provider: 'openrouter', fallback: null,
-    description: 'Frontier · strongest reasoning (OpenRouter)',
-    speed: 'medium', cost: 'mid', featured: false
-  },
-  // --- Ollama Cloud (reasoning models — incompatible with compact code protocol) ---
-  {
-    id: 'gpt-oss:120b', name: 'GPT-OSS 120B',
-    provider: 'ollama-cloud', fallback: 'openai/gpt-oss-120b:exacto',
-    description: 'Reasoning model · Ollama Cloud (use with prose-prompt games only)',
-    speed: 'medium', cost: 'low', featured: false
+    id: 'ministral-3:8b', name: 'Ministral 3 8B',
+    provider: 'ollama-cloud', fallback: 'mistralai/ministral-8b-2512',
+    description: 'Open-weight · Mistral small tier, non-reasoning',
+    speed: 'fast', cost: 'low', featured: false
   },
   {
-    id: 'deepseek-v3.1:671b', name: 'DeepSeek v3.1',
-    provider: 'ollama-cloud', fallback: 'deepseek/deepseek-v3.1-terminus:exacto',
-    description: 'Reasoning model · Ollama Cloud (use with prose-prompt games only)',
-    speed: 'medium', cost: 'low', featured: false
+    id: 'ministral-3:3b', name: 'Ministral 3 3B',
+    provider: 'ollama-cloud', fallback: 'mistralai/ministral-3b-2512',
+    description: 'Open-weight · tiny end of the roster, non-reasoning',
+    speed: 'fast', cost: 'low', featured: false
   },
   {
-    id: 'qwen3-coder:480b', name: 'Qwen3 Coder 480B',
-    provider: 'ollama-cloud', fallback: 'qwen/qwen3-coder',
-    description: 'Reasoning model · Ollama Cloud (use with prose-prompt games only)',
-    speed: 'medium', cost: 'low', featured: false
-  },
-  // --- Local Ollama (no key) ---
-  {
-    id: 'gemma3:1b', name: 'Gemma 3 1B (Local)',
-    provider: 'ollama-local', fallback: null,
-    description: 'Local Ollama model', speed: 'fast', cost: 'free', featured: false
-  },
-  {
-    id: 'qwen2.5:0.5b', name: 'Qwen 2.5 0.5B (Local)',
-    provider: 'ollama-local', fallback: null,
-    description: 'Local Ollama model', speed: 'fast', cost: 'free', featured: false
-  },
-  {
-    id: 'smollm2:135m', name: 'SmolLM2 135M (Local)',
-    provider: 'ollama-local', fallback: null,
-    description: 'Local Ollama model', speed: 'fast', cost: 'free', featured: false
+    id: 'devstral-small-2:24b', name: 'Devstral Small 2 24B',
+    provider: 'ollama-cloud', fallback: null,
+    description: 'Open-weight · coder-flavored small model, non-reasoning',
+    speed: 'fast', cost: 'low', featured: false
   }
 ];
 

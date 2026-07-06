@@ -77,6 +77,7 @@ gameStateByBytes.png
 logs/
 web/.gvgai-runtime/
 web/data/telemetry-events.jsonl
+web/data/usage-guardrail.json
 web/data/eval-runs/
 web/data/play-traces/
 !web/data/play-traces/.gitkeep

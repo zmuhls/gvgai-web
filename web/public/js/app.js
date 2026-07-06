@@ -84,22 +84,22 @@ const PREVIEW_GAMES = [
 
 const PREVIEW_MODELS = [
   {
-    id: 'gpt-oss:120b',
-    name: 'GPT-OSS 120B',
+    id: 'gemma3:27b',
+    name: 'Gemma 3 27B',
     description: 'Open-weight model',
     featured: true
   },
   {
-    id: 'deepseek-v3.1:671b',
-    name: 'DeepSeek v3.1',
+    id: 'gemma3:12b',
+    name: 'Gemma 3 12B',
     description: 'Open-weight model',
     featured: true
   },
   {
-    id: 'qwen3-coder:480b',
-    name: 'Qwen3 Coder 480B',
+    id: 'ministral-3:14b',
+    name: 'Ministral 3 14B',
     description: 'Open-weight model',
-    featured: true
+    featured: false
   }
 ];
 
