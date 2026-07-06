@@ -2356,6 +2356,34 @@ label {
   padding: var(--space-2) var(--space-2) 0;
 }
 
+/* ---------- 12b. fine-tune pipeline panel ---------- */
+
+.finetune-run.finetune-tone-danger .bar-fill {
+  background: var(--arcade-danger);
+}
+
+.finetune-run.finetune-tone-success .bar-fill {
+  background: var(--arcade-success);
+}
+
+.finetune-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--arcade-text-secondary);
+}
+
+.finetune-stage small {
+  color: var(--arcade-accent-dim);
+}
+
+.finetune-stage .finetune-error-text {
+  color: var(--arcade-danger);
+}
+
 .btn-small {
   padding: 4px 12px;
   font-family: var(--font-mono);

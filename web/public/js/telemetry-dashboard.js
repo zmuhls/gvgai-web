@@ -50,13 +50,15 @@
 
   async function loadSummary() {
     try {
-      const [summaryRes, guardRes] = await Promise.all([
+      const [summaryRes, guardRes, finetuneRes] = await Promise.all([
         fetch('/api/telemetry/summary?limit=80'),
-        fetch('/api/telemetry/guardrail')
+        fetch('/api/telemetry/guardrail'),
+        fetch('/api/finetune/status').catch(() => null)
       ]);
       if (!summaryRes.ok) throw new Error(`HTTP ${summaryRes.status}`);
       state.snapshot = await summaryRes.json();
       state.guardrail = guardRes.ok ? await guardRes.json() : null;
+      state.finetune = finetuneRes && finetuneRes.ok ? await finetuneRes.json() : null;
       render();
     } catch (error) {
       renderError(error);
@@ -94,6 +96,7 @@
     renderTraceChart(snapshot.traceTypes || []);
     renderMarbleRun(snapshot.marbleRun || {});
     renderGuardrail(state.guardrail);
+    renderFinetune();
   }
 
   // Marble run controls
@@ -118,6 +121,75 @@
       marbleStopBtn.disabled = false;
       loadSummary();
     });
+  }
+
+  // Fine-tune pipeline panel: fetched status as the base, live socket
+  // progress payloads overlaid until the run finishes.
+  const finetuneStageLabels = {
+    preparing: 'Preparing training data…',
+    data_prepared: 'Training data ready',
+    training: 'Starting training…',
+    start: 'Starting training…',
+    load_data: 'Loading dataset…',
+    gpu_check: 'Checking GPU…',
+    load_model: 'Loading base model…',
+    train_begin: 'Training…',
+    train_step: 'Training…',
+    train_complete: 'Training complete',
+    export_gguf: 'Exporting GGUF…',
+    registry_written: 'Registering model…',
+    done: 'Finishing…',
+    loading: 'Loading into Ollama…',
+    load_skipped: 'Ollama load skipped',
+    model_loaded: 'Model loaded into Ollama',
+    complete: 'Pipeline complete',
+    shutdown: 'Interrupted by shutdown'
+  };
+
+  function renderFinetune() {
+    const el = document.getElementById('telemetry-finetune');
+    if (!el) return;
+    const status = state.finetune;
+    const live = state.finetuneLive;
+    let run = status?.run || null;
+    if (live && (!run || live.runId === run.runId || !run.finishedAt)) {
+      run = {
+        ...(run || {}),
+        ...live,
+        progress: live.stage === 'train_step'
+          ? { step: live.step, totalSteps: live.totalSteps, loss: live.loss, epoch: live.epoch }
+          : (run?.progress || {})
+      };
+    }
+
+    if (!run || !run.runId) {
+      const count = status?.registry?.count || 0;
+      el.innerHTML = '<div class="telemetry-empty">No fine-tune runs yet — human plays on featured games feed the pipeline</div>';
+      setText('telemetry-finetune-model', count ? `${count} model(s) in registry` : 'no runs yet');
+      return;
+    }
+
+    const stageLabel = finetuneStageLabels[run.stage] || run.stage || '—';
+    const progress = run.progress || {};
+    const pct = progress.totalSteps
+      ? Math.min(100, Math.round((progress.step / progress.totalSteps) * 100))
+      : (run.state === 'complete' ? 100 : 4);
+    const tone = run.state === 'failed' ? 'danger' : (run.state === 'complete' ? 'success' : 'accent');
+
+    el.innerHTML = `
+      <div class="guardrail-bar finetune-run finetune-tone-${tone}">
+        <span>${escapeHtml(run.gameName || `game ${run.gameId}`)} <small>${escapeHtml(run.state || '')}${run.dryRun ? ' · dry run' : ''}</small></span>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <strong>${pct}%</strong>
+      </div>
+      <div class="finetune-stage">
+        <span>${escapeHtml(stageLabel)}</span>
+        ${progress.loss != null ? `<small>step ${Number(progress.step) || 0}/${Number(progress.totalSteps) || 0} · loss ${(Number(progress.loss) || 0).toFixed(3)}</small>` : ''}
+        ${run.error ? `<small class="finetune-error-text">${escapeHtml(run.error.code || 'error')}: ${escapeHtml(run.error.message || '')}</small>` : ''}
+      </div>
+    `;
+    setText('telemetry-finetune-model',
+      run.modelId || (run.state === 'failed' ? 'run failed' : 'run in progress'));
   }
 
   function renderGuardrail(g) {
@@ -503,6 +575,18 @@
   if (socket) {
     socket.on('telemetry-event', () => {
       scheduleRefresh();
+    });
+    socket.on('finetune-progress', payload => {
+      state.finetuneLive = payload;
+      renderFinetune();
+    });
+    socket.on('finetune-complete', () => {
+      state.finetuneLive = null;
+      loadSummary();
+    });
+    socket.on('finetune-error', () => {
+      state.finetuneLive = null;
+      loadSummary();
     });
   }
 
