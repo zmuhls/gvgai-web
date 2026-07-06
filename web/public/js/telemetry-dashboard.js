@@ -96,6 +96,30 @@
     renderGuardrail(state.guardrail);
   }
 
+  // Marble run controls
+  const marbleStartBtn = document.getElementById('marble-start-btn');
+  const marbleStopBtn = document.getElementById('marble-stop-btn');
+  if (marbleStartBtn) {
+    marbleStartBtn.addEventListener('click', async () => {
+      marbleStartBtn.disabled = true;
+      try {
+        await fetch('/api/marble/start', { method: 'POST' });
+      } catch (e) { /* best-effort */ }
+      marbleStartBtn.disabled = false;
+      loadSummary();
+    });
+  }
+  if (marbleStopBtn) {
+    marbleStopBtn.addEventListener('click', async () => {
+      marbleStopBtn.disabled = true;
+      try {
+        await fetch('/api/marble/stop', { method: 'POST' });
+      } catch (e) { /* best-effort */ }
+      marbleStopBtn.disabled = false;
+      loadSummary();
+    });
+  }
+
   function renderGuardrail(g) {
     const el = document.getElementById('telemetry-guardrail');
     if (!el) return;

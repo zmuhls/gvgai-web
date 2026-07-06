@@ -2347,3 +2347,37 @@ label {
   border-radius: 2px;
   transition: width 0.3s ease;
 }
+
+/* ---------- 12. marble controls ---------- */
+
+.marble-controls {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) 0;
+}
+
+.btn-small {
+  padding: 4px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  background: rgba(123, 239, 195, 0.07);
+  color: var(--arcade-text-secondary);
+  border: 1px solid rgba(123, 239, 195, 0.15);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-small:hover:not(:disabled) {
+  background: rgba(123, 239, 195, 0.12);
+}
+
+.btn-small:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-small.btn-danger {
+  border-color: rgba(239, 123, 123, 0.2);
+  color: rgba(239, 123, 123, 0.8);
+}

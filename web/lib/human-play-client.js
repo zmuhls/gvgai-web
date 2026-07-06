@@ -57,6 +57,7 @@ class HumanPlayClient {
     this.actionHistory = [];
     this.runStartScore = null;
     this.summaryEmitted = false;
+    this.lastSso = null;
     this.runId = this.runId || telemetry.createRunId(`human-game-${this.gameId ?? 'unknown'}`);
 
     return new Promise((resolve, reject) => {

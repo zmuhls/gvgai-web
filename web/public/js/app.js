@@ -112,7 +112,6 @@ const gamesGrid = document.getElementById('games-grid');
 const gameSearch = document.getElementById('game-search');
 const modelSelect = document.getElementById('model-select');
 const levelSelect = document.getElementById('level-select');
-const apiKeyInput = document.getElementById('api-key');
 const startGameBtn = document.getElementById('start-game');
 const stopGameBtn = document.getElementById('stop-game');
 const backToGamesBtn = document.getElementById('back-to-games');
