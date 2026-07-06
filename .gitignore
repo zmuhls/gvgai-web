@@ -81,6 +81,9 @@ web/data/usage-guardrail.json
 web/data/eval-runs/
 web/data/play-traces/
 !web/data/play-traces/.gitkeep
+web/data/finetune/
+web/data/finetune-models.json
+web/models/
 web/evals/
 output/
 telemetry.png

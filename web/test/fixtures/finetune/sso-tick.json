@@ -1,0 +1,42 @@
+{
+  "phase": "ACT",
+  "gameTick": 5,
+  "gameScore": 2,
+  "gameWinner": "NO_WINNER",
+  "avatarHealthPoints": 100,
+  "avatarMaxHealthPoints": 100,
+  "avatarLastAction": "ACTION_LEFT",
+  "avatarPosition": [20, 20],
+  "blockSize": 10,
+  "worldDimension": [40, 30],
+  "observationGridNum": 4,
+  "observationGridMaxRow": 3,
+  "availableActions": ["ACTION_NIL", "ACTION_LEFT", "ACTION_RIGHT", "ACTION_USE"],
+  "imageArray": [137, 80, 78, 71, 13, 10, 26, 10],
+  "observationGrid": [
+    [
+      [{ "itype": 0, "category": 4, "obsID": 1, "position": { "x": 0, "y": 0 } }],
+      [],
+      [{ "itype": 0, "category": 4, "obsID": 2, "position": { "x": 0, "y": 20 } }]
+    ],
+    [
+      [{ "itype": 3, "category": 3, "obsID": 10, "position": { "x": 10, "y": 0 } }],
+      [],
+      []
+    ],
+    [
+      [],
+      [],
+      [{ "itype": 1, "category": 0, "obsID": 20, "position": { "x": 20, "y": 20 } }]
+    ],
+    [
+      [{ "itype": 0, "category": 4, "obsID": 3, "position": { "x": 30, "y": 0 } }],
+      [],
+      [{ "itype": 0, "category": 4, "obsID": 4, "position": { "x": 30, "y": 20 } }]
+    ]
+  ],
+  "NPCPositionsNum": 1,
+  "NPCPositions": [
+    [{ "itype": 3, "category": 3, "obsID": 10, "position": { "x": 10, "y": 0 } }]
+  ]
+}
