@@ -678,7 +678,7 @@ class LLMClient {
       apiUrl = config.openrouter.apiUrl;
       if (this.apiKey) {
         headers['Authorization'] = `Bearer ${this.apiKey}`;
-        headers['HTTP-Referer'] = 'https://github.com/yourusername/gvgai-llm';
+        headers['HTTP-Referer'] = 'https://github.com/zmuhls/gvgai';
         headers['X-Title'] = 'GVGAI LLM Agent';
       }
     }

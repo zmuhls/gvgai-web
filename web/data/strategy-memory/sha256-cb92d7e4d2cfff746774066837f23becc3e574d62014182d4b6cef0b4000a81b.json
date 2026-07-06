@@ -71,6 +71,6 @@
   },
   "promptText": "Strategic digest cb92d7e4d2cf for doorkoban.\nControls: UP|DOWN|LEFT|RIGHT|WAIT. Avatar: MovingAvatar.\nScore by: box0 hit by hole0 (+1), box1 hit by hole1 (+2), box2 hit by hole2 (+4), box3 hit by hole3 (+8), kill exit (+16).\nMechanics: push box.\nWin: clear all exit.\nLose: timeout.\nStrategy tags: attack-targets, position-puzzle, clear-objectives.",
   "evaluationStatus": "candidate",
-  "createdAt": "2026-07-02T04:22:08.530Z",
-  "updatedAt": "2026-07-02T04:22:08.530Z"
+  "createdAt": "2026-07-02T04:50:36.744Z",
+  "updatedAt": "2026-07-02T04:50:36.744Z"
 }

@@ -26,7 +26,7 @@
 
 ## Follow-ups
 
-- [ ] **Human-trace recorder bug** — human decisions export with `tick: 0, score: 0` (export path in `web/public/js/app.js` never syncs live tick/score); also stamps the selected model id on human runs. Fix before doing tick-aligned human-vs-model comparisons.
+- [x] **Human-trace recorder bug** — human decisions now sync live tick/score from the `game-state` socket event (stored in `state.liveGameState`) instead of reading stale DOM text. Export trace nulls the `model` field when `playerType === 'human'` so the recorder no longer stamps the selected model chip on human runs.
 - [ ] **Qwen slot** — revisit when Ollama Cloud hosts a small (≤31B) non-thinking Qwen; qwen3-coder-next is the placeholder representative
 - [ ] **Devstral fallback** — OpenRouter only lists `mistralai/devstral-2512` (size ambiguous); add a fallback slug if a clear devstral-small appears
 - [ ] **Guardrail visibility** — consider surfacing hour/day counters on the telemetry dashboard tote board

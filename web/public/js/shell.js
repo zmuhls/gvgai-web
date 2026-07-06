@@ -114,7 +114,7 @@
       updateSoundButton(soundBtn);
       soundBtn.addEventListener('click', function () {
         soundOn = !soundOn;
-        try { localStorage.setItem(SOUND_KEY, soundOn ? 'on' : 'off'); } catch (_) {}
+        try { localStorage.setItem(SOUND_KEY, soundOn ? 'on' : 'off'); } catch (e) { console.warn('[Shell] localStorage unavailable:', e.message); }
         updateSoundButton(soundBtn);
         if (soundOn) {
           ensureContext();

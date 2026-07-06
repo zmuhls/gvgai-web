@@ -15,7 +15,8 @@ const state = {
   showingAllGames: false,
   lastSummary: null,
   traceLog: [],
-  traceStartedAt: null
+  traceStartedAt: null,
+  liveGameState: { tick: 0, score: 0, health: 0 }
 };
 
 // Player type: 'llm' (model plays) or 'human' (keyboard play)
@@ -922,7 +923,7 @@ function setupEventListeners() {
           ? { id: state.selectedGame.id, name: state.selectedGame.name, archetype: state.selectedGame.archetype || null }
           : null,
         level: parseInt(levelSelect.value, 10) || 0,
-        model: modelSelect.value || null,
+        model: playerType === 'human' ? null : (modelSelect.value || null),
         playerType,
         strategy: (strategyText?.value || '').trim() || null,
         summary: state.lastSummary || null,
@@ -1074,6 +1075,12 @@ function setupWebSocket() {
   });
 
   socket.on('game-state', (data) => {
+    // Track live game state for synchronous access by human-trace recorder
+    state.liveGameState = {
+      tick: data.tick || 0,
+      score: data.score || 0,
+      health: data.health || 0
+    };
     // Update game state overlay (sent every tick)
     if (scoreEl) scoreEl.textContent = data.score || 0;
     if (healthEl) healthEl.textContent = data.health || 0;
@@ -1441,8 +1448,8 @@ function addHumanMoveToTrace(action) {
   if (lastActionEl) lastActionEl.textContent = label;
   if (state.traceLog.length < 500) {
     state.traceLog.push({
-      tick: parseInt(tickEl?.textContent, 10) || 0,
-      score: parseInt(scoreEl?.textContent, 10) || 0,
+      tick: state.liveGameState?.tick || 0,
+      score: state.liveGameState?.score || 0,
       action,
       human: true
     });

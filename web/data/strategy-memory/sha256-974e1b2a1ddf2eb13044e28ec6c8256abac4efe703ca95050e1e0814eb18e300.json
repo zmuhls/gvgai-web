@@ -73,6 +73,6 @@
   },
   "promptText": "Strategic digest 974e1b2a1ddf for boulderdash.\nControls: UP|DOWN|LEFT|RIGHT|ATTACK|WAIT. Avatar: ShootAvatar.\nScore by: collect diamond (+2), boulder (-1), butterfly (-1), butterfly hit by crab (+1).\nAvoid: butterfly.\nMechanics: collect diamond.\nWin: clear all exitdoor.\nLose: die.\nStrategy tags: avoid-collisions, collect-resources, attack-targets, clear-objectives, use-action.",
   "evaluationStatus": "candidate",
-  "createdAt": "2026-07-02T04:22:08.531Z",
-  "updatedAt": "2026-07-02T04:22:08.531Z"
+  "createdAt": "2026-07-02T04:50:36.743Z",
+  "updatedAt": "2026-07-02T04:50:36.743Z"
 }

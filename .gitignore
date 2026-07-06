@@ -90,3 +90,5 @@ web/node_modules.dataless-backup/
 
 # Supabase CLI link artifact (real migrations live in web/supabase/migrations/)
 /supabase/
+.hermes/
+gvgai-audit-report.pdf

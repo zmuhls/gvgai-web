@@ -70,7 +70,47 @@
     }
   },
   "promptText": "Strategic digest d5e6374830f8 for chase.\nControls: UP|DOWN|LEFT|RIGHT|WAIT. Avatar: MovingAvatar.\nScore by: angry (-1), collect scared (+1).\nAvoid: angry.\nMechanics: collect scared to transform.\nWin: clear all scared.\nLose: die.\nStrategy tags: avoid-collisions, collect-resources, state-change, clear-objectives.",
-  "evaluationStatus": "candidate",
-  "createdAt": "2026-07-02T04:22:08.531Z",
-  "updatedAt": "2026-07-02T04:22:08.531Z"
+  "evaluationStatus": "rejected",
+  "createdAt": "2026-07-02T04:34:15.197Z",
+  "updatedAt": "2026-07-02T04:39:26.564Z",
+  "lastEvaluatedAt": "2026-07-02T04:39:26.564Z",
+  "latestGate": {
+    "gameId": 18,
+    "archetype": "collector",
+    "accepted": false,
+    "evaluationStatus": "rejected",
+    "reasons": [],
+    "blockers": [
+      "no marked gameplay or efficiency gain"
+    ],
+    "thresholds": {
+      "scoreGain": 2,
+      "tickGain": 25,
+      "promptMaxRatio": 1.05,
+      "promptDropRatio": 0.15
+    },
+    "baseline": {
+      "runs": 1,
+      "meanScore": 3,
+      "meanTicks": 39,
+      "winRate": 0,
+      "nilLoopRate": 0,
+      "meanPromptChars": 166
+    },
+    "digest": {
+      "runs": 1,
+      "meanScore": 3,
+      "meanTicks": 39,
+      "winRate": 0,
+      "nilLoopRate": 0,
+      "meanPromptChars": 166
+    },
+    "deltas": {
+      "scoreDelta": 0,
+      "tickDelta": 0,
+      "winRateDelta": 0,
+      "promptRatio": 1,
+      "promptDrop": 0
+    }
+  }
 }

@@ -73,7 +73,47 @@
     }
   },
   "promptText": "Strategic digest acbe784c3401 for bait.\nControls: UP|DOWN|LEFT|RIGHT|WAIT. Avatar: MovingAvatar.\nScore by: box hit by hole (+1), kill goal (+5), kill mushroom (+1).\nAvoid: hole.\nMechanics: push box, collect key to transform.\nWin: clear all goal.\nLose: die.\nStrategy tags: avoid-collisions, attack-targets, position-puzzle, state-change, clear-objectives.",
-  "evaluationStatus": "candidate",
-  "createdAt": "2026-07-02T04:22:08.530Z",
-  "updatedAt": "2026-07-02T04:22:08.530Z"
+  "evaluationStatus": "rejected",
+  "createdAt": "2026-07-02T04:34:15.196Z",
+  "updatedAt": "2026-07-02T04:39:26.564Z",
+  "lastEvaluatedAt": "2026-07-02T04:39:26.564Z",
+  "latestGate": {
+    "gameId": 4,
+    "archetype": "pusher-puzzle",
+    "accepted": false,
+    "evaluationStatus": "rejected",
+    "reasons": [],
+    "blockers": [
+      "no marked gameplay or efficiency gain"
+    ],
+    "thresholds": {
+      "scoreGain": 1,
+      "tickGain": 15,
+      "promptMaxRatio": 1.05,
+      "promptDropRatio": 0.15
+    },
+    "baseline": {
+      "runs": 1,
+      "meanScore": 5,
+      "meanTicks": 8,
+      "winRate": 1,
+      "nilLoopRate": 0,
+      "meanPromptChars": 197
+    },
+    "digest": {
+      "runs": 1,
+      "meanScore": 5,
+      "meanTicks": 8,
+      "winRate": 1,
+      "nilLoopRate": 0,
+      "meanPromptChars": 197
+    },
+    "deltas": {
+      "scoreDelta": 0,
+      "tickDelta": 0,
+      "winRateDelta": 0,
+      "promptRatio": 1,
+      "promptDrop": 0
+    }
+  }
 }

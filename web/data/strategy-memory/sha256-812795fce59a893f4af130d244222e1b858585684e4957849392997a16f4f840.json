@@ -69,7 +69,47 @@
     }
   },
   "promptText": "Strategic digest 812795fce59a for aliens.\nControls: LEFT|RIGHT|SHOOT|WAIT. Avatar: FlakAvatar.\nScore by: base hit by sam (+1), alien (-1), bomb (-1), alien hit by sam (+2).\nAvoid: alien, bomb.\nWin: clear all portal and alien.\nLose: die.\nStrategy tags: avoid-collisions, attack-targets, clear-objectives, use-action, lane-control.",
-  "evaluationStatus": "candidate",
-  "createdAt": "2026-07-02T04:22:08.529Z",
-  "updatedAt": "2026-07-02T04:22:08.529Z"
+  "evaluationStatus": "rejected",
+  "createdAt": "2026-07-02T04:34:15.195Z",
+  "updatedAt": "2026-07-02T04:39:26.564Z",
+  "lastEvaluatedAt": "2026-07-02T04:39:26.564Z",
+  "latestGate": {
+    "gameId": 0,
+    "archetype": "shooter-lane",
+    "accepted": false,
+    "evaluationStatus": "rejected",
+    "reasons": [],
+    "blockers": [
+      "no marked gameplay or efficiency gain"
+    ],
+    "thresholds": {
+      "scoreGain": 1,
+      "tickGain": 25,
+      "promptMaxRatio": 1.05,
+      "promptDropRatio": 0.15
+    },
+    "baseline": {
+      "runs": 1,
+      "meanScore": 4,
+      "meanTicks": 39,
+      "winRate": 0,
+      "nilLoopRate": 0,
+      "meanPromptChars": 172
+    },
+    "digest": {
+      "runs": 1,
+      "meanScore": 4,
+      "meanTicks": 39,
+      "winRate": 0,
+      "nilLoopRate": 0,
+      "meanPromptChars": 172
+    },
+    "deltas": {
+      "scoreDelta": 0,
+      "tickDelta": 0,
+      "winRateDelta": 0,
+      "promptRatio": 1,
+      "promptDrop": 0
+    }
+  }
 }

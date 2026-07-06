@@ -433,8 +433,8 @@ io.on('connection', (socket) => {
 });
 
 // Cleanup on server shutdown
-process.on('SIGINT', () => {
-  console.log('\n[Server] Shutting down...');
+function shutdown(signal) {
+  console.log(`\n[Server] Shutting down (${signal})...`);
 
   // Stop all games
   for (const [processId, game] of activeGames) {
@@ -451,7 +451,10 @@ process.on('SIGINT', () => {
     source: 'server'
   });
   telemetry.flush().finally(() => process.exit(0));
-});
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 const PORT = Number.parseInt(process.env.PORT || config.server.port || 3000, 10);
 

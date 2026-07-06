@@ -30,6 +30,6 @@ What it does not change: no SLM will match the human's 4/s fire cadence with fre
 
 ## Recorder bug found in the traces
 
-Every human decision logs `tick: 0, score: 0` across all three files, even in runs that clearly progressed (aliens scores on every kill). The human-play export path in `web/public/js/app.js` never syncs the live tick/score into recorded decisions — human traces currently carry action sequence and ordering only, no per-decision game-state alignment, so tick-aligned human-vs-model comparisons aren't possible until that's fixed. Tracked in `TODO.md`.
+Every human decision logs `tick: 0, score: 0` across all three files, even in runs that clearly progressed (aliens scores on every kill). The human-play export path in `web/public/js/app.js` never syncs the live tick/score into recorded decisions — human traces currently carry action sequence and ordering only, no per-decision game-state alignment, so tick-aligned human-vs-model comparisons aren't possible until that's fixed. **Fixed 2026-07-05**: `addHumanMoveToTrace` now reads from `state.liveGameState` (populated by the `game-state` socket event) instead of stale DOM text; the export path nulls the model field for human play.
 
-Also of note: the exports carry `model: "google/gemini-2.5-flash"` despite `playerType: "human"` — the recorder stamps the selected model chip even when no model is playing. Harmless, but worth ignoring in any analysis tooling.
+Also of note: the exports carry `model: "google/gemini-2.5-flash"` despite `playerType: "human"` — the recorder stamps the selected model chip even when no model is playing. **Fixed 2026-07-05**: export now sets `model: null` when `playerType === 'human'`.
