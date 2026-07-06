@@ -30,4 +30,4 @@
 - [ ] **Qwen slot** — revisit when Ollama Cloud hosts a small (≤31B) non-thinking Qwen; qwen3-coder-next is the placeholder representative
 - [ ] **Devstral fallback** — OpenRouter only lists `mistralai/devstral-2512` (size ambiguous); add a fallback slug if a clear devstral-small appears
 - [ ] **Guardrail visibility** — consider surfacing hour/day counters on the telemetry dashboard tote board
-- [ ] **Code-protocol games vs gemma3** — on GV1 games (0, 4, 13, 15, 18) gemma3:27b replies in verbose prose the compact parser rejects, so actions come from the encoded-policy fallback, not the model (observed on aliens, dev run 2026-07-05). Either tune the GV1 prompt for the new roster or disable `codeProtocol.enabled` on those configs
+- [x] **Code-protocol games vs gemma3** — disabled `codeProtocol.enabled` on all 5 GV1 games (0, 4, 13, 15, 18) and bumped maxTokens 50→100. These games now use the natural-language 8-layer prompt that gemma3 handles well, instead of the compact GV1 code format the model couldn't parse.

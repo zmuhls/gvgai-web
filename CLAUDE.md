@@ -247,7 +247,7 @@ Two optional per-game blocks change the response contract: `codeProtocol` (compa
 - **Usage guardrail on the Ollama key** (`lib/usage-guardrail.js`): light call caps enforced in `callProvider`'s ollama-cloud branch — hourly 3000 / daily 15000 / per-session 1500, env-tunable via `OLLAMA_GUARDRAIL_HOURLY/DAILY/SESSION`, kill switch `OLLAMA_GUARDRAIL_DISABLED=1`. A tripped guardrail **blocks** the call (deliberately skipping the OpenRouter fallback so spend doesn't silently shift), emits `llm-error`, and tracks a `system`/`guardrail_block` telemetry event. Hour/day buckets persist in `web/data/usage-guardrail.json` (gitignored).
 - Provider → endpoint + auth: `ollama-cloud` → `config.ollamaCloud.apiUrl` + `OLLAMA_API_KEY`; `openrouter` → `config.openrouter.apiUrl` + `OPENROUTER_API_KEY`; `ollama-local` → `config.ollama.apiUrl` (no key).
 - All providers use the OpenAI-compatible `/chat/completions` shape (`messages`, `max_tokens`, `temperature`).
-- Known gap: on GV1 code-protocol games (ids 0, 4, 13, 15, 18) the current roster replies in prose the compact parser rejects, so actions come from the encoded-policy fallback rather than the model (see TODO.md).
+- Known gap (resolved 2026-07-05): codeProtocol is now disabled on all 5 GV1 games. They use the natural-language 8-layer prompt instead of the compact code format. The `codeProtocol` config block remains in each game's JSON (with `enabled: false`) so it can be re-enabled if a future model handles compact codes well.
 
 ## Telemetry, Strategy Memory & Eval Harness
 
