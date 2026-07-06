@@ -285,7 +285,11 @@ app.post('/api/game/start', async (req, res) => {
     try {
       const gameName = resolveGameName(gameId);
       if (isHumanPlay) {
-        await client.connect(config.gvgai.socketPort, io, gameId, gameName);
+        // connect(port, model, io, gameId, gameName) — keep the LLMClient arg
+        // order. Dropping 'human' here shifts io into model and the game NAME
+        // into gameId, which files human traces under the wrong key and mutes
+        // the client's socket emits (the pre-2026-07-06 human-trace bug).
+        await client.connect(config.gvgai.socketPort, 'human', io, gameId, gameName);
       } else {
         await client.connect(config.gvgai.socketPort, model, io, gameId, gameName, cleanStrategy);
       }
