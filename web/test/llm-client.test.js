@@ -642,3 +642,23 @@ test('game-state emit carries live planStep and planLength', async () => {
   assert.equal(gameState.payload.planStep, 1);
   assert.equal(gameState.payload.planLength, 2);
 });
+
+test('recordActionDecision stores pruned SSO in runLog when provided', () => {
+  const client = new LLMClient();
+  const fixture = require('./fixtures/finetune/sso-tick.json');
+
+  client.recordActionDecision('ACTION_UP', 3, 'test reason', fixture);
+
+  assert.equal(client.runLog.length, 1);
+  assert.equal(client.runLog[0].action, 'ACTION_UP');
+  assert.equal(client.runLog[0].sso.gameTick, fixture.gameTick);
+  assert.equal(client.runLog[0].sso.imageArray, undefined, 'screenshot bytes pruned');
+});
+
+test('recordActionDecision stores null sso when omitted', () => {
+  const client = new LLMClient();
+
+  client.recordActionDecision('ACTION_UP', 3);
+
+  assert.equal(client.runLog[0].sso, null);
+});

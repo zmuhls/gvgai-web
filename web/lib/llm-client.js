@@ -262,7 +262,7 @@ class LLMClient {
             const sso = this.recordActState(jsonPayload, directPolicy.action);
             if (sso) {
               this.pendingLLMAction = directPolicy.action;
-              this.recordActionDecision(directPolicy.action, sso.gameTick || 0, directPolicy.reason);
+              this.recordActionDecision(directPolicy.action, sso.gameTick || 0, directPolicy.reason, sso);
               this.emitPolicyDecision(directPolicy, sso);
             }
             this.sendMessageWithId(msgId, `${directPolicy.action}#${this.actResponseType}`);
@@ -274,7 +274,7 @@ class LLMClient {
             this.sendMessageWithId(msgId, `${decision.action}#${this.actResponseType}`);
           } catch (error) {
             console.error('[LLMClient] Error in synchronous LLM action:', error.message);
-            this.recordActionDecision('ACTION_NIL', sso ? sso.gameTick : 0, error.message);
+            this.recordActionDecision('ACTION_NIL', sso ? sso.gameTick : 0, error.message, sso);
             this.sendMessageWithId(msgId, `ACTION_NIL#${this.actResponseType}`);
           }
           return;
@@ -287,7 +287,7 @@ class LLMClient {
             const sso = this.recordActState(jsonPayload, directPolicy.action);
             if (sso) {
               this.pendingLLMAction = directPolicy.action;
-              this.recordActionDecision(directPolicy.action, sso.gameTick || 0, directPolicy.reason);
+              this.recordActionDecision(directPolicy.action, sso.gameTick || 0, directPolicy.reason, sso);
               this.emitPolicyDecision(directPolicy, sso);
             }
           });
@@ -842,7 +842,7 @@ class LLMClient {
     const aliases = this.promptConfig?.actionAliases || null;
     const displayPlan = aliases ? planActions.map(a => aliases[a] || a) : planActions;
 
-    this.recordActionDecision(action, sso.gameTick, reason);
+    this.recordActionDecision(action, sso.gameTick, reason, sso);
 
     console.log(`[LLMClient] LLM completed (${elapsed}ms): ${action}${reason ? ' — ' + reason : ''}`);
 
@@ -917,14 +917,15 @@ class LLMClient {
     return { action, reason, decisionSource, elapsed, provider: usedProvider, modelUsed: usedModel };
   }
 
-  recordActionDecision(action, tick, reason = '') {
+  recordActionDecision(action, tick, reason = '', sso = null) {
     this.stateTracker.recordAction(action, tick);
     const lastDelta = this.stateTracker.actionHistory[this.stateTracker.actionHistory.length - 1];
     this.runLog.push({
       tick,
       action,
       reason,
-      scoreDelta: lastDelta ? lastDelta.scoreDelta : 0
+      scoreDelta: lastDelta ? lastDelta.scoreDelta : 0,
+      sso: traceStore.pruneSsoForTrace(sso)
     });
   }
 
@@ -997,7 +998,8 @@ class LLMClient {
       actionHistory: this.runLog.map(e => ({
         tick: e.tick,
         action: e.action,
-        scoreDelta: e.scoreDelta
+        scoreDelta: e.scoreDelta,
+        sso: e.sso || null
       })),
       finalScore: sso.gameScore || 0,
       winner: sso.gameWinner,
