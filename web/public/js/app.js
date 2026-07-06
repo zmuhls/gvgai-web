@@ -453,7 +453,10 @@ function annotateGameCardsWithTraces() {
         const badge = document.createElement('span');
         badge.className = 'trace-badge';
         const humanCount = data.humanTraceCount || 0;
-        badge.textContent = `${humanCount} play${humanCount !== 1 ? 's' : ''} · best ${data.bestScore}`;
+        const finetuneReady = humanCount >= 3;
+        if (finetuneReady) badge.classList.add('ready');
+        badge.textContent = `${humanCount} play${humanCount !== 1 ? 's' : ''} · best ${data.bestScore}` +
+          (finetuneReady ? ' · FT ready' : '');
         meta.appendChild(badge);
       })
       .catch(() => {});
@@ -1178,6 +1181,18 @@ function setupWebSocket() {
       <div class="action timeout">API Error (${data.status}): ${escapeHtml(data.message?.substring(0, 200) || 'Unknown error')}</div>
     `;
     reasoningLog.insertBefore(entry, reasoningLog.firstChild);
+  });
+
+  // A fine-tuned model landed in the catalog: refresh the picker without
+  // clobbering the visitor's current selection.
+  socket.on('finetune-complete', async (data) => {
+    console.log('[App] Fine-tuned model ready:', data.modelId);
+    const previous = modelSelect ? modelSelect.value : null;
+    await loadModels();
+    if (previous && state.models.some(m => m.id === previous)) {
+      modelSelect.value = previous;
+      syncModelChips();
+    }
   });
 }
 
