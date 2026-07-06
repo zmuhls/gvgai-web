@@ -50,15 +50,17 @@
 
   async function loadSummary() {
     try {
-      const [summaryRes, guardRes, finetuneRes] = await Promise.all([
+      const [summaryRes, guardRes, finetuneRes, modelsRes] = await Promise.all([
         fetch('/api/telemetry/summary?limit=80'),
         fetch('/api/telemetry/guardrail'),
-        fetch('/api/finetune/status').catch(() => null)
+        fetch('/api/finetune/status').catch(() => null),
+        fetch('/api/models').catch(() => null)
       ]);
       if (!summaryRes.ok) throw new Error(`HTTP ${summaryRes.status}`);
       state.snapshot = await summaryRes.json();
       state.guardrail = guardRes.ok ? await guardRes.json() : null;
       state.finetune = finetuneRes && finetuneRes.ok ? await finetuneRes.json() : null;
+      state.models = modelsRes && modelsRes.ok ? await modelsRes.json() : (state.models || []);
       render();
     } catch (error) {
       renderError(error);
@@ -223,12 +225,26 @@
     const standings = document.getElementById('telemetry-marble-standings');
     if (standings) {
       const rows = marble.standings || [];
-      standings.innerHTML = rows.length ? rows.map(row => `
+      // Weight-change annotation: fine-tuned rows show their score delta vs
+      // the arcade's default (first featured) model, when both have played.
+      const catalog = state.models || [];
+      const finetunedIds = new Set(catalog.filter(m => m.finetuned).map(m => m.id));
+      const baselineModel = catalog.find(m => m.featured);
+      const baselineRow = baselineModel ? rows.find(r => r.modelId === baselineModel.id) : null;
+      standings.innerHTML = rows.length ? rows.map(row => {
+        let weightChange = '';
+        if (finetunedIds.has(row.modelId) && baselineRow && baselineRow.modelId !== row.modelId) {
+          const delta = Number(row.meanScore) - Number(baselineRow.meanScore);
+          weightChange = ` <span class="weight-change ${delta >= 0 ? 'positive' : 'negative'}">` +
+            `${delta >= 0 ? '+' : ''}${delta.toFixed(1)} vs ${escapeHtml(baselineRow.modelId)}</span>`;
+        }
+        return `
         <div class="bar-row" style="--bar-width: ${Math.max(4, row.winRate)}%;">
-          <span>${escapeHtml(row.modelId)} <small>${row.meanScore} avg · ${row.strongAdherenceRate}% adhere · ${row.fallbackRate}% fallback</small></span>
+          <span>${escapeHtml(row.modelId)} <small>${row.meanScore} avg · ${row.strongAdherenceRate}% adhere · ${row.fallbackRate}% fallback</small>${weightChange}</span>
           <strong>${row.winRate}% W</strong>
         </div>
-      `).join('') : '<div class="telemetry-empty">No marble-run cases yet</div>';
+      `;
+      }).join('') : '<div class="telemetry-empty">No marble-run cases yet</div>';
     }
 
     const strat = document.getElementById('telemetry-marble-strategy');
