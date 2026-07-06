@@ -8,6 +8,7 @@ const { getConfig, getConfigLoadStatus } = require('./lib/runtime-config');
 const { resolveScreenshotPath } = require('./lib/screenshot-path');
 const { sanitizeStrategy } = require('./lib/state-converter');
 const coordinator = require('./lib/attract-coordinator');
+const finetunePipeline = require('./lib/finetune-pipeline');
 const config = getConfig();
 
 const telemetry = require('./lib/telemetry-store');
@@ -206,6 +207,7 @@ app.use('/api/evals', require('./routes/evals'));
 app.use('/api/telemetry', require('./routes/telemetry'));
 app.use('/api/marble', require('./routes/marble'));
 app.use('/api/traces', require('./routes/traces-local'));
+app.use('/api/finetune', require('./routes/finetune'));
 
 // Clean URL for the embeddable spectator page (also served as /marquee.html).
 app.get('/marquee', (req, res) => res.sendFile(path.join(__dirname, 'public', 'marquee.html')));
@@ -444,6 +446,7 @@ function shutdown(signal) {
 
   activeGames.clear();
   coordinator.stop();
+  finetunePipeline.shutdown();
   stopScreenshotStreaming();
   telemetry.track({
     eventFamily: 'system',
@@ -472,6 +475,12 @@ async function startServer() {
     io,
     fallbackPath: path.resolve(__dirname, 'data', 'telemetry-events.jsonl')
   });
+  // Fine-tune pipeline: route is always mounted; the auto-trigger is opt-in
+  // (FINETUNE_AUTO_ENABLED=1) so the deployed instance stays inert.
+  finetunePipeline.configure({ io, telemetry });
+  if (process.env.FINETUNE_AUTO_ENABLED === '1') {
+    finetunePipeline.startAutoTrigger();
+  }
   telemetry.track({
     eventFamily: 'system',
     eventType: 'server_started',
