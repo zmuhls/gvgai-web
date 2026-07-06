@@ -11,7 +11,8 @@
     "telemetry:check": "node scripts/check-supabase-telemetry.js",
     "telemetry:backfill": "node scripts/backfill-telemetry.js",
     "eval:arcade": "node scripts/run-arcade-eval.js --dry-run --all",
-    "eval:arcade:execute": "node scripts/run-arcade-eval.js"
+    "eval:arcade:execute": "node scripts/run-arcade-eval.js",
+    "finetune:prepare": "node scripts/prepare-finetune-data.js"
   },
   "dependencies": {
     "chokidar": "^3.5.3",
