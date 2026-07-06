@@ -56,7 +56,7 @@ npm run telemetry:backfill   # replay local telemetry-events.jsonl into Supabase
 node scripts/classify-games.js --dry-run --all   # print archetype/pace for all 122 games
 node scripts/classify-games.js --write --all     # backfill classification blocks into data/games/*.json
 node scripts/generate-strategy-memory.js --featured   # (re)build candidate memory records
-node scripts/evaluate-strategy-memory.js --featured --model gpt-oss:120b --strategy-id puzzle --max-actions 150
+node scripts/evaluate-strategy-memory.js --featured --model gemma3:27b --strategy-id puzzle --max-actions 150
                              # real A/B gate (spawns Java + live LLM calls; flips record statuses)
 ```
 
@@ -188,6 +188,7 @@ The walk-up handoff only protects sessions that go through the server. **Standal
 | `game-classifier.js` | `classifyDigest()`/`getCachedClassification()` — archetype/subtypes/pace from the digest (see Game classification section) |
 | `class-defaults.js` | `applyClassDefaults()` — merges `data/class-defaults.json` archetype/pace defaults beneath explicit game config; `CLASS_DEFAULTS_DISABLED=1` bypass |
 | `telemetry-store.js` | Event capture (`track`), batched async flush to Supabase, local `data/telemetry-events.jsonl` fallback, dashboard read models (`getDashboardSnapshot`) |
+| `usage-guardrail.js` | Light call caps on the Ollama Cloud key (hourly/daily/session, env-tunable, persisted buckets); enforced in `llm-client.js` `callProvider` — see LLM Routing |
 | `strategy-memory-store.js` + `strategy-memory-evaluator.js` | Per-game strategy "memory" records (built from VGDL digest), cached CRUD under `data/strategy-memory/`, and A/B evaluation (baseline vs digest-memory prompt) |
 | `eval-plan.js` + `batch-evaluator.js` + `offline-game-evaluator.js` | Arcade eval harness: build game×model×strategy plans, run batches (spawns Java + real LLM via `game-manager`/`llm-client`), and an offline scripted-policy evaluator for prompt-pipeline tests without a live model. `createEventSink(broadcastIo)` + `runEvalCase`'s `onCaseStart` are the seams the marble run reuses to broadcast live |
 | `attract-coordinator.js` | Attract-mode "marble run" singleton: serial playlist broadcast on the single Java process, walk-up interrupt/resume state machine, consecutive-error backstop; emits `marble-run-state`/`case-started`/`case-completed` |
@@ -201,6 +202,7 @@ The walk-up handoff only protects sessions that go through the server. **Standal
 | `featured.json` | `{ "featured": [gameIds] }` — the curated showcase set; `routes/games.js` merges a `featured` flag into `/api/games`. Curation is data, no redeploy. |
 | `class-defaults.json` | Per-archetype runtime defaults + `twitch` pace overlay (macro settings, token floors, eval/memory-gate thresholds) |
 | `strategy-memory/` | Per-game strategy-memory records + `_index.json` (written by the strategy-memory scripts) |
+| `traces/` | Imported human-play trace exports (browser `arcade-trace-*.json` downloads) + `human-vs-slm-analysis.md`. Distinct from `play-traces/` (the server-side store with its own schema/index; gitignored) |
 | `telemetry-events.jsonl` + `eval-runs/` | Offline telemetry fallback log and persisted arcade-eval output artifacts |
 
 ### Java Entry Points
@@ -212,7 +214,7 @@ The walk-up handoff only protects sessions that go through the server. **Standal
 
 ### Config
 - `web/config.json` — ports, `ollamaCloud`/`ollama`/`openrouter` API URLs, `multimodalPatterns`. `gvgai.projectRoot` and `gvgai.javaPath` are **derived at runtime** when blank/missing (root from `server.js`'s location; java from PATH) so the app is portable across machines/Docker/Railway — don't hardcode absolute paths.
-- `.env` (repo root, not committed) — `OLLAMA_API_KEY` (primary) + `OPENROUTER_API_KEY` (fallback). Telemetry is also configured here (written by `setup-supabase-telemetry.sh`): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD` (for psql/migrations), `SUPABASE_TELEMETRY_TABLE`, plus `TELEMETRY_ENABLED` / `TELEMETRY_BATCH_SIZE` / `TELEMETRY_FLUSH_MS` / `TELEMETRY_FALLBACK_MODE` / `TELEMETRY_STORE_PROMPTS`. See `.env.example` for the full list. The `STRATEGY_MEMORY_DIR` env var can relocate the strategy-memory store.
+- `.env` (repo root, not committed) — `OLLAMA_API_KEY` (primary) + `OPENROUTER_API_KEY` (fallback). Telemetry is also configured here (written by `setup-supabase-telemetry.sh`): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD` (for psql/migrations), `SUPABASE_TELEMETRY_TABLE`, plus `TELEMETRY_ENABLED` / `TELEMETRY_BATCH_SIZE` / `TELEMETRY_FLUSH_MS` / `TELEMETRY_FALLBACK_MODE` / `TELEMETRY_STORE_PROMPTS`. See `.env.example` for the full list. The `STRATEGY_MEMORY_DIR` env var can relocate the strategy-memory store; `OLLAMA_GUARDRAIL_HOURLY/DAILY/SESSION/DISABLED/STATE` tune the Ollama-key usage guardrail (see LLM Routing).
 
 ## Game Config Schema (web/data/games/{id}.json)
 
@@ -236,13 +238,16 @@ Two optional per-game blocks change the response contract: `codeProtocol` (compa
 
 ## LLM Routing (web/lib/models.js)
 
-`lib/models.js` is the shared model catalog (consumed by both `routes/models.js` and `llm-client.js`). Each entry declares a `provider` and optional `fallback`. **Ollama Cloud is the primary inference provider; OpenRouter is the per-call fallback.**
+`lib/models.js` is the shared model catalog (consumed by `routes/models-local.js` — the mounted variant — and `llm-client.js`). Each entry declares a `provider` and optional `fallback`. **Ollama Cloud is the primary inference provider; OpenRouter is the per-call fallback.**
 
+- **Roster policy (since 2026-07-05): open-weight small models only, all hosted on Ollama Cloud, and none with the `thinking` capability flag** (check via Ollama's `/api/show`; reasoning models burn hidden tokens and return empty `content` at arcade `max_tokens` budgets). Current roster: `gemma3:27b` (default, featured), `gemma3:12b` (featured), `qwen3-coder-next`, `ministral-3:14b/8b/3b`, `devstral-small-2:24b`. There is no non-reasoning Qwen ≤31B on Ollama Cloud — `qwen3-coder-next` (~80B MoE) is the stand-in.
+- **The default model lives in two homes that must move together**: `config.json` `openrouter.defaultModel` and the `featured` flags in the catalog (the frontend picker defaults to the first featured model; `eval-plan.js` and the marble-run playlist use the featured set). `runtime-config.js` has a third built-in fallback default.
 - `resolveModel(id)` returns the catalog entry, or infers for ad-hoc ids: `/` in the name → OpenRouter; otherwise → Ollama Cloud.
 - `llm-client.js` calls the primary provider via `callProvider()`; on any non-OK response it automatically retries the model's `fallback` slug through OpenRouter. The provider that actually answered is reported back on the `llm-reasoning` socket event (`provider`/`modelUsed`).
+- **Usage guardrail on the Ollama key** (`lib/usage-guardrail.js`): light call caps enforced in `callProvider`'s ollama-cloud branch — hourly 3000 / daily 15000 / per-session 1500, env-tunable via `OLLAMA_GUARDRAIL_HOURLY/DAILY/SESSION`, kill switch `OLLAMA_GUARDRAIL_DISABLED=1`. A tripped guardrail **blocks** the call (deliberately skipping the OpenRouter fallback so spend doesn't silently shift), emits `llm-error`, and tracks a `system`/`guardrail_block` telemetry event. Hour/day buckets persist in `web/data/usage-guardrail.json` (gitignored).
 - Provider → endpoint + auth: `ollama-cloud` → `config.ollamaCloud.apiUrl` + `OLLAMA_API_KEY`; `openrouter` → `config.openrouter.apiUrl` + `OPENROUTER_API_KEY`; `ollama-local` → `config.ollama.apiUrl` (no key).
-- Ollama Cloud calls send `reasoning_effort: 'low'` — many cloud models (e.g. `gpt-oss:120b`) are reasoning models that otherwise burn the token budget on hidden reasoning and return empty `content` (the code falls back to the `reasoning` field if so).
 - All providers use the OpenAI-compatible `/chat/completions` shape (`messages`, `max_tokens`, `temperature`).
+- Known gap: on GV1 code-protocol games (ids 0, 4, 13, 15, 18) the current roster replies in prose the compact parser rejects, so actions come from the encoded-policy fallback rather than the model (see TODO.md).
 
 ## Telemetry, Strategy Memory & Eval Harness
 
@@ -269,6 +274,7 @@ The arcade is live at **https://inference-arcade.com** (Cloudflare-proxied apex 
 - `extractQuickState()` does fast field extraction from raw JSON strings to avoid full parsing on every tick — only LLM calls do full `JSON.parse`
 - The `observationGrid` is `[x][y][sprites]` (columns-first) — iterate `y` as outer loop for row-by-row display
 - `Observation` objects have `category` (0-6) and `itype` (game-specific sprite ID)
+- `POST /api/game/start` takes the model id in a **`model`** field — passing `modelId` (the name used on socket/telemetry payloads) silently yields `this.model = undefined` and every Ollama call 404s with `model "" not found`. Also note the marble run auto-starts on a local boot (`MARBLE_RUN_AUTOSTART` unset) and plays the featured models on the same log stream, which can masquerade as your walk-up session when debugging.
 - Game index: `examples/all_games_sp.csv` (line number = gameId). `JavaServer.java` resolves gameId from this same CSV (falling back to its legacy hardcoded array). Before July 2026 it used only the hardcoded array, whose entries diverge from the CSV at id 20 — so ids 20+ played the wrong game through the web layer (e.g. "doorkoban" (32) actually ran enemycitadel). Telemetry and tuning recorded before that fix mislabel those games. After changing the Java side, re-stage the portable runtime with `npm run java:prepare`.
 - VGDL game definitions: `examples/gridphysics/{gameName}.txt` with levels at `{gameName}_lvl{0-4}.txt`
 - Java agents must return actions within `ElapsedCpuTimer` budget
