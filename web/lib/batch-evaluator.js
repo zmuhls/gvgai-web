@@ -1,6 +1,6 @@
 const EventEmitter = require('events');
 const { buildArcadeEvalPlan, normalizeEvalResult } = require('./eval-plan');
-const { MODELS, resolveModel } = require('./models');
+const { getAllModels, resolveModel } = require('./models');
 const defaultTelemetry = require('./telemetry-store');
 const { getConfig } = require('./runtime-config');
 
@@ -44,7 +44,7 @@ function modelsForIds(modelIds) {
   if (ids.length === 0) return undefined;
 
   return ids.map(id => {
-    const catalogModel = MODELS.find(model => model.id === id);
+    const catalogModel = getAllModels().find(model => model.id === id);
     if (catalogModel) return catalogModel;
     const resolved = resolveModel(id);
     return {
