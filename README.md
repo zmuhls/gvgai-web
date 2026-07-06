@@ -1,8 +1,8 @@
 # Inference Arcade
 
-Language models play classic video games in real time. You watch the reasoning behind each move, hand the model a strategy in plain English, and see where it follows the plan. The arcade runs itself between visitors. A fine-tune pipeline turns human gameplay into better models on a local GPU.
+Language models play classic video games in real time. You read the reasoning behind each move, hand the model a strategy in plain English, and watch where it follows the plan or breaks from it. The arcade runs itself between visitors. A fine-tune pipeline captures human gameplay, trains models via Unsloth QLoRA on a local GPU, and reloads them into the cabinet so visitors see their own play patterns reflected back in the next run.
 
-A fork of the [GVGAI framework](https://github.com/GAIGResearch/GVGAI) supplying a Java engine for 122 2D grid games written in VGDL, with everything under `web/` built new. A Node server bridges an LLM to the engine over TCP. A browser frontend shows the canvas, the model's per-move reasoning, a telemetry dashboard with live standings, and a training pipeline that captures human traces to fine-tune models via Unsloth QLoRA.
+A fork of the [GVGAI framework](https://github.com/GAIGResearch/GVGAI) supplying a Java engine for 122 2D grid games written in VGDL, with everything under `web/` built new. A Node server bridges an LLM to the engine over TCP. A browser frontend renders the canvas, the model's per-move reasoning, a telemetry dashboard with live standings, and a training pipeline that captures human traces to fine-tune models via Unsloth QLoRA.
 
 Part of the CUNY AI Lab's Inference Arcade initiative fostering critical play with large language models by retrofitting them to the design grammar of classic games.
 
@@ -14,15 +14,15 @@ Live at **[inference-arcade.com](https://inference-arcade.com)**.
 
 Pick a game, tap a strategy card or write your own tactic in plain English, then watch the model play under real-time pressure with one decision per tick.
 
-A live panel beside the game canvas shows each decision as it happens with the action, the model's stated reason, which provider answered, and an expandable **decision autopsy** breaking down the prompt layers behind the move. A running adherence ribbon tracks whether the model's stated reasoning references your strategy's keywords. When the run ends a summary card reports the score, echoes the strategy, rates how closely the model followed it, and highlights the decisions that gained the most points.
+A live panel beside the game canvas surfaces each decision as it happens, displaying the action, the model's stated reason, which provider answered, and an expandable **decision autopsy** that dissects the prompt layers behind the move. A running adherence ribbon tracks whether the model's stated reasoning references your strategy's keywords. When the run ends a summary card reports the score, echoes the strategy, rates how closely the model followed it, and highlights the decisions that gained the most points.
 
 When nobody is at the cabinet an **attract-mode marble run** cycles the featured models through the featured games under contrasting strategies, broadcasting live so the cabinet is never dark. A spectator feed lives at `/marquee` for embedding. The marble run yields to any walk-up player, resuming when the visitor stops. Live standings appear on the Telemetry tab with per-model win rate, mean score, fallback rate, strong-adherence rate, and a per-strategy breakdown.
 
 ## How a decision gets made
 
-The browser talks to the Node server over HTTP and WebSocket. The Node server spawns the Java engine and communicates over a TCP socket with one message per game tick. The engine serializes the full game state as JSON, sends it to the server, which assembles an 8-layer prompt, calls the model. The model replies with an action and a one-sentence reason. The server sends the action back to Java within the tick budget.
+The browser talks to the Node server over HTTP and WebSocket. The Node server spawns the Java engine and communicates over a TCP socket with one message per game tick. The engine serializes the full game state as JSON, sends it to the server, which assembles an 8-layer prompt and calls the model. The model replies with an action and a one-sentence reason. The server sends the action back to Java within the tick budget.
 
-The engine demands an action within 40ms per tick but a model takes 200-2000ms to answer. The server resolves this gap by responding to each tick immediately with the previous decision while the next one computes in the background, so decisions land a few ticks late. That lag is why the showcase favors slower puzzle games over twitch games, why a macro-action plan executor queues multi-step plans that drain deterministically across ticks while the next LLM call is in flight.
+The engine demands an action within 40ms per tick but a model takes 200-2000ms to answer. The server bridges this gap by responding to each tick immediately with the previous decision while the next one computes in the background, so decisions land a few ticks late. That lag is why the showcase favors slower puzzle games over twitch games, why a macro-action plan executor queues multi-step plans that drain deterministically across ticks while the next LLM call is in flight.
 
 ### Prompt layers
 
@@ -120,11 +120,11 @@ The pipeline is per-game by default with one model per game, but the architectur
 
 The server records events in six families with `evaluation` covering runs, cases, summaries, `user_experience` covering views, searches, socket connections, `clickthrough` covering game selections, start clicks, `model_telemetry` covering per-decision latency, prompt size, parse success, `trace` covering sampled state ticks, `system` covering server lifecycle, guardrail blocks, fine-tune pipeline stages. Events buffer and flush to Supabase in batches with fallback to a local JSONL log when Supabase is unreachable.
 
-The Telemetry tab shows event counts and rate, model latency percentiles, a persistence pipeline view from captured through buffered to Supabase to fallback to failures, per-model leaderboards with wins, best score, providers, game coverage, session leaderboards, a clickthrough funnel, per-minute event series, eval outcomes, trace type breakdown, marble-run standings, the Ollama Cloud guardrail status with hour and day progress bars.
+The Telemetry tab surfaces event counts and rate, model latency percentiles, a persistence pipeline view from captured through buffered to Supabase to fallback to failures, per-model leaderboards with wins, best score, providers, game coverage, session leaderboards, a clickthrough funnel, per-minute event series, eval outcomes, trace type breakdown, marble-run standings, the Ollama Cloud guardrail status with hour and day progress bars.
 
 ## Human play mode
 
-A keyboard input layer sends player actions directly to the Java engine via Socket.IO bypassing the LLM entirely, so the 40ms tick constraint is trivially met with no LLM latency. The spectator view is identical to LLM play with the same Socket.IO events, the same canvas, the same telemetry. Human traces are stored alongside LLM traces, feeding the same play-history prompt layer and fine-tune pipeline.
+A keyboard input layer sends player actions directly to the Java engine via Socket.IO bypassing the LLM entirely, so the 40ms tick constraint is trivially met with no LLM latency. The spectator view mirrors LLM play with the same Socket.IO events, the same canvas, the same telemetry. Human traces are stored alongside LLM traces, feeding the same play-history prompt layer and fine-tune pipeline.
 
 ## Quick start
 
