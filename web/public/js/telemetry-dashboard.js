@@ -50,9 +50,13 @@
 
   async function loadSummary() {
     try {
-      const response = await fetch('/api/telemetry/summary?limit=80');
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      state.snapshot = await response.json();
+      const [summaryRes, guardRes] = await Promise.all([
+        fetch('/api/telemetry/summary?limit=80'),
+        fetch('/api/telemetry/guardrail')
+      ]);
+      if (!summaryRes.ok) throw new Error(`HTTP ${summaryRes.status}`);
+      state.snapshot = await summaryRes.json();
+      state.guardrail = guardRes.ok ? await guardRes.json() : null;
       render();
     } catch (error) {
       renderError(error);
@@ -89,6 +93,31 @@
     renderModelChart(snapshot.models || []);
     renderTraceChart(snapshot.traceTypes || []);
     renderMarbleRun(snapshot.marbleRun || {});
+    renderGuardrail(state.guardrail);
+  }
+
+  function renderGuardrail(g) {
+    const el = document.getElementById('telemetry-guardrail');
+    if (!el) return;
+    if (!g || g.disabled) {
+      el.innerHTML = '<div class="telemetry-empty">Guardrail disabled</div>';
+      return;
+    }
+    const limits = g.limits || {};
+    const hourPct = Math.min(100, Math.round((g.hourCount / limits.hourly) * 100));
+    const dayPct = Math.min(100, Math.round((g.dayCount / limits.daily) * 100));
+    el.innerHTML = `
+      <div class="guardrail-bar">
+        <span>Hourly <small>${formatNumber(g.hourCount)} / ${formatNumber(limits.hourly)}</small></span>
+        <div class="bar-track"><div class="bar-fill" style="width:${hourPct}%"></div></div>
+        <strong>${hourPct}%</strong>
+      </div>
+      <div class="guardrail-bar">
+        <span>Daily <small>${formatNumber(g.dayCount)} / ${formatNumber(limits.daily)}</small></span>
+        <div class="bar-track"><div class="bar-fill" style="width:${dayPct}%"></div></div>
+        <strong>${dayPct}%</strong>
+      </div>
+    `;
   }
 
   // The Tote Board: per-model standings + strategy effect from the marble run.

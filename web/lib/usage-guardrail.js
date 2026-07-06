@@ -97,6 +97,22 @@ function admitOllamaCall(sessionCount = 0, now = new Date()) {
   return { allowed: true };
 }
 
+function getStatus() {
+  const limits = getLimits();
+  if (process.env.OLLAMA_GUARDRAIL_DISABLED === '1') {
+    return { disabled: true, limits, hourCount: null, dayCount: null, hour: null, day: null };
+  }
+  const s = rotate(new Date());
+  return {
+    disabled: false,
+    limits,
+    hourCount: s.hourCount || 0,
+    dayCount: s.dayCount || 0,
+    hour: s.hour || null,
+    day: s.day || null
+  };
+}
+
 function resetForTest() {
   state = null;
   if (persistTimer) {
@@ -105,4 +121,4 @@ function resetForTest() {
   }
 }
 
-module.exports = { admitOllamaCall, getLimits, resetForTest };
+module.exports = { admitOllamaCall, getLimits, getStatus, resetForTest };

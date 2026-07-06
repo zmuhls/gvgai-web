@@ -1,5 +1,6 @@
 const express = require('express');
 const telemetry = require('../lib/telemetry-store');
+const guardrail = require('../lib/usage-guardrail');
 
 const router = express.Router();
 
@@ -54,6 +55,11 @@ router.post('/flush', async (req, res) => {
     ok: true,
     storage: telemetry.getStorageStatus()
   });
+});
+
+// GET /guardrail — Ollama Cloud usage guardrail status (hour/day counters + limits)
+router.get('/guardrail', (req, res) => {
+  res.json(guardrail.getStatus());
 });
 
 module.exports = router;

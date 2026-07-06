@@ -2313,3 +2313,37 @@ label {
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------- 11. guardrail bars ---------- */
+
+.guardrail-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2fr auto;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 36px;
+  padding: var(--space-2);
+  border-bottom: 1px solid rgba(123, 239, 195, 0.07);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--arcade-text-secondary);
+}
+
+.guardrail-bar:last-child {
+  border-bottom: 0;
+}
+
+.bar-track {
+  position: relative;
+  height: 8px;
+  background: rgba(123, 239, 195, 0.07);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: var(--arcade-accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
