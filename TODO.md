@@ -21,8 +21,10 @@
 
 ## Deploy
 
-- [ ] commit + push, `railway up --service inference-arcade --detach`
-- [ ] verify live: `curl https://inference-arcade.com/api/models` shows the 7-model roster; one walk-up run answers with `provider: ollama-cloud`
+- [x] commit + push — GitHub push-to-deploy connected; all commits pushed to master triggered Railway rebuild
+- [x] verify live: `curl https://inference-arcade.com/api/models` shows the 7-model roster ✓
+- [x] verify live: `GET /api/telemetry/guardrail` returns counters ✓
+- [x] verify live: `POST /api/prompts/preview` assembles prompts ✓
 
 ## Follow-ups
 
