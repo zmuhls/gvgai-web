@@ -143,8 +143,14 @@
       return;
     }
     var lamp = document.getElementById('conn-lamp');
+    var lampLabel = document.getElementById('conn-lamp-label');
     var setLamp = function (state) {
       if (lamp) lamp.setAttribute('data-state', state);
+      if (lampLabel) {
+        lampLabel.textContent = state === 'on'
+          ? 'Socket live'
+          : (state === 'err' ? 'Socket error' : 'Socket offline');
+      }
     };
     if (socket.connected) setLamp('on');
     socket.on('connect', function () { setLamp('on'); });

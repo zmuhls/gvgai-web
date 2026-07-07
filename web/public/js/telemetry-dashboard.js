@@ -2,6 +2,7 @@
   const socket = window.arcadeSocket;
   const state = {
     snapshot: null,
+    models: [],
     refreshTimer: null,
     pendingRefresh: null
   };
@@ -87,6 +88,7 @@
     setText('telemetry-leaderboard-source', sourceLabel(snapshot));
     setText('telemetry-pipeline-source', pipelineLabel(snapshot.pipeline, snapshot));
 
+    renderBackendStatus(snapshot);
     renderLeaderboards(snapshot.leaderboards || {});
     renderMetrics(snapshot.metrics || {});
     renderPipeline(snapshot.pipeline || {});
@@ -192,6 +194,84 @@
     `;
     setText('telemetry-finetune-model',
       run.modelId || (run.state === 'failed' ? 'run failed' : 'run in progress'));
+  }
+
+  function renderBackendStatus(snapshot) {
+    const grid = document.getElementById('telemetry-backend-grid');
+    const activeEl = document.getElementById('telemetry-backend-active');
+    if (!grid) return;
+
+    const activeBackend = (document.getElementById('backend-label')?.textContent || 'unknown').trim();
+    const selectedModel = selectedModelLabel();
+    const models = Array.isArray(state.models) ? state.models : [];
+    const providerCounts = models.reduce((counts, model) => {
+      const provider = model.provider || 'unknown';
+      counts[provider] = (counts[provider] || 0) + 1;
+      return counts;
+    }, {});
+    const fallbackCount = models.filter(model => model.fallback || model.provider === 'openrouter').length;
+    const localCount = (providerCounts['ollama-local'] || 0) + (providerCounts.local || 0);
+    const socketLive = Boolean(socket && socket.connected);
+
+    if (activeEl) activeEl.textContent = activeBackend;
+
+    const cards = [
+      {
+        label: 'Active backend',
+        value: activeBackend || 'unselected',
+        detail: selectedModel || 'selected when a model is chosen',
+        state: activeBackend && activeBackend !== 'unknown' ? 'online' : 'warn'
+      },
+      {
+        label: 'Browser socket',
+        value: socketLive ? 'online' : 'offline',
+        detail: 'streams frames, traces, and run summaries',
+        state: socketLive ? 'online' : 'offline'
+      },
+      {
+        label: 'Ollama Cloud',
+        value: providerCounts['ollama-cloud'] ? `${providerCounts['ollama-cloud']} model(s)` : providerValueFromLabel(activeBackend, 'Ollama Cloud'),
+        detail: 'primary hosted open-weight inference',
+        state: providerCounts['ollama-cloud'] || activeBackend === 'Ollama Cloud' ? 'online' : 'warn'
+      },
+      {
+        label: 'OpenRouter fallback',
+        value: fallbackCount ? `${fallbackCount} route(s)` : providerValueFromLabel(activeBackend, 'OpenRouter'),
+        detail: 'backup route when primary calls fail',
+        state: fallbackCount || activeBackend === 'OpenRouter' ? 'online' : 'warn'
+      },
+      {
+        label: 'Local Ollama',
+        value: localCount ? `${localCount} model(s)` : providerValueFromLabel(activeBackend, 'Local Ollama'),
+        detail: 'fine-tuned or local registry models',
+        state: localCount || activeBackend === 'Local Ollama' ? 'online' : 'offline'
+      },
+      {
+        label: 'Telemetry store',
+        value: sourceLabel(snapshot),
+        detail: snapshot.storage?.label || snapshot.storage?.state || 'storage state pending',
+        state: snapshot.storage?.state === 'disabled' ? 'warn' : 'online'
+      }
+    ];
+
+    grid.innerHTML = cards.map(card => `
+      <article class="backend-status-card backend-status-${escapeHtml(card.state)}">
+        <span>${escapeHtml(card.label)}</span>
+        <strong>${escapeHtml(card.value)}</strong>
+        <small>${escapeHtml(card.detail)}</small>
+      </article>
+    `).join('');
+  }
+
+  function providerValueFromLabel(activeBackend, providerLabel) {
+    return activeBackend === providerLabel ? 'selected' : 'not listed';
+  }
+
+  function selectedModelLabel() {
+    const select = document.getElementById('model-select');
+    const option = select?.selectedOptions?.[0];
+    if (!option) return '';
+    return option.textContent.replace(/\s+/g, ' ').trim();
   }
 
   function renderGuardrail(g) {
@@ -589,6 +669,9 @@
   });
 
   if (socket) {
+    socket.on('connect', () => renderBackendStatus(state.snapshot || {}));
+    socket.on('disconnect', () => renderBackendStatus(state.snapshot || {}));
+    socket.on('connect_error', () => renderBackendStatus(state.snapshot || {}));
     socket.on('telemetry-event', () => {
       scheduleRefresh();
     });

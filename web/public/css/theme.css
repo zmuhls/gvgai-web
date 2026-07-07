@@ -141,7 +141,7 @@ body {
   background-attachment: fixed;
   color: var(--foam);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -277,6 +277,13 @@ body {
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.titlebar-brand:hover .titlebar-title,
+.titlebar-brand:focus-visible .titlebar-title {
+  color: var(--mint-bright);
 }
 
 .titlebar-mark {
@@ -297,7 +304,7 @@ body {
   font-family: var(--font-mono);
   font-size: 0.62rem;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--arcade-text-dim);
   white-space: nowrap;
 }

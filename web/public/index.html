@@ -26,18 +26,18 @@
   </div>
 
   <header class="arcade-titlebar">
-    <div class="titlebar-brand">
+    <a class="titlebar-brand" href="https://github.com/zmuhls/gvgai-web" target="_blank" rel="noopener noreferrer" aria-label="Open gvgai-web on GitHub">
       <span class="titlebar-mark">◆</span>
-      <span class="titlebar-title">INFERENCE ARCADE</span>
-      <span class="titlebar-sub">GVGAI · LLM cabinets</span>
-    </div>
+      <span class="titlebar-title">gvgai-web</span>
+      <span class="titlebar-sub">LLM Game Cabinets</span>
+    </a>
     <nav id="main-nav">
-      <button class="nav-link active" data-target="play-section">Arcade</button>
+      <button class="nav-link active" data-target="play-section">Java Arcade</button>
       <button class="nav-link" data-target="prompt-dashboard">Operator Desk</button>
       <button class="nav-link" data-target="telemetry-dashboard">Telemetry</button>
     </nav>
     <div class="titlebar-status">
-      <span id="conn-lamp" class="lamp" data-state="off"><span class="lamp-dot"></span>Link</span>
+      <span id="conn-lamp" class="lamp" data-state="off"><span class="lamp-dot"></span><span id="conn-lamp-label">Socket offline</span></span>
       <span id="backend-label" class="titlebar-backend">Ollama Cloud</span>
       <span id="titlebar-clock" class="titlebar-clock">--:--</span>
       <button id="sound-toggle" class="titlebar-sound" type="button" aria-pressed="false" title="Toggle sound">SND OFF</button>
@@ -55,7 +55,7 @@
       <h2>Choose a Game</h2>
       <p class="step-note">Prompt open-weight language models to play your favorite arcade games.</p>
       <div class="games-toolbar">
-        <span id="games-mode-label" class="games-mode-label">Featured cabinets</span>
+        <span id="games-mode-label" class="games-mode-label">featured cabinets</span>
         <button id="toggle-browse-all" class="btn-secondary btn-toggle">Browse all 122 →</button>
       </div>
       <input type="text" id="game-search" placeholder="Search all games..." class="hidden" />
@@ -107,12 +107,12 @@
         <h3 id="companion-games-title">Other inference arcade rooms</h3>
         <div class="companion-list">
           <a class="game-card companion-link room-cloze" href="https://reader.inference-arcade.com" target="_blank" rel="noopener noreferrer">
-            <span class="game-card-meta"><span>reader</span><span>cloze</span></span>
+            <span class="game-card-meta companion-subtitle"><span>Fill-in-the-Blank Game Engine</span></span>
             <h3>Cloze Reader</h3>
             <p class="levels companion-url">reader.inference-arcade.com</p>
           </a>
           <a class="game-card companion-link room-jeopardy" href="https://jeopardy.inference-arcade.com" target="_blank" rel="noopener noreferrer">
-            <span class="game-card-meta"><span>board</span><span>jeopardy</span></span>
+            <span class="game-card-meta companion-subtitle"><span>Jeopardy! Board Clue Generator</span></span>
             <h3>Jeopardy LM</h3>
             <p class="levels companion-url">jeopardy.inference-arcade.com</p>
           </a>
@@ -227,7 +227,7 @@
       <div class="dashboard-heading">
         <p class="step-label">operator desk</p>
         <h2>Operator Desk</h2>
-        <p>Tune each cartridge's prompt layers — system, game context, progression.</p>
+        <p>Edit system prompts, game rule digests, progression hints, action aliases, and model defaults for each GVGAI cartridge, then preview the exact prompt sent to the model.</p>
       </div>
       <div class="dashboard-layout">
         <!-- Left sidebar: game/template lists -->
@@ -368,6 +368,17 @@
           <strong id="telemetry-events-rate">0</strong>
         </div>
       </div>
+
+      <section class="telemetry-backend-panel electric-panel" aria-labelledby="telemetry-backend-title">
+        <div class="telemetry-panel-heading">
+          <div>
+            <p class="step-label">model link</p>
+            <h3 id="telemetry-backend-title">Model Backend Status</h3>
+          </div>
+          <span id="telemetry-backend-active">checking</span>
+        </div>
+        <div id="telemetry-backend-grid" class="telemetry-backend-grid"></div>
+      </section>
 
       <section class="telemetry-leaderboard electric-panel" aria-labelledby="telemetry-leaderboard-title">
         <div class="telemetry-panel-heading">
@@ -511,8 +522,27 @@
 
   </div>
 
+  <aside id="marble-popout" class="marble-popout" aria-label="Autoplay marble run">
+    <div class="marble-popout-chrome">
+      <div class="marble-popout-title">
+        <span class="lamp" id="marble-popout-lamp" data-state="off"><span class="lamp-dot"></span></span>
+        <span>Marble Run</span>
+        <strong id="marble-popout-status">loading</strong>
+      </div>
+      <div class="marble-popout-actions">
+        <button id="marble-popout-expand" class="marble-popout-action" type="button" aria-label="Expand autoplay game" aria-expanded="false" title="Expand">□</button>
+        <a class="marble-popout-action" href="/marquee" target="_blank" rel="noopener noreferrer" aria-label="Open autoplay game page" title="Open">↗</a>
+        <button id="marble-popout-close" class="marble-popout-action" type="button" aria-label="Close autoplay game" title="Close">×</button>
+      </div>
+    </div>
+    <div class="marble-popout-frame">
+      <iframe src="/marquee?embed=1" title="Inference Arcade autoplay marble run" loading="lazy"></iframe>
+    </div>
+  </aside>
+
   <script src="js/telemetry-client.js"></script>
   <script src="js/shell.js"></script>
+  <script src="js/marble-popout.js"></script>
   <script src="js/app.js" type="module"></script>
   <script src="js/dashboard.js"></script>
   <script src="js/telemetry-dashboard.js"></script>

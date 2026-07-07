@@ -16,6 +16,7 @@ const state = {
   lastSummary: null,
   traceLog: [],
   traceStartedAt: null,
+  featuredShowcase: null,
   liveGameState: { tick: 0, score: 0, health: 0 }
 };
 
@@ -82,6 +83,10 @@ const PREVIEW_GAMES = [
   { id: 11, name: 'boulderdash', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
   { id: 18, name: 'chase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true }
 ];
+
+const FEATURED_CABINET_COUNT = 15;
+const FEATURED_FIRST_ROW_IDS = [0, 4, 11, 18, 32];
+const SINGLE_PLAYER_CABINET_COUNT = 122;
 
 const PREVIEW_MODELS = [
   {
@@ -225,15 +230,41 @@ function buildSessionLink() {
   return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
 }
 
-// Load games from API
+async function fetchGameCatalog(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${url} HTTP ${response.status}`);
+  const games = await response.json();
+  if (!Array.isArray(games) || games.length === 0) {
+    throw new Error(`${url} returned no games`);
+  }
+  return games;
+}
+
+async function loadStaticGameCatalog() {
+  return fetchGameCatalog('/data/games.json');
+}
+
+// Load games from API, then fall back to the static catalog for file previews.
 async function loadGames() {
   try {
-    const response = await fetch('/api/games');
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    state.games = await response.json();
+    let games = await fetchGameCatalog('/api/games');
+    let source = 'api';
+    if (games.length < 20) {
+      try {
+        const staticGames = await loadStaticGameCatalog();
+        if (staticGames.length > games.length) {
+          games = staticGames;
+          source = 'static catalog';
+        }
+      } catch (fallbackError) {
+        console.warn('[App] Static game catalog unavailable:', fallbackError.message);
+      }
+    }
+    state.games = games;
+    state.featuredShowcase = null;
     const featuredCount = state.games.filter(g => g.featured).length;
-    console.log(`[App] Loaded ${state.games.length} games (${featuredCount} featured)`);
-    trackUx('games_loaded', { total: state.games.length, featured: featuredCount }, {
+    console.log(`[App] Loaded ${state.games.length} games (${featuredCount} featured) from ${source}`);
+    trackUx('games_loaded', { total: state.games.length, featured: featuredCount, source }, {
       total_games: state.games.length,
       featured_games: featuredCount
     });
@@ -241,16 +272,65 @@ async function loadGames() {
   } catch (error) {
     console.error('[App] Failed to load games:', error);
     trackUx('games_load_failed', { message: error.message });
-    state.games = PREVIEW_GAMES;
+    try {
+      state.games = await loadStaticGameCatalog();
+      trackUx('games_loaded', { total: state.games.length, source: 'static fallback' }, {
+        total_games: state.games.length,
+        featured_games: state.games.filter(g => g.featured).length
+      });
+    } catch (fallbackError) {
+      console.error('[App] Static game catalog failed:', fallbackError);
+      state.games = PREVIEW_GAMES;
+    }
+    state.featuredShowcase = null;
     renderCurrentGameList();
   }
 }
 
 // Render featured-only or all games depending on the current toggle
 function renderCurrentGameList() {
-  const featured = state.games.filter(g => g.featured);
-  // Show featured first when there are any; otherwise fall back to all
-  renderGames(state.showingAllGames || featured.length === 0 ? state.games : featured);
+  updateCatalogLabels();
+  renderGames(state.showingAllGames ? state.games : getFeaturedShowcase());
+}
+
+function updateCatalogLabels() {
+  const catalogTotal = state.games.length >= 20 ? state.games.length : SINGLE_PLAYER_CABINET_COUNT;
+  if (state.showingAllGames) {
+    gamesModeLabel.textContent = `all ${catalogTotal} cabinets`;
+    toggleBrowseAllBtn.textContent = '★ Show featured only';
+  } else {
+    gamesModeLabel.textContent = 'featured cabinets';
+    toggleBrowseAllBtn.textContent = `Browse all ${catalogTotal} →`;
+  }
+}
+
+function getFeaturedShowcase() {
+  if (state.featuredShowcase) return state.featuredShowcase;
+
+  const byId = new Map(state.games.map(game => [game.id, game]));
+  const pinned = FEATURED_FIRST_ROW_IDS
+    .map(id => byId.get(id))
+    .filter(Boolean);
+  const pinnedIds = new Set(pinned.map(game => game.id));
+  const candidates = state.games.filter(game => !pinnedIds.has(game.id));
+  const explicitFeatured = candidates.filter(game => game.featured);
+  const generalPool = candidates.filter(game => !game.featured);
+  const randomRows = shuffleGames(explicitFeatured.concat(generalPool))
+    .slice(0, Math.max(0, FEATURED_CABINET_COUNT - pinned.length));
+
+  state.featuredShowcase = pinned.concat(randomRows)
+    .slice(0, FEATURED_CABINET_COUNT)
+    .map(game => ({ ...game, featured: true }));
+  return state.featuredShowcase;
+}
+
+function shuffleGames(games) {
+  const copy = games.slice();
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
 }
 
 // Render the preset strategy cards, affine-to-archetype presets first
@@ -856,15 +936,12 @@ function setupEventListeners() {
   toggleBrowseAllBtn.addEventListener('click', () => {
     state.showingAllGames = !state.showingAllGames;
     if (state.showingAllGames) {
-      gamesModeLabel.textContent = 'All 122 cabinets';
-      toggleBrowseAllBtn.textContent = '★ Show featured only';
       gameSearch.classList.remove('hidden');
     } else {
-      gamesModeLabel.textContent = 'Featured cabinets';
-      toggleBrowseAllBtn.textContent = 'Browse all 122 →';
       gameSearch.classList.add('hidden');
       gameSearch.value = '';
     }
+    updateCatalogLabels();
     renderCurrentGameList();
     trackUx('catalog_mode_changed', {
       showingAllGames: state.showingAllGames

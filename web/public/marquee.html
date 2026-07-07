@@ -8,14 +8,73 @@
   <link rel="preload" href="/fonts/silkscreen-latin-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/ibm-plex-mono-latin-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/css/theme.css">
+  <script>
+    const marqueeParams = new URLSearchParams(window.location.search);
+    if (marqueeParams.has('embed')) {
+      document.documentElement.classList.add('marquee-embed');
+    }
+    if (marqueeParams.get('view') === 'full') {
+      document.documentElement.classList.add('marquee-full');
+    }
+  </script>
   <style>
     /* Marquee layout — spectator page, tokens come from theme.css */
     .marquee {
+      position: relative;
       display: grid;
-      grid-template-rows: auto auto 1fr auto;
+      grid-template-rows: auto auto auto 1fr auto;
       height: 100vh;
       gap: 12px;
       padding: 14px;
+    }
+    .marquee-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 10px;
+      background: rgba(13, 28, 22, 0.88);
+      border: 1px solid var(--arcade-border-soft);
+      border-radius: var(--radius-lg);
+    }
+    .marquee-nav-title {
+      min-width: 0;
+      font-family: var(--font-display);
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--foam);
+    }
+    .marquee-nav-actions {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 8px;
+    }
+    .marquee-nav a,
+    .marquee-nav button {
+      appearance: none;
+      display: inline-grid;
+      place-items: center;
+      min-height: 32px;
+      padding: 0 12px;
+      background: rgba(5, 11, 9, 0.72);
+      border: 1px solid rgba(123, 239, 195, 0.34);
+      border-radius: var(--radius-md);
+      color: var(--mint);
+      font-family: var(--font-display);
+      font-size: 0.6rem;
+      letter-spacing: 0.08em;
+      text-decoration: none;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .marquee-nav a:hover,
+    .marquee-nav button:hover,
+    .marquee-nav a:focus-visible,
+    .marquee-nav button:focus-visible {
+      background: var(--mint-faint);
+      color: var(--mint-bright);
+      border-color: var(--mint);
     }
     header { display: flex; align-items: center; justify-content: space-between; }
     .title {
@@ -34,7 +93,13 @@
     }
     .live .pip { width: 8px; height: 8px; border-radius: 50%; background: var(--arcade-text-dim); transition: background .2s, box-shadow .2s; }
     .live.on .pip { background: var(--mint); box-shadow: var(--lamp-glow); }
-    .nowplaying { font-family: var(--font-mono); font-size: 0.8rem; color: var(--foam-dim); }
+    .nowplaying {
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--foam);
+      text-shadow: 0 0 8px rgba(123, 239, 195, 0.18);
+    }
     .nowplaying strong { color: var(--mint); }
     .stage { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; min-height: 0; }
     .screen {
@@ -53,16 +118,27 @@
         rgba(0, 0, 0, 0.2) 0px, rgba(0, 0, 0, 0.2) 1px,
         transparent 1px, transparent 3px);
     }
-    canvas { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      image-rendering: pixelated;
+      object-fit: contain;
+    }
     .overlay {
       position: absolute; top: 8px; left: 8px; z-index: 3;
       display: flex; gap: 14px;
       padding: 5px 10px;
-      background: rgba(5, 11, 9, 0.85);
-      border: 1px solid var(--arcade-border-soft);
-      font-family: var(--font-mono); font-size: 0.68rem;
+      background: rgba(5, 11, 9, 0.92);
+      border: 1px solid rgba(123, 239, 195, 0.34);
+      box-shadow: 0 0 18px rgba(123, 239, 195, 0.08);
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      font-weight: 600;
     }
-    .overlay span { color: var(--arcade-text-dim); text-transform: uppercase; }
+    .overlay span { color: var(--foam); text-transform: uppercase; }
     .overlay strong { color: var(--mint); margin-left: 4px; font-variant-numeric: tabular-nums; }
     .side { display: grid; grid-template-rows: auto 1fr auto; gap: 12px; min-height: 0; }
     .panel {
@@ -108,6 +184,111 @@
     .ticker b { color: var(--mint); }
     .loop { color: var(--brass); font-weight: 700; letter-spacing: 0.05em; }
 
+    /* compact iframe mode for the floating homepage mini-player */
+    html.marquee-embed,
+    html.marquee-embed body {
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+    html.marquee-embed .marquee {
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) 42px;
+      height: 100vh;
+      min-height: 0;
+      padding: 0;
+      gap: 0;
+      background: #000;
+    }
+    html.marquee-embed header,
+    html.marquee-embed .marquee-nav,
+    html.marquee-embed .side,
+    html.marquee-embed footer,
+    html.marquee-embed .overlay {
+      display: none;
+    }
+    html.marquee-embed .stage {
+      display: block;
+      grid-row: 1;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+    }
+    html.marquee-embed .screen {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      border: 0;
+      border-radius: 0;
+    }
+    html.marquee-embed canvas {
+      object-fit: cover;
+    }
+    html.marquee-embed .nowplaying {
+      position: static;
+      grid-row: 2;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      width: 100%;
+      padding: 7px 10px;
+      overflow: hidden;
+      border: 0;
+      border-top: 1px solid rgba(123, 239, 195, 0.44);
+      background: rgba(3, 8, 7, 0.94);
+      box-shadow: 0 0 20px rgba(123, 239, 195, 0.12);
+      color: var(--foam);
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* expanded pop-out opts into the full viewer with ?view=full */
+    html.marquee-embed.marquee-full body {
+      background: var(--abyss);
+    }
+    html.marquee-embed.marquee-full .marquee {
+      display: grid;
+      grid-template-rows: auto auto auto 1fr auto;
+      gap: 12px;
+      padding: 14px;
+      background: var(--abyss);
+    }
+    html.marquee-embed.marquee-full header,
+    html.marquee-embed.marquee-full .marquee-nav,
+    html.marquee-embed.marquee-full .side,
+    html.marquee-embed.marquee-full footer {
+      display: flex;
+    }
+    html.marquee-embed.marquee-full .side {
+      display: grid;
+    }
+    html.marquee-embed.marquee-full .overlay {
+      display: flex;
+    }
+    html.marquee-embed.marquee-full .nowplaying {
+      grid-row: auto;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      font-size: 0.8rem;
+    }
+    html.marquee-embed.marquee-full .stage {
+      display: grid;
+      grid-row: auto;
+      grid-template-columns: minmax(0, 1.7fr) minmax(220px, 0.8fr);
+      gap: 12px;
+    }
+    html.marquee-embed.marquee-full .screen {
+      border: 1px solid var(--mint-dim);
+      border-radius: var(--radius-lg);
+    }
+    html.marquee-embed.marquee-full canvas {
+      object-fit: contain;
+    }
+
     /* narrow / portrait viewers: stack the screen above the side panels */
     @media (max-width: 900px) {
       .marquee { height: auto; min-height: 100vh; }
@@ -120,6 +301,13 @@
 </head>
 <body>
   <div class="marquee">
+    <nav class="marquee-nav" aria-label="Marble run navigation">
+      <div class="marquee-nav-title">Spectator feed</div>
+      <div class="marquee-nav-actions">
+        <button type="button" id="marquee-back">Back</button>
+        <a href="/">Arcade home</a>
+      </div>
+    </nav>
     <header>
       <div class="title">Inference Arcade <span class="dot">◆</span> Marble Run</div>
       <div class="live" id="live"><span class="pip"></span><span id="live-text">connecting…</span></div>
@@ -147,5 +335,11 @@
   </div>
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/marquee.js"></script>
+  <script>
+    document.getElementById('marquee-back')?.addEventListener('click', () => {
+      if (window.history.length > 1) window.history.back();
+      else window.location.href = '/';
+    });
+  </script>
 </body>
 </html>
