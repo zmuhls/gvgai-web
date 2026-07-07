@@ -2,6 +2,7 @@
   const socket = window.arcadeSocket;
   const state = {
     snapshot: null,
+    models: [],
     refreshTimer: null,
     pendingRefresh: null
   };
@@ -50,9 +51,17 @@
 
   async function loadSummary() {
     try {
-      const response = await fetch('/api/telemetry/summary?limit=80');
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      state.snapshot = await response.json();
+      const [summaryRes, guardRes, finetuneRes, modelsRes] = await Promise.all([
+        fetch('/api/telemetry/summary?limit=80'),
+        fetch('/api/telemetry/guardrail'),
+        fetch('/api/finetune/status').catch(() => null),
+        fetch('/api/models').catch(() => null)
+      ]);
+      if (!summaryRes.ok) throw new Error(`HTTP ${summaryRes.status}`);
+      state.snapshot = await summaryRes.json();
+      state.guardrail = guardRes.ok ? await guardRes.json() : null;
+      state.finetune = finetuneRes && finetuneRes.ok ? await finetuneRes.json() : null;
+      state.models = modelsRes && modelsRes.ok ? await modelsRes.json() : (state.models || []);
       render();
     } catch (error) {
       renderError(error);
@@ -79,6 +88,7 @@
     setText('telemetry-leaderboard-source', sourceLabel(snapshot));
     setText('telemetry-pipeline-source', pipelineLabel(snapshot.pipeline, snapshot));
 
+    renderBackendStatus(snapshot);
     renderLeaderboards(snapshot.leaderboards || {});
     renderMetrics(snapshot.metrics || {});
     renderPipeline(snapshot.pipeline || {});
@@ -89,6 +99,203 @@
     renderModelChart(snapshot.models || []);
     renderTraceChart(snapshot.traceTypes || []);
     renderMarbleRun(snapshot.marbleRun || {});
+    renderGuardrail(state.guardrail);
+    renderFinetune();
+  }
+
+  // Marble run controls
+  const marbleStartBtn = document.getElementById('marble-start-btn');
+  const marbleStopBtn = document.getElementById('marble-stop-btn');
+  if (marbleStartBtn) {
+    marbleStartBtn.addEventListener('click', async () => {
+      marbleStartBtn.disabled = true;
+      try {
+        await fetch('/api/marble/start', { method: 'POST' });
+      } catch (e) { /* best-effort */ }
+      marbleStartBtn.disabled = false;
+      loadSummary();
+    });
+  }
+  if (marbleStopBtn) {
+    marbleStopBtn.addEventListener('click', async () => {
+      marbleStopBtn.disabled = true;
+      try {
+        await fetch('/api/marble/stop', { method: 'POST' });
+      } catch (e) { /* best-effort */ }
+      marbleStopBtn.disabled = false;
+      loadSummary();
+    });
+  }
+
+  // Fine-tune pipeline panel: fetched status as the base, live socket
+  // progress payloads overlaid until the run finishes.
+  const finetuneStageLabels = {
+    preparing: 'Preparing training data…',
+    data_prepared: 'Training data ready',
+    training: 'Starting training…',
+    start: 'Starting training…',
+    load_data: 'Loading dataset…',
+    gpu_check: 'Checking GPU…',
+    load_model: 'Loading base model…',
+    train_begin: 'Training…',
+    train_step: 'Training…',
+    train_complete: 'Training complete',
+    export_gguf: 'Exporting GGUF…',
+    registry_written: 'Registering model…',
+    done: 'Finishing…',
+    loading: 'Loading into Ollama…',
+    load_skipped: 'Ollama load skipped',
+    model_loaded: 'Model loaded into Ollama',
+    complete: 'Pipeline complete',
+    shutdown: 'Interrupted by shutdown'
+  };
+
+  function renderFinetune() {
+    const el = document.getElementById('telemetry-finetune');
+    if (!el) return;
+    const status = state.finetune;
+    const live = state.finetuneLive;
+    let run = status?.run || null;
+    if (live && (!run || live.runId === run.runId || !run.finishedAt)) {
+      run = {
+        ...(run || {}),
+        ...live,
+        progress: live.stage === 'train_step'
+          ? { step: live.step, totalSteps: live.totalSteps, loss: live.loss, epoch: live.epoch }
+          : (run?.progress || {})
+      };
+    }
+
+    if (!run || !run.runId) {
+      const count = status?.registry?.count || 0;
+      el.innerHTML = '<div class="telemetry-empty">No fine-tune runs yet — human plays on featured games feed the pipeline</div>';
+      setText('telemetry-finetune-model', count ? `${count} model(s) in registry` : 'no runs yet');
+      return;
+    }
+
+    const stageLabel = finetuneStageLabels[run.stage] || run.stage || '—';
+    const progress = run.progress || {};
+    const pct = progress.totalSteps
+      ? Math.min(100, Math.round((progress.step / progress.totalSteps) * 100))
+      : (run.state === 'complete' ? 100 : 4);
+    const tone = run.state === 'failed' ? 'danger' : (run.state === 'complete' ? 'success' : 'accent');
+
+    el.innerHTML = `
+      <div class="guardrail-bar finetune-run finetune-tone-${tone}">
+        <span>${escapeHtml(run.gameName || `game ${run.gameId}`)} <small>${escapeHtml(run.state || '')}${run.dryRun ? ' · dry run' : ''}</small></span>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <strong>${pct}%</strong>
+      </div>
+      <div class="finetune-stage">
+        <span>${escapeHtml(stageLabel)}</span>
+        ${progress.loss != null ? `<small>step ${Number(progress.step) || 0}/${Number(progress.totalSteps) || 0} · loss ${(Number(progress.loss) || 0).toFixed(3)}</small>` : ''}
+        ${run.error ? `<small class="finetune-error-text">${escapeHtml(run.error.code || 'error')}: ${escapeHtml(run.error.message || '')}</small>` : ''}
+      </div>
+    `;
+    setText('telemetry-finetune-model',
+      run.modelId || (run.state === 'failed' ? 'run failed' : 'run in progress'));
+  }
+
+  function renderBackendStatus(snapshot) {
+    const grid = document.getElementById('telemetry-backend-grid');
+    const activeEl = document.getElementById('telemetry-backend-active');
+    if (!grid) return;
+
+    const activeBackend = (document.getElementById('backend-label')?.textContent || 'unknown').trim();
+    const selectedModel = selectedModelLabel();
+    const models = Array.isArray(state.models) ? state.models : [];
+    const providerCounts = models.reduce((counts, model) => {
+      const provider = model.provider || 'unknown';
+      counts[provider] = (counts[provider] || 0) + 1;
+      return counts;
+    }, {});
+    const fallbackCount = models.filter(model => model.fallback || model.provider === 'openrouter').length;
+    const localCount = (providerCounts['ollama-local'] || 0) + (providerCounts.local || 0);
+    const socketLive = Boolean(socket && socket.connected);
+
+    if (activeEl) activeEl.textContent = activeBackend;
+
+    const cards = [
+      {
+        label: 'Active backend',
+        value: activeBackend || 'unselected',
+        detail: selectedModel || 'selected when a model is chosen',
+        state: activeBackend && activeBackend !== 'unknown' ? 'online' : 'warn'
+      },
+      {
+        label: 'Browser socket',
+        value: socketLive ? 'online' : 'offline',
+        detail: 'streams frames, traces, and run summaries',
+        state: socketLive ? 'online' : 'offline'
+      },
+      {
+        label: 'Ollama Cloud',
+        value: providerCounts['ollama-cloud'] ? `${providerCounts['ollama-cloud']} model(s)` : providerValueFromLabel(activeBackend, 'Ollama Cloud'),
+        detail: 'primary hosted open-weight inference',
+        state: providerCounts['ollama-cloud'] || activeBackend === 'Ollama Cloud' ? 'online' : 'warn'
+      },
+      {
+        label: 'OpenRouter fallback',
+        value: fallbackCount ? `${fallbackCount} route(s)` : providerValueFromLabel(activeBackend, 'OpenRouter'),
+        detail: 'backup route when primary calls fail',
+        state: fallbackCount || activeBackend === 'OpenRouter' ? 'online' : 'warn'
+      },
+      {
+        label: 'Local Ollama',
+        value: localCount ? `${localCount} model(s)` : providerValueFromLabel(activeBackend, 'Local Ollama'),
+        detail: 'fine-tuned or local registry models',
+        state: localCount || activeBackend === 'Local Ollama' ? 'online' : 'offline'
+      },
+      {
+        label: 'Telemetry store',
+        value: sourceLabel(snapshot),
+        detail: snapshot.storage?.label || snapshot.storage?.state || 'storage state pending',
+        state: snapshot.storage?.state === 'disabled' ? 'warn' : 'online'
+      }
+    ];
+
+    grid.innerHTML = cards.map(card => `
+      <article class="backend-status-card backend-status-${escapeHtml(card.state)}">
+        <span>${escapeHtml(card.label)}</span>
+        <strong>${escapeHtml(card.value)}</strong>
+        <small>${escapeHtml(card.detail)}</small>
+      </article>
+    `).join('');
+  }
+
+  function providerValueFromLabel(activeBackend, providerLabel) {
+    return activeBackend === providerLabel ? 'selected' : 'not listed';
+  }
+
+  function selectedModelLabel() {
+    const select = document.getElementById('model-select');
+    const option = select?.selectedOptions?.[0];
+    if (!option) return '';
+    return option.textContent.replace(/\s+/g, ' ').trim();
+  }
+
+  function renderGuardrail(g) {
+    const el = document.getElementById('telemetry-guardrail');
+    if (!el) return;
+    if (!g || g.disabled) {
+      el.innerHTML = '<div class="telemetry-empty">Guardrail disabled</div>';
+      return;
+    }
+    const limits = g.limits || {};
+    const hourPct = Math.min(100, Math.round((g.hourCount / limits.hourly) * 100));
+    const dayPct = Math.min(100, Math.round((g.dayCount / limits.daily) * 100));
+    el.innerHTML = `
+      <div class="guardrail-bar">
+        <span>Hourly <small>${formatNumber(g.hourCount)} / ${formatNumber(limits.hourly)}</small></span>
+        <div class="bar-track"><div class="bar-fill" style="width:${hourPct}%"></div></div>
+        <strong>${hourPct}%</strong>
+      </div>
+      <div class="guardrail-bar">
+        <span>Daily <small>${formatNumber(g.dayCount)} / ${formatNumber(limits.daily)}</small></span>
+        <div class="bar-track"><div class="bar-fill" style="width:${dayPct}%"></div></div>
+        <strong>${dayPct}%</strong>
+      </div>
+    `;
   }
 
   // The Tote Board: per-model standings + strategy effect from the marble run.
@@ -98,12 +305,26 @@
     const standings = document.getElementById('telemetry-marble-standings');
     if (standings) {
       const rows = marble.standings || [];
-      standings.innerHTML = rows.length ? rows.map(row => `
+      // Weight-change annotation: fine-tuned rows show their score delta vs
+      // the arcade's default (first featured) model, when both have played.
+      const catalog = state.models || [];
+      const finetunedIds = new Set(catalog.filter(m => m.finetuned).map(m => m.id));
+      const baselineModel = catalog.find(m => m.featured);
+      const baselineRow = baselineModel ? rows.find(r => r.modelId === baselineModel.id) : null;
+      standings.innerHTML = rows.length ? rows.map(row => {
+        let weightChange = '';
+        if (finetunedIds.has(row.modelId) && baselineRow && baselineRow.modelId !== row.modelId) {
+          const delta = Number(row.meanScore) - Number(baselineRow.meanScore);
+          weightChange = ` <span class="weight-change ${delta >= 0 ? 'positive' : 'negative'}">` +
+            `${delta >= 0 ? '+' : ''}${delta.toFixed(1)} vs ${escapeHtml(baselineRow.modelId)}</span>`;
+        }
+        return `
         <div class="bar-row" style="--bar-width: ${Math.max(4, row.winRate)}%;">
-          <span>${escapeHtml(row.modelId)} <small>${row.meanScore} avg · ${row.strongAdherenceRate}% adhere · ${row.fallbackRate}% fallback</small></span>
+          <span>${escapeHtml(row.modelId)} <small>${row.meanScore} avg · ${row.strongAdherenceRate}% adhere · ${row.fallbackRate}% fallback</small>${weightChange}</span>
           <strong>${row.winRate}% W</strong>
         </div>
-      `).join('') : '<div class="telemetry-empty">No marble-run cases yet</div>';
+      `;
+      }).join('') : '<div class="telemetry-empty">No marble-run cases yet</div>';
     }
 
     const strat = document.getElementById('telemetry-marble-strategy');
@@ -448,8 +669,23 @@
   });
 
   if (socket) {
+    socket.on('connect', () => renderBackendStatus(state.snapshot || {}));
+    socket.on('disconnect', () => renderBackendStatus(state.snapshot || {}));
+    socket.on('connect_error', () => renderBackendStatus(state.snapshot || {}));
     socket.on('telemetry-event', () => {
       scheduleRefresh();
+    });
+    socket.on('finetune-progress', payload => {
+      state.finetuneLive = payload;
+      renderFinetune();
+    });
+    socket.on('finetune-complete', () => {
+      state.finetuneLive = null;
+      loadSummary();
+    });
+    socket.on('finetune-error', () => {
+      state.finetuneLive = null;
+      loadSummary();
     });
   }
 

@@ -7,28 +7,147 @@
   const el = id => document.getElementById(id);
   const canvas = el('canvas');
   const ctx = canvas.getContext('2d');
+  const marqueeState = {
+    mode: 'IDLE',
+    screen: 'attract',
+    score: 0,
+    health: null,
+    tick: 0,
+  };
 
   // --- game screen ---------------------------------------------------------
   let lastImage = null;
+  let lastFrameAt = 0;
+  let attractOffset = 0;
+  let attractRaf = null;
   const img = new Image();
   img.onload = () => {
     if (img.naturalWidth && (canvas.width !== img.naturalWidth || canvas.height !== img.naturalHeight)) {
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
     }
+    marqueeState.screen = 'live-frame';
     ctx.drawImage(img, 0, 0);
   };
   function drawFrame(dataUrl) {
     if (!dataUrl || dataUrl === lastImage) return;
     lastImage = dataUrl;
+    lastFrameAt = performance.now();
     img.src = dataUrl;
+  }
+  function shouldShowAttract(now) {
+    const waitingForFrame = !lastImage || now - lastFrameAt > 1500;
+    return marqueeState.mode !== 'MARBLE_PLAYING' || waitingForFrame;
+  }
+  function ensureAttractCanvas() {
+    if (canvas.width !== 320 || canvas.height !== 240) {
+      canvas.width = 320;
+      canvas.height = 240;
+    }
+  }
+  function drawPixelText(text, x, y, color, size) {
+    ctx.save();
+    ctx.font = `${size || 10}px "IBM Plex Mono", monospace`;
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+    ctx.fillText(text, x + 1, y + 1);
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+  function drawAttractFrame(rawNow) {
+    const now = rawNow + attractOffset;
+    const t = now / 1000;
+    ensureAttractCanvas();
+    marqueeState.screen = 'attract';
+
+    ctx.fillStyle = '#020605';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const pulse = 0.35 + Math.sin(t * 2.2) * 0.12;
+    const glow = ctx.createRadialGradient(230, 68, 0, 230, 68, 190);
+    glow.addColorStop(0, `rgba(123, 239, 195, ${pulse})`);
+    glow.addColorStop(0.34, 'rgba(34, 86, 70, 0.22)');
+    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = 'rgba(210, 251, 237, 0.42)';
+    for (let i = 0; i < 34; i += 1) {
+      const x = (i * 37 + t * 22) % 340 - 10;
+      const y = 18 + ((i * 29) % 126);
+      const r = (i % 3) + 1;
+      ctx.fillRect(Math.round(x), y, r, r);
+    }
+
+    const laneY = 168 + Math.sin(t * 1.6) * 6;
+    ctx.strokeStyle = 'rgba(123, 239, 195, 0.42)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = -10; x <= 330; x += 18) {
+      const y = laneY + Math.sin((x * 0.05) + t * 2.1) * 12;
+      if (x === -10) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    ctx.fillStyle = '#1f3f34';
+    ctx.beginPath();
+    ctx.moveTo(0, 212);
+    for (let x = 0; x <= 320; x += 20) {
+      ctx.lineTo(x, 198 + Math.sin((x * 0.07) + t) * 10);
+    }
+    ctx.lineTo(320, 240);
+    ctx.lineTo(0, 240);
+    ctx.closePath();
+    ctx.fill();
+
+    const marbleX = 34 + ((t * 62) % 252);
+    const marbleY = laneY + Math.sin((marbleX * 0.05) + t * 2.1) * 12 - 13;
+    for (let i = 5; i > 0; i -= 1) {
+      ctx.fillStyle = `rgba(123, 239, 195, ${0.08 * (6 - i)})`;
+      ctx.beginPath();
+      ctx.arc(marbleX - i * 9, marbleY + Math.sin(t * 8 - i) * 2, 6 + i, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#7befc3';
+    ctx.beginPath();
+    ctx.arc(marbleX, marbleY, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#e4fbf0';
+    ctx.fillRect(marbleX - 2, marbleY - 4, 3, 3);
+
+    const gateX = 248 + Math.sin(t * 1.7) * 14;
+    ctx.strokeStyle = 'rgba(224, 178, 90, 0.85)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(gateX, 95, 28, 54);
+    ctx.fillStyle = 'rgba(224, 178, 90, 0.18)';
+    ctx.fillRect(gateX + 3, 98, 22, 48);
+
+    drawPixelText('AI MARBLE RUN', 14, 15, '#e4fbf0', 15);
+    drawPixelText('ATTRACT LOOP ACTIVE', 15, 37, '#7befc3', 10);
+    drawPixelText('STREAM READY', 213, 18, '#e0b25a', 10);
+    drawPixelText(`TICK ${String(Math.floor(t * 12) % 9999).padStart(4, '0')}`, 226, 34, '#e4fbf0', 10);
+  }
+  function startAttractLoop() {
+    if (attractRaf) return;
+    const step = now => {
+      if (shouldShowAttract(now)) drawAttractFrame(now);
+      attractRaf = requestAnimationFrame(step);
+    };
+    attractRaf = requestAnimationFrame(step);
   }
   function resetScreen() {
     lastImage = null;
+    lastFrameAt = 0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     el('score').textContent = '0';
     el('health').textContent = '—';
     el('tick').textContent = '0';
+    marqueeState.score = 0;
+    marqueeState.health = null;
+    marqueeState.tick = 0;
+    drawAttractFrame(performance.now());
   }
 
   // --- chrome --------------------------------------------------------------
@@ -73,13 +192,14 @@
   }
   function renderState(s) {
     if (!s) return;
+    marqueeState.mode = s.mode || 'IDLE';
     const playing = s.mode === 'MARBLE_PLAYING' || s.mode === 'MARBLE_STARTING';
     setLive(playing, prettyMode(s.mode));
     el('loop').textContent = `Loop ${s.loopCount || 0}`;
     el('playlist-pos').textContent = s.total ? `Case ${(s.cursor || 0) + 1} / ${s.total}` : '—';
     if (s.current) setNowPlaying(s.current);
     else if (s.walkupActive) el('nowplaying').textContent = 'A visitor is at the cabinet — marble run paused.';
-    else el('nowplaying').textContent = 'Waiting for the next marble…';
+    else el('nowplaying').textContent = 'Attract loop running — waiting for the next marble.';
     renderUpNext(s.upNext);
   }
 
@@ -169,12 +289,43 @@
   socket.on('game-frame', (data) => drawFrame(data && data.image));
   socket.on('game-state', (s) => {
     if (!s) return;
-    if (s.score != null) el('score').textContent = s.score;
-    if (s.health != null) el('health').textContent = s.health;
-    if (s.tick != null) el('tick').textContent = s.tick;
+    if (s.score != null) {
+      el('score').textContent = s.score;
+      marqueeState.score = s.score;
+    }
+    if (s.health != null) {
+      el('health').textContent = s.health;
+      marqueeState.health = s.health;
+    }
+    if (s.tick != null) {
+      el('tick').textContent = s.tick;
+      marqueeState.tick = s.tick;
+    }
     advancePlanTape(s);
   });
   socket.on('llm-reasoning', addNarration);
+
+  function renderGameToText() {
+    return JSON.stringify({
+      coordinateSystem: 'canvas origin is top-left; x increases right, y increases down',
+      mode: marqueeState.mode,
+      screen: marqueeState.screen,
+      score: marqueeState.score,
+      health: marqueeState.health,
+      tick: marqueeState.tick,
+      hasLiveFrame: Boolean(lastImage),
+    });
+  }
+
+  window.render_game_to_text = renderGameToText;
+  window.advanceTime = ms => {
+    attractOffset += Math.max(0, Number(ms) || 0);
+    drawAttractFrame(performance.now());
+    return renderGameToText();
+  };
+
+  drawAttractFrame(performance.now());
+  startAttractLoop();
 
   // Hydrate on load in case we missed the connection-time snapshot.
   fetch('/api/marble/state').then(r => r.json()).then(renderState).catch(() => {});
