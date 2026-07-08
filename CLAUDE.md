@@ -21,8 +21,12 @@ GVGAI (General Video Game AI) framework with a web-based LLM agent integration l
 
 ```bash
 # environment setup (required before any java commands)
+# macOS (Homebrew JDK 11):
 export PATH="/opt/homebrew/opt/openjdk@11/bin:/usr/bin:$PATH"
 export JAVA_HOME="/opt/homebrew/opt/openjdk@11"
+# Linux: use the system JDK already on PATH instead (no export needed).
+# The engine compiles under 11 or 21, but the Dockerfile and the portable
+# runtime (`npm run java:prepare`) pin JDK 11 — target 11 for anything shipped.
 
 # full compile
 /usr/bin/find src -name "*.java" > sources.txt
@@ -101,28 +105,28 @@ The Java engine requires action responses within **40ms** per tick. LLMs take 20
 
 1. **START** → Java signals ready, Node responds `START_DONE`
 2. **INIT** → Per-level init with full SSO JSON, Node responds `INIT_DONE#BOTH`
-3. **ACT** → Per-tick game state, Node responds `msgId#ACTION_NAME#IMAGE` (must be <40ms)
+3. **ACT** → Per-tick game state, Node responds `msgId#ACTION_NAME#{BOTH|JSON}` (must be <40ms) — the third field is the response-type flag (`BOTH` on the walk-up path, `JSON` in eval/sync), not a literal image; `IMAGE` is a valid Java-side token that Node never emits
 4. **END** → Level complete, Node responds `END_DONE`
 5. **FINISH** → All levels done, session cleanup
 
 ### Layered Prompt System (state-converter.js)
 
-Prompts are assembled from layers in `buildPrompt(sso, promptConfig, stateTracker, sessionStrategy)`:
-0. **Player Directive** — the *ephemeral* per-session strategy (see below); only present when `sessionStrategy` is set
-1. **System** — base LLM instructions (from template)
-2. **Game context** — game-specific strategy (from template or customOverride)
-3. **Progression** — level-specific hints
-4. **History** — last 3 actions with score/health/position deltas
-5. **Loop detection** — warns if same action repeated with no progress
-6. **Spatial context** — player position; nearest NPCs/threats and goals as signed axis-split offsets ("3 left, 1 up (4 away)"); blocked directions
-7. **ASCII grid map** — full observation grid rendered as characters (with a one-line orientation legend)
-8. **Tick state** — current score, health, available actions, and the closing instruction
+`buildPrompt(sso, promptConfig, stateTracker, sessionStrategy)` returns `{ systemMessage, userMessage, promptLayers }`. The **System** layer is a separate `systemMessage`; the **user message** is assembled (state-converter.js ~L473) by joining these layers in order (`.filter(Boolean)` drops empty ones):
+1. **Game rules** (`gameContext`) — game-specific strategy (from template or `customOverride`)
+2. **Play history** (`traceLayer`) — summaries reconstructed from stored human/LLM traces, when present
+3. **Progression** (`levelContext`) — level-specific hints
+4. **Player tactic** (`strategyLayer`) — the *ephemeral* per-session walk-up strategy; present only when `sessionStrategy` is set, and deliberately **demoted to 4th (below the game rules), not first** — fenced in `<<<PLAYER_TACTIC … PLAYER_TACTIC>>>` markers (see Untrusted-input floor)
+5. **History** (`historyContext`) — last 3 actions with score/health/position deltas
+6. **ASCII grid map** (`gridContext`) — full observation grid rendered as characters, with a one-line "row 0 = top, col 0 = left" orientation legend
+7. **Tick state** (`tickState`) — the closing/most-recent block: current score/health/tick, **spatial context** (player position; nearest NPCs/threats/goals as signed axis-split offsets like "3 left, 1 up (4 away)"), available actions, an inline **loop-detection** warning, and the closing instruction
 
-**Ephemeral session strategy (key invariant).** The walk-up user's strategy is threaded `server.js` start request → `llmClient.connect(..., strategy)` → `this.sessionStrategy` (a runtime-only field on the client instance). It is injected as Layer 0 and **never written to `web/data/games/{id}.json`** — `saveGameConfig` is only reachable from the dashboard PUT route. The persistent dashboard config is the base; the strategy layers on top at runtime only.
+The `promptLayers` array (the "Decision Autopsy" slices that ride the `llm-reasoning` event) labels these System / Game rules / Play history / Progression / Player tactic / History / Spatial + grid / Tick state. **Trust that assembly order** — the code's inline `// Layer N` comments number the build steps, not the final order, and disagree with it.
+
+**Ephemeral session strategy (key invariant).** The walk-up user's strategy is threaded `server.js` start request → `llmClient.connect(..., strategy)` → `this.sessionStrategy` (a runtime-only field on the client instance). It is injected as the fenced **Player-tactic layer** (4th, demoted below the game rules) and **never written to `web/data/games/{id}.json`** — `saveGameConfig` is only reachable from the dashboard PUT route. The persistent dashboard config is the base; the strategy layers on top at runtime only.
 
 **Closing contract.** When a strategy is active the tick state ends with a structured `REASON: <one sentence> / ACTION: <action>` format (`ACTION:` last, truncation-safe), so the model both narrates and acts. With no strategy it falls back to the legacy "respond with ONLY the action word".
 
-**Untrusted-input floor.** The walk-up strategy is free text a stranger typed, so `sanitizeStrategy()` (state-converter.js) runs at the single storage point (`llm-client.js` `connect`): caps length (~240), collapses newlines, and defangs forged `ACTION:`/`REASON:`/`ANS=` markers, override stems, and role prefixes. Layer 0 is then **fenced and demoted below the game rules** in the assembly order, so a hostile note cannot outrank the rules or forge the closing contract; the closed action space (`availableActions`) is the hard backstop. The frontend adds a non-blocking soft-warn, and `GET /api/games/:id/digest` serves each game's VGDL-derived rule facets for the "unfold the rules" scaffold (a user composes a tactic from code-sourced chips). `buildPrompt` also returns `promptLayers` (labeled prompt slices) which ride the `llm-reasoning` payload for the frontend "decision autopsy."
+**Untrusted-input floor.** The walk-up strategy is free text a stranger typed, so `sanitizeStrategy()` (state-converter.js) runs at the single storage point (`llm-client.js` `connect`): caps length (~240), collapses newlines, and defangs forged `ACTION:`/`REASON:`/`ANS=` markers, override stems, and role prefixes. The player-tactic layer is then **fenced and demoted below the game rules** in the assembly order, so a hostile note cannot outrank the rules or forge the closing contract; the closed action space (`availableActions`) is the hard backstop. The frontend adds a non-blocking soft-warn, and `GET /api/games/:id/digest` serves each game's VGDL-derived rule facets for the "unfold the rules" scaffold (a user composes a tactic from code-sourced chips). `buildPrompt` also returns `promptLayers` (labeled prompt slices) which ride the `llm-reasoning` payload for the frontend "decision autopsy."
 
 Template variables resolved at runtime: `{{gameName}}`, `{{gameScore}}`, `{{availableActions}}`, `{{playerPosition}}`, `{{gridSize}}`, `{{blockedDirections}}`, `{{asciiGrid}}`, `{{lastAction}}`, etc.
 
@@ -137,15 +141,15 @@ Three-tier priority for extracting actions from LLM text:
 
 Per-game `actionAliases` in game configs map internal actions to game-appropriate labels (e.g., `ACTION_USE` → `SHOOT` for Aliens). These aliases are used in prompt display AND parsed back on response.
 
-`parseStructured(text, availableActions)` is used when narration is on: it extracts the `REASON:` rationale and runs `parseAction` only on the text **after the last `ACTION:` marker** — this scoping prevents prose direction words ("the LEFT enemy, so go right") from hijacking the bare-word tier. Returns `{ action, reason }`. A reply truncated before `ACTION:` yields `ACTION_NIL` (the model never concluded).
+`parseStructured(text, availableActions)` is used when narration is on: it extracts the `REASON:` rationale and runs `parseAction` only on the text **after the last `ACTION:` marker** — this scoping prevents prose direction words ("the LEFT enemy, so go right") from hijacking the bare-word tier. Returns `{ action, reason }`. This after-`ACTION:` scoping applies **only when an `ACTION:` marker is present**; with no marker, `parseStructured` scans the *whole* reply, so a truncated reply still yields whatever action word it can find — only a reply with nothing parseable becomes `ACTION_NIL`.
 
 ### ASCII Grid Renderer (grid-renderer.js)
 
 Converts the `observationGrid[x][y][sprites]` 3D array from the SSO JSON into a character map. Category-based defaults: `@`=avatar, `E`=NPC, `#`=static, `$`=resource, `O`=portal, `*`=projectile, `M`=movable, `.`=empty. Background sprites auto-detected (category 4 in >90% of cells) and cached per level in `GameStateTracker.backgroundItypes`. Per-game `gridSymbolMap` overrides available in game config.
 
-### Multimodal Support
+### Screenshots are browser-only (no multimodal LLM path)
 
-Models matching patterns in `config.json:multimodalPatterns` automatically get the `gameStateByBytes.png` screenshot attached as a base64 image content block. The Java engine writes this PNG to disk each frame; `server.js` also streams it to the browser via Socket.IO for visualization.
+LLM prompts are **text-only**. There is no vision/screenshot-to-model path and `config.json` has **no `multimodalPatterns` key** (an earlier multimodal feature was removed — grep finds zero `multimodal` references in the backend). The Java engine writes a `gameStateByBytes.png` each frame; `server.js` converts it to a base64 `data:` URL and streams it to the **browser** via Socket.IO for visualization only. `llm-client.js` never attaches an image to the `messages` payload.
 
 ### Game classification & class-derived runtime defaults
 
@@ -158,6 +162,8 @@ Precedence, most binding first: env kill switches (`MACRO_ACTIONS_DISABLED=1`, `
 ### Web Frontend — the "Arcade" walk-up flow
 
 `web/public/` (vanilla JS, no framework) drives a kiosk-style flow for the Inference Arcade showcase: pick a game (featured grid + browse-all-122) → tap a preset strategy card that pre-fills an editable text box → watch the game with a **live narration panel** (the model's `reason` per decision + a "following your strategy" badge + the answering `provider`) → an **end-of-run summary card** (score, echoed strategy, stated-adherence label, highlight decisions). The Prompt Dashboard (`dashboard.js`) is the separate power-user config editor. Browser Socket.IO events: `game-state`, `game-frame` (PNG), `llm-reasoning` (now carries `reason`/`strategy`/`provider`), `level-end`, `run-summary` (the summary card payload), `session-end`, `llm-error`.
+
+**Static catalog fallback + popout widgets.** `app.js` `loadGames()` fetches `/api/games` first, but if that returns fewer than 20 games (the Java runtime / `game-registry.js` not hydrated), it falls back to the static **`web/public/data/games.json`** — a flat 122-game metadata array (`id`, `name`, VGDL `file`, `archetype`, `pace`, `featured`) served straight from `public/`. Nothing regenerates it automatically; keep it in sync by hand when the roster or featured set changes. Two frontend modules load alongside `app.js`/`dashboard.js` (see the script order in `index.html`): `js/marble-popout.js` (a floating widget that embeds `/marquee` in an iframe on the main page and can start the run via `POST /api/marble/start`) and `js/telemetry-dashboard.js` (renders the Tote Board / telemetry panels from `getDashboardSnapshot`).
 
 ### Attract mode: the marble run + spectator marquee
 
@@ -216,8 +222,8 @@ The walk-up handoff only protects sessions that go through the server. **Standal
 | `src/core/game/SerializableStateObservation.java` | Game state → JSON serialization (includes `observationGrid`) |
 
 ### Config
-- `web/config.json` — ports, `ollamaCloud`/`ollama`/`openrouter` API URLs, `multimodalPatterns`. `gvgai.projectRoot` and `gvgai.javaPath` are **derived at runtime** when blank/missing (root from `server.js`'s location; java from PATH) so the app is portable across machines/Docker/Railway — don't hardcode absolute paths.
-- `.env` (repo root, not committed) — `OLLAMA_API_KEY` (primary) + `OPENROUTER_API_KEY` (fallback). Telemetry is also configured here (written by `setup-supabase-telemetry.sh`): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD` (for psql/migrations), `SUPABASE_TELEMETRY_TABLE`, plus `TELEMETRY_ENABLED` / `TELEMETRY_BATCH_SIZE` / `TELEMETRY_FLUSH_MS` / `TELEMETRY_FALLBACK_MODE` / `TELEMETRY_STORE_PROMPTS`. See `.env.example` for the full list. The `STRATEGY_MEMORY_DIR` env var can relocate the strategy-memory store; `OLLAMA_GUARDRAIL_HOURLY/DAILY/SESSION/DISABLED/STATE` tune the Ollama-key usage guardrail (see LLM Routing).
+- `web/config.json` — top-level keys are `server` (ports), `ollamaCloud`/`ollama`/`openrouter` (API URLs + `openrouter.defaultModel`), and `gvgai` (paths). `gvgai.projectRoot` and `gvgai.javaPath` are **derived at runtime** when blank/missing (root from `server.js`'s location; java from PATH) so the app is portable across machines/Docker/Railway — don't hardcode absolute paths.
+- `.env` (repo root, not committed) — `OLLAMA_API_KEY` (primary) + `OPENROUTER_API_KEY` (fallback). Telemetry is also configured here (written by `setup-supabase-telemetry.sh`): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD` (for psql/migrations), `SUPABASE_TELEMETRY_TABLE`, plus `TELEMETRY_ENABLED` / `TELEMETRY_BATCH_SIZE` / `TELEMETRY_FLUSH_MS` / `TELEMETRY_FALLBACK_MODE` / `TELEMETRY_STORE_PROMPTS`. `.env.example` holds a starter subset only — it does **not** list `SUPABASE_DB_PASSWORD`, `STRATEGY_MEMORY_DIR`, or the `OLLAMA_GUARDRAIL_*` knobs, though the code reads them. The `STRATEGY_MEMORY_DIR` env var can relocate the strategy-memory store; `OLLAMA_GUARDRAIL_HOURLY/DAILY/SESSION/DISABLED/STATE` tune the Ollama-key usage guardrail (see LLM Routing).
 
 ## Game Config Schema (web/data/games/{id}.json)
 
