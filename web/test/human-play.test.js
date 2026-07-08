@@ -1,5 +1,10 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+process.env.GVGAI_TRACE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'human-play-traces-'));
 
 const HumanPlayClient = require('../lib/human-play-client');
 
@@ -94,6 +99,31 @@ test('buildRunSummary produces summary with playerType human and provider human'
   assert.equal(summary.level, 1);
   assert.deepEqual(summary.actions, ['ACTION_RIGHT', 'ACTION_USE']);
 });
+
+test('HumanPlayClient handleEnd repeats failed levels and advances only after a win', async () => {
+  const failedRun = new HumanPlayClient({ initialLevelId: 2 });
+  const failedReplies = [];
+  failedRun.gameId = 3;
+  failedRun.gameName = 'aliens';
+  failedRun.sendMessageWithId = (msgId, message) => failedReplies.push({ msgId, message });
+
+  await failedRun.handleEnd({ gameScore: 0, gameWinner: 'PLAYER_LOSES', gameTick: 40 }, 'loss');
+
+  assert.deepEqual(failedReplies, [{ msgId: 'loss', message: '2' }]);
+  assert.equal(failedRun.levelCount, 2);
+
+  const winningRun = new HumanPlayClient({ initialLevelId: 2 });
+  const winningReplies = [];
+  winningRun.gameId = 3;
+  winningRun.gameName = 'aliens';
+  winningRun.sendMessageWithId = (msgId, message) => winningReplies.push({ msgId, message });
+
+  await winningRun.handleEnd({ gameScore: 12, gameWinner: 'PLAYER_WINS', gameTick: 80 }, 'win');
+
+  assert.deepEqual(winningReplies, [{ msgId: 'win', message: '3' }]);
+  assert.equal(winningRun.levelCount, 3);
+});
+
 test('recordActState stores pruned SSO (no imageArray) in actionHistory', () => {
   const client = new HumanPlayClient();
   const fixture = require('./fixtures/finetune/sso-tick.json');

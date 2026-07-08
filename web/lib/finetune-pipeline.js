@@ -51,6 +51,7 @@ class FinetunePipeline {
     this.ollamaLoader = deps.ollamaLoader || require('./ollama-loader');
     this.traceStore = deps.traceStore || require('./play-trace-store');
     this.models = deps.models || require('./models');
+    this.enqueueMarbleEval = deps.enqueueMarbleEval || null;
     this.spawnFn = deps.spawnFn || spawn;
     this.readFeaturedIds = deps.readFeaturedIds || gameRegistry.readFeaturedIds;
     this.readGameRegistry = deps.readGameRegistry || gameRegistry.readGameRegistry;
@@ -308,6 +309,29 @@ class FinetunePipeline {
       exampleCount: run.exampleCount,
       traceCount: run.traceCount
     });
+    if (loadedToOllama && !run.dryRun && this.enqueueMarbleEval) {
+      try {
+        this.enqueueMarbleEval({
+          modelId: run.modelId,
+          modelName: run.modelId,
+          gameId: run.gameId,
+          gameName: run.gameName,
+          provider: 'ollama-local',
+          description: `Fine-tuned on ${run.traceCount ?? '?'} ${run.gameName} play(s)`
+        });
+        this._track('finetune_stage', run, {
+          stage: 'marble_eval_queued',
+          modelId: run.modelId,
+          gameId: run.gameId
+        });
+      } catch (err) {
+        console.warn('[FinetunePipeline] marble eval enqueue failed:', err.message);
+        this._track('finetune_stage', run, {
+          stage: 'marble_eval_enqueue_failed',
+          message: err.message
+        });
+      }
+    }
     if (this.io) {
       this.io.emit('finetune-complete', {
         runId: run.runId,

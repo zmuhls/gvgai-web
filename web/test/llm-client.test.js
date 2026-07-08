@@ -1,5 +1,10 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+process.env.GVGAI_TRACE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'llm-client-traces-'));
 
 const LLMClient = require('../lib/llm-client');
 
@@ -480,6 +485,28 @@ test('handleEnd clears the plan queue so plans never leak across levels', async 
   assert.deepEqual(client.planQueue, []);
   assert.equal(client.planLength, 0);
   assert.equal(client.planStep, 0);
+});
+
+test('handleEnd repeats failed levels and advances only after a win', async () => {
+  const failedRun = new LLMClient();
+  const failedReplies = [];
+  failedRun.levelCount = 2;
+  failedRun.sendMessageWithId = (msgId, message) => failedReplies.push({ msgId, message });
+
+  await failedRun.handleEnd({ gameScore: 0, gameWinner: 'PLAYER_LOSES', gameTick: 40 }, 'loss');
+
+  assert.deepEqual(failedReplies, [{ msgId: 'loss', message: '2' }]);
+  assert.equal(failedRun.levelCount, 2);
+
+  const winningRun = new LLMClient();
+  const winningReplies = [];
+  winningRun.levelCount = 2;
+  winningRun.sendMessageWithId = (msgId, message) => winningReplies.push({ msgId, message });
+
+  await winningRun.handleEnd({ gameScore: 12, gameWinner: 'PLAYER_WINS', gameTick: 80 }, 'win');
+
+  assert.deepEqual(winningReplies, [{ msgId: 'win', message: '3' }]);
+  assert.equal(winningRun.levelCount, 3);
 });
 
 test('authoritative code policy bypasses a non-empty plan queue', async () => {

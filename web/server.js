@@ -272,9 +272,10 @@ app.post('/api/game/start', async (req, res) => {
     // Human play: HumanPlayClient sends keyboard actions via Socket.IO (no LLM calls).
     // LLM play: LLMClient with strategyMemory 'accepted' — only eval-accepted
     // strategy-memory records may replace the game-rules prompt layer.
+    const initialLevelId = levelId || 0;
     const client = isHumanPlay
-      ? new runtime.HumanPlayClient({ runId })
-      : new runtime.LLMClient({ runId, promptConfigOptions: { strategyMemory: 'accepted' } });
+      ? new runtime.HumanPlayClient({ runId, initialLevelId })
+      : new runtime.LLMClient({ runId, initialLevelId, promptConfigOptions: { strategyMemory: 'accepted' } });
 
     // Wire session-end cleanup (same for both client types)
     client.onSessionEnd = () => {
@@ -483,12 +484,6 @@ async function startServer() {
     io,
     fallbackPath: path.resolve(__dirname, 'data', 'telemetry-events.jsonl')
   });
-  // Fine-tune pipeline: route is always mounted; the auto-trigger is opt-in
-  // (FINETUNE_AUTO_ENABLED=1) so the deployed instance stays inert.
-  finetunePipeline.configure({ io, telemetry });
-  if (process.env.FINETUNE_AUTO_ENABLED === '1') {
-    finetunePipeline.startAutoTrigger();
-  }
   telemetry.track({
     eventFamily: 'system',
     eventType: 'server_started',
@@ -534,6 +529,18 @@ async function startServer() {
         telemetry,
         caseOptions: { maxActions: 40 }
       });
+      // Fine-tune pipeline: route is always mounted; the auto-trigger is opt-in
+      // (FINETUNE_AUTO_ENABLED=1) so the deployed instance stays inert. Completed
+      // local Ollama loads are delegated to the marble run, which already owns
+      // the single Java port.
+      finetunePipeline.configure({
+        io,
+        telemetry,
+        enqueueMarbleEval: model => coordinator.addFinetunedModel(model)
+      });
+      if (process.env.FINETUNE_AUTO_ENABLED === '1') {
+        finetunePipeline.startAutoTrigger();
+      }
       // Always-on by default (attract mode); set MARBLE_RUN_AUTOSTART=false to disable.
       if (process.env.MARBLE_RUN_AUTOSTART !== 'false') {
         coordinator.start();

@@ -71,6 +71,11 @@ def append_registry(registry_path, entry):
                 data = loaded
         except (json.JSONDecodeError, OSError):
             pass  # corrupt registry: start fresh rather than crash the run
+    # Upsert by id: a stable --model-id (e.g. the shared "gvgai" adapter name)
+    # replaces its prior row instead of accumulating duplicate entries.
+    entry_id = entry.get("id")
+    data["models"] = [m for m in data["models"]
+                      if not (isinstance(m, dict) and m.get("id") == entry_id)]
     data["models"].append(entry)
     data["updatedAt"] = iso_now()
 
@@ -95,7 +100,7 @@ def build_entry(args, model_id, pair_count, model_path=None, gguf_path=None, dry
         "id": model_id,
         "name": f"{base_tail} FT · {args.game_name}",
         "baseModel": args.base_model,
-        "provider": "ollama-local",
+        "provider": args.provider,
         "gameId": args.game_id,
         "gameName": args.game_name,
         "trainedOnPlays": args.trained_on_plays,
@@ -131,7 +136,7 @@ def run_dry(args, model_id):
         time.sleep(0.05)
     emit({"stage": "train_complete", "trainSeconds": 0.5})
 
-    emit({"stage": "export_gguf", "dryRun": True})
+    emit({"stage": "export_gguf", "dryRun": True, "skipped": bool(args.no_gguf)})
     entry = build_entry(args, model_id, len(pairs), dry_run=True)
     append_registry(args.registry, entry)
     emit({"stage": "registry_written", "modelId": model_id, "registry": str(args.registry)})
@@ -271,18 +276,25 @@ def run_real(args, model_id):
     model.save_pretrained(str(lora_dir))
     tokenizer.save_pretrained(str(lora_dir))
 
-    emit({"stage": "export_gguf", "quant": args.quant})
-    model.save_pretrained_gguf(str(out_dir), tokenizer, quantization_method=args.quant)
-    # Unsloth's GGUF filename convention has shifted between releases: glob,
-    # preferring a file that names the requested quant.
-    ggufs = sorted(out_dir.glob("*.gguf"), key=lambda p: p.stat().st_mtime)
-    preferred = [p for p in ggufs if args.quant.replace("_", "").lower()
-                 in p.name.replace("_", "").replace("-", "").lower()]
-    gguf_path = str((preferred or ggufs)[-1].resolve()) if ggufs else None
-    if not gguf_path:
-        emit({"stage": "error", "errorStage": "export_gguf",
-              "message": f"no .gguf produced under {out_dir}"})
-        sys.exit(1)
+    gguf_path = None
+    if args.no_gguf:
+        # vLLM (the Legion serving path) loads the PEFT lora/ dir directly, so
+        # the multi-minute GGUF merge is dead weight there.
+        emit({"stage": "export_gguf", "skipped": True,
+              "reason": "vLLM serves the PEFT lora/ dir directly"})
+    else:
+        emit({"stage": "export_gguf", "quant": args.quant})
+        model.save_pretrained_gguf(str(out_dir), tokenizer, quantization_method=args.quant)
+        # Unsloth's GGUF filename convention has shifted between releases: glob,
+        # preferring a file that names the requested quant.
+        ggufs = sorted(out_dir.glob("*.gguf"), key=lambda p: p.stat().st_mtime)
+        preferred = [p for p in ggufs if args.quant.replace("_", "").lower()
+                     in p.name.replace("_", "").replace("-", "").lower()]
+        gguf_path = str((preferred or ggufs)[-1].resolve()) if ggufs else None
+        if not gguf_path:
+            emit({"stage": "error", "errorStage": "export_gguf",
+                  "message": f"no .gguf produced under {out_dir}"})
+            sys.exit(1)
 
     entry = build_entry(args, model_id, len(pairs),
                         model_path=str(lora_dir.resolve()), gguf_path=gguf_path)
@@ -314,13 +326,21 @@ def parse_args():
     parser.add_argument("--grad-accum", type=int, default=4)
     parser.add_argument("--seed", type=int, default=3407)
     parser.add_argument("--quant", default="q4_k_m")
+    parser.add_argument("--provider", default="ollama-local",
+                        help="registry provider for the trained model "
+                             "(ollama-local | legion-vllm)")
+    parser.add_argument("--model-id", default=None,
+                        help="stable model id / vLLM adapter name; default is a "
+                             "timestamped gvgai-<game>-ft-<ts>")
+    parser.add_argument("--no-gguf", action="store_true",
+                        help="skip GGUF export; vLLM serves the PEFT lora/ dir directly")
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    model_id = f"gvgai-{slugify(args.game_name)}-ft-{time.strftime('%Y%m%d%H%M', time.gmtime())}"
+    model_id = args.model_id or f"gvgai-{slugify(args.game_name)}-ft-{time.strftime('%Y%m%d%H%M', time.gmtime())}"
     emit({"stage": "start", "runId": args.run_id, "gameId": args.game_id,
           "modelId": model_id, "baseModel": args.base_model, "dryRun": args.dry_run})
     try:

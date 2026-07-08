@@ -4,6 +4,7 @@ const test = require('node:test');
 const {
   buildBatchPlan,
   selectEvalCases,
+  runEvalCase,
   runArcadeBatchEvaluation,
   summarizePromptDifferences
 } = require('../lib/batch-evaluator');
@@ -90,6 +91,58 @@ test('batch errors preserve case diagnostics', async () => {
     event: 'session-end',
     payload: { reason: 'closed' }
   });
+});
+
+test('runEvalCase passes response type overrides to the live client', async () => {
+  let receivedOptions = null;
+  class FakeLLMClient {
+    constructor(options) {
+      receivedOptions = options;
+    }
+
+    async connect(_port, _model, sink) {
+      sink.emit('run-summary', {
+        finalScore: 3,
+        winner: 'NO_WINNER',
+        won: false,
+        ticks: 5,
+        decisions: 2,
+        actions: ['ACTION_RIGHT']
+      });
+    }
+
+    disconnect() {}
+  }
+
+  const gameManager = {
+    startGame: async () => ({ processId: 'proc-1' }),
+    waitForReady: async () => true,
+    getProcessOutput: () => ({ stdout: '', stderr: '' }),
+    stopGame: () => true
+  };
+
+  const result = await runEvalCase({
+    runId: 'run-1',
+    gameId: 0,
+    gameName: 'aliens',
+    levelId: 0,
+    modelId: 'model-1',
+    strategyId: 'safe',
+    strategyLabel: 'Play it safe',
+    strategy: 'Avoid danger.'
+  }, {
+    gameManager,
+    LLMClient: FakeLLMClient,
+    config: { gvgai: { socketPort: 8080 } },
+    initResponseType: 'BOTH',
+    actResponseType: 'BOTH',
+    synchronousActions: true
+  });
+
+  assert.equal(receivedOptions.initResponseType, 'BOTH');
+  assert.equal(receivedOptions.actResponseType, 'BOTH');
+  assert.equal(receivedOptions.synchronousActions, true);
+  assert.equal(result.finalScore, 3);
 });
 
 test('prompt comparison marks different outcomes as meaningful', () => {

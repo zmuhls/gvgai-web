@@ -28,6 +28,12 @@ const DEFAULT_CONFIG = {
   },
   ollama: {
     apiUrl: 'http://localhost:11434/v1/chat/completions'
+  },
+  legion: {
+    // Shared Gemma-3-4b base + per-room LoRA adapters served by vLLM on the
+    // Legion (CUDA). Default is a local placeholder; the real endpoint is the
+    // Tailscale host, set via LEGION_VLLM_URL or config.json.
+    apiUrl: 'http://localhost:8000/v1/chat/completions'
   }
 };
 
@@ -80,6 +86,10 @@ function applyEnvOverrides(config, env = process.env) {
     if (Number.isInteger(socketPort) && socketPort > 0) next.gvgai.socketPort = socketPort;
   }
   if (env.GVGAI_RUNTIME_ROOT) next.gvgai.runtimeRoot = env.GVGAI_RUNTIME_ROOT;
+
+  if (env.LEGION_VLLM_URL) {
+    next.legion = { ...(next.legion || {}), apiUrl: env.LEGION_VLLM_URL };
+  }
 
   return next;
 }

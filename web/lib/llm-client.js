@@ -9,6 +9,12 @@ const telemetry = require('./telemetry-store');
 const traceStore = require('./play-trace-store');
 const guardrail = require('./usage-guardrail');
 const { getCachedClassification } = require('./game-classifier');
+const {
+  DEFAULT_INITIAL_LEVEL_ID,
+  DEFAULT_MAX_LEVEL_ID,
+  nextLevelResponse,
+  normalizeLevelId
+} = require('./level-progression');
 
 // Macro-action executor tuning. The plan queue is a bridge across LLM latency,
 // not a schedule — it drains deterministically while the next call is in flight.
@@ -17,6 +23,13 @@ const REFILL_QUEUE_THRESHOLD = 1;  // fire the next LLM call when this few steps
 const MAX_PLAN_STEPS = 6;          // hard cap on queued steps per plan
 const MAX_PLAN_AGE_TICKS = 30;     // stale-plan safety net
 const DEFAULT_TICKS_PER_STEP = 4;  // ticks each plan step is held for
+
+// Loop-breaker tuning. Between LLM calls the executor repeats the last action
+// blindly — in wandering games this means the avatar marches in one direction
+// for 25+ ticks, hits a wall, and oscillates there until timeout. The breaker
+// fires when stagnation is detected and forces a direction change so the next
+// LLM call gets a different view of the map.
+const STAGNATION_BREAK_INTERVAL = 8; // ticks between forced direction changes
 
 class LLMClient {
   constructor(options = {}) {
@@ -38,7 +51,8 @@ class LLMClient {
     this.planSetTick = null;  // Game tick when the plan was set (age invalidation)
     this.planHealthAtSet = null;  // Health when the plan was set (damage invalidation)
     this.planStepHoldRemaining = 0;  // Ticks left before advancing to the next step
-    this.levelCount = 0;  // Track current level number
+    this.levelCount = normalizeLevelId(options.initialLevelId, DEFAULT_INITIAL_LEVEL_ID);  // Current level id
+    this.maxLevelId = normalizeLevelId(options.maxLevelId, DEFAULT_MAX_LEVEL_ID);
     this.onSessionEnd = null;  // Callback for session cleanup
     this.gameId = null;  // Game ID for prompt config lookup
     this.gameName = null;  // Resolved game name from CSV
@@ -63,6 +77,7 @@ class LLMClient {
     this.lastPolicyDecisionTickLogged = null;
     this.lastPolicyDecisionActionLogged = null;
     this.lastPolicyDecisionScoreLogged = null;
+    this.lastLoopBreakTick = -STAGNATION_BREAK_INTERVAL; // so the breaker can fire early if needed
   }
 
   // Validate API key with OpenRouter (skipped for local Ollama)
@@ -114,7 +129,8 @@ class LLMClient {
     this.lastPolicyDecisionTickLogged = null;
     this.lastPolicyDecisionActionLogged = null;
     this.lastPolicyDecisionScoreLogged = null;
-    this.promptConfig = promptStore.resolveGamePromptConfig(this.gameId, 0, this.promptConfigOptions);
+    this.lastLoopBreakTick = -STAGNATION_BREAK_INTERVAL;
+    this.promptConfig = promptStore.resolveGamePromptConfig(this.gameId, this.levelCount, this.promptConfigOptions);
     // Ensure gameName is set even when game config doesn't specify it
     if (this.promptConfig && !this.promptConfig.gameName) {
       this.promptConfig.gameName = this.gameName;
@@ -262,6 +278,7 @@ class LLMClient {
             const sso = this.recordActState(jsonPayload, directPolicy.action);
             if (sso) {
               this.pendingLLMAction = directPolicy.action;
+              this.stateTracker.recordSentAction(directPolicy.action, sso.gameTick || 0);
               this.recordActionDecision(directPolicy.action, sso.gameTick || 0, directPolicy.reason, sso);
               this.emitPolicyDecision(directPolicy, sso);
             }
@@ -271,6 +288,7 @@ class LLMClient {
           const sso = this.recordActState(jsonPayload, null);
           try {
             const decision = await this.requestLLMAction(jsonPayload);
+            this.stateTracker.recordSentAction(decision.action, sso ? sso.gameTick : 0);
             this.sendMessageWithId(msgId, `${decision.action}#${this.actResponseType}`);
           } catch (error) {
             console.error('[LLMClient] Error in synchronous LLM action:', error.message);
@@ -287,6 +305,7 @@ class LLMClient {
             const sso = this.recordActState(jsonPayload, directPolicy.action);
             if (sso) {
               this.pendingLLMAction = directPolicy.action;
+              this.stateTracker.recordSentAction(directPolicy.action, sso.gameTick || 0);
               this.recordActionDecision(directPolicy.action, sso.gameTick || 0, directPolicy.reason, sso);
               this.emitPolicyDecision(directPolicy, sso);
             }
@@ -303,7 +322,10 @@ class LLMClient {
         // Async processing after response sent (don't block)
         setImmediate(() => {
           const sso = this.recordActState(jsonPayload, actionToSend);
-          if (sso) this.maybeInvalidatePlan(sso);
+          if (sso) {
+            this.stateTracker.recordSentAction(actionToSend, sso.gameTick || 0);
+            this.maybeInvalidatePlan(sso);
+          }
 
           // Refill: fire the next LLM call when the plan is (nearly) exhausted
           // and the provider-protection interval has elapsed. With no plan the
@@ -357,6 +379,7 @@ class LLMClient {
 
   async handleInit(msgId) {
     console.log('[LLMClient] Game initializing...');
+    this.summaryEmitted = false;
     // Reload prompt config for current level (picks up level-specific progression context)
     if (this.gameId != null) {
       this.promptConfig = promptStore.resolveGamePromptConfig(this.gameId, this.levelCount, this.promptConfigOptions);
@@ -422,6 +445,12 @@ class LLMClient {
   // 2-second provider gap means ~50 blind ticks in one direction. A game config
   // can set macroActions.exhaustAction: 'wait' to stand still instead, giving the
   // demo its burst-of-moves-then-thinking cadence.
+  //
+  // Loop breaker: when the queue is exhausted and the state tracker detects
+  // stagnation (avatar stuck in a small area, no score progress), the breaker
+  // overrides the blind repeat with a perpendicular direction every
+  // STAGNATION_BREAK_INTERVAL ticks. This gets the avatar out of the pocket so
+  // the next LLM call sees a different part of the map.
   dequeuePlanAction() {
     if (this.planStepHoldRemaining > 0 && this.pendingLLMAction) {
       this.planStepHoldRemaining -= 1;
@@ -438,7 +467,42 @@ class LLMClient {
         this.promptConfig?.macroActions?.exhaustAction === 'wait') {
       return 'ACTION_NIL';
     }
-    return this.pendingLLMAction || 'ACTION_NIL';
+    const fallback = this.pendingLLMAction || 'ACTION_NIL';
+    const breaker = this.resolveLoopBreaker(fallback);
+    return breaker;
+  }
+
+  // Executor-level loop breaker. Fires when:
+  //  1. The plan queue is empty (we're in the blind-repeat gap between LLM calls)
+  //  2. The state tracker detects stagnation
+  //  3. Enough ticks have passed since the last forced break
+  //
+  // Returns a different GVGAI action from the available list when breaking,
+  // or the fallback action when not. The available-actions list must be passed
+  // from the ACT payload — but dequeuePlanAction is called before JSON parsing,
+  // so we cache the last-seen list from recordActState on every tick.
+  //
+  // Disabled for code-protocol games (their policy is already deterministic and
+  // authoritative — overriding it would fight the scripted strategy).
+  resolveLoopBreaker(fallbackAction) {
+    if (this.promptConfig?.codeProtocol?.enabled) return fallbackAction;
+    if (!this.stateTracker || !this.lastSso) return fallbackAction;
+
+    const stagnation = this.stateTracker.detectStagnation();
+    if (!stagnation) return fallbackAction;
+
+    const tick = this.lastSso.gameTick || 0;
+    if (tick - this.lastLoopBreakTick < STAGNATION_BREAK_INTERVAL) {
+      return fallbackAction;
+    }
+
+    const available = this.lastSso.availableActions || [];
+    const alt = this.stateTracker.suggestAlternativeDirection(available);
+    if (!alt) return fallbackAction;
+
+    this.lastLoopBreakTick = tick;
+    console.log(`[LLMClient] Loop breaker: overriding ${fallbackAction} → ${alt} (stagnation detected at tick ${tick})`);
+    return alt;
   }
 
   setPlan(plan, sso) {
@@ -461,6 +525,7 @@ class LLMClient {
     this.planSetTick = null;
     this.planHealthAtSet = null;
     this.planStepHoldRemaining = 0;
+    this.lastLoopBreakTick = -STAGNATION_BREAK_INTERVAL;
   }
 
   // A plan is a commitment to a world that may no longer exist. Drop it when the
@@ -674,6 +739,12 @@ class LLMClient {
       if (this.ollamaApiKey) headers['Authorization'] = `Bearer ${this.ollamaApiKey}`;
     } else if (provider === 'ollama-local') {
       apiUrl = config.ollama.apiUrl;
+    } else if (provider === 'legion-vllm') {
+      // Shared Gemma-3-4b base + per-room LoRA adapters served by vLLM on the
+      // Legion (CUDA), reached over Tailscale. The adapter is selected by the
+      // `model` field already in the body, so nothing else changes here.
+      apiUrl = config.legion.apiUrl;
+      if (process.env.LEGION_API_KEY) headers['Authorization'] = `Bearer ${process.env.LEGION_API_KEY}`;
     } else { // openrouter
       apiUrl = config.openrouter.apiUrl;
       if (this.apiKey) {
@@ -943,8 +1014,9 @@ class LLMClient {
   }
 
   async handleEnd(sso, msgId) {
-    this.levelCount++;
-    console.log(`[LLMClient] Level ${this.levelCount} ended`);
+    const completedLevel = this.levelCount;
+    const progression = nextLevelResponse(completedLevel, sso.gameWinner, { maxLevelId: this.maxLevelId });
+    console.log(`[LLMClient] Level ${completedLevel} ended`);
     console.log(`[LLMClient] Score: ${sso.gameScore}`);
     console.log(`[LLMClient] Winner: ${sso.gameWinner}`);
 
@@ -963,7 +1035,7 @@ class LLMClient {
         score: sso.gameScore,
         winner: sso.gameWinner,
         ticks: sso.gameTick,
-        level: this.levelCount
+        level: completedLevel
       });
       this.emitRunSummary(summary);
     }
@@ -973,7 +1045,7 @@ class LLMClient {
       source: 'llm-client',
       runId: this.runId,
       gameId: this.gameId,
-      levelId: this.levelCount,
+      levelId: completedLevel,
       modelId: this.model,
       provider: this.lastProvider,
       payload: {
@@ -991,7 +1063,7 @@ class LLMClient {
     const llmTrace = {
       gameId: this.gameId,
       gameName: this.gameName,
-      levelId: this.levelCount,
+      levelId: completedLevel,
       playerType: 'llm',
       modelId: this.model,
       strategy: this.sessionStrategy,
@@ -1036,8 +1108,13 @@ class LLMClient {
     this.runStartScore = null;
     this.stateTracker.reset();
 
-    // Send acknowledgment
-    this.sendMessageWithId(msgId, 'END_DONE');
+    if (!progression.finished && progression.nextLevelId !== null) {
+      this.levelCount = progression.nextLevelId;
+    }
+
+    // Reply with the next level id expected by GVGAI's learning protocol:
+    // repeat the current level after a loss, advance after a win.
+    this.sendMessageWithId(msgId, progression.response);
   }
 
   // Aggregate the run log into a summary card payload: score, win/loss, the echoed

@@ -20,5 +20,8 @@
   },
   "ollama": {
     "apiUrl": "http://localhost:11434/v1/chat/completions"
+  },
+  "legion": {
+    "apiUrl": "http://localhost:8000/v1/chat/completions"
   }
 }

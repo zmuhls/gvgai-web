@@ -3,15 +3,23 @@ const { renderAsciiGrid, detectBackgroundItypes, DEFAULT_LEGEND } = require('./g
 const { buildCodePrompt } = require('./code-protocol');
 const { buildTraceSummary } = require('./trace-summary-builder');
 
-// Rolling game state tracker for iterative, context-aware prompts
+// Rolling game state tracker for iterative, context-aware prompts.
+// The window sizes are tuned for the real decision cadence: LLM calls land
+// ~25 ticks apart at 40ms/tick. actionHistory (12 entries) covers ~12 LLM
+// decisions for the prompt's history context. stateHistory (32 entries) covers
+// ~32 consecutive engine ticks — enough for detectStagnation's 20-tick
+// threshold to see a full stagnation cycle. sentActions (40 entries) captures
+// the blind-repeat gap between LLM calls for the executor-level loop breaker.
 class GameStateTracker {
-  constructor(maxHistory = 5, maxActions = 3) {
+  constructor(maxHistory = 32, maxActions = 12) {
     this.maxHistory = maxHistory;
     this.maxActions = maxActions;
     this.stateHistory = [];   // Last N tick snapshots: { tick, score, health, position }
     this.actionHistory = [];  // Last N LLM decisions: { tick, action, scoreDelta, healthDelta, positionDelta }
+    this.sentActions = [];    // Every action sent to the engine (not just LLM decisions): { tick, action }
     this.lastState = null;
     this.backgroundItypes = null; // Cached background sprite itypes (detected on first tick)
+    this.stagnantSinceTick = null; // First tick of the current stagnation period (for loop breaking)
   }
 
   // Record a tick's game state (called on every ACT tick)
@@ -52,6 +60,16 @@ class GameStateTracker {
     }
   }
 
+  // Record every action sent to the engine — including plan-queue drains and
+  // the last-action repeat. This is the executor-level signal: it captures
+  // the blind march between LLM calls, not just the LLM's own decisions.
+  recordSentAction(action, tick) {
+    this.sentActions.push({ tick: tick || 0, action });
+    if (this.sentActions.length > 40) {
+      this.sentActions.shift();
+    }
+  }
+
   // Build a compact history string for inclusion in prompts.
   // Includes explicit reward attribution: "ACTION_USE → +10 score (this action scored)"
   // so the model can correlate actions with outcomes — the core reward signal.
@@ -83,7 +101,8 @@ class GameStateTracker {
     return parts.length > 0 ? parts.join('. ') + '.' : '';
   }
 
-  // Detect action loops: same action repeated with no position change
+  // Detect action loops: same action repeated with no position change.
+  // This catches the case where the avatar is literally pressed against a wall.
   detectLoop() {
     if (this.actionHistory.length < 2) return '';
     const last = this.actionHistory[this.actionHistory.length - 1];
@@ -102,6 +121,103 @@ class GameStateTracker {
     return '';
   }
 
+  // Detect stagnation: the avatar has been stuck in a small area for many ticks
+  // with no score progress, even if it's moving around within that area. This
+  // catches the common wandering-game failure: the model sends RIGHT for 600
+  // ticks, the avatar oscillates within a 3-cell pocket (positionDelta is non-
+  // zero each individual tick), but the net displacement over 30+ ticks is near
+  // zero and the score hasn't changed. detectLoop() misses this because no
+  // single action is technically zero-movement; the avatar is just bouncing.
+  //
+  // Returns a warning string for the prompt, or '' if not stagnant.
+  detectStagnation() {
+    if (this.stateHistory.length < 4) return '';
+
+    const latest = this.stateHistory[this.stateHistory.length - 1];
+    const earliest = this.stateHistory[0];
+
+    // Score changed → not stagnant (making progress)
+    if (latest.score !== earliest.score) {
+      this.stagnantSinceTick = null;
+      return '';
+    }
+
+    // Compute the bounding box of all recorded positions
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const s of this.stateHistory) {
+      minX = Math.min(minX, s.position[0]);
+      maxX = Math.max(maxX, s.position[0]);
+      minY = Math.min(minY, s.position[1]);
+      maxY = Math.max(maxY, s.position[1]);
+    }
+    const spanX = maxX - minX;
+    const spanY = maxY - minY;
+    const tickSpan = latest.tick - earliest.tick;
+
+    // Stagnant: bounded in a 3x3 cell area (blockSize ~10) for 20+ ticks
+    // with no score change. The 30-unit threshold covers blockSize=10 games
+    // (3 cells) and is generous for larger block sizes.
+    if (tickSpan >= 20 && spanX <= 30 && spanY <= 30) {
+      const duration = this.stagnantSinceTick !== null
+        ? latest.tick - this.stagnantSinceTick
+        : tickSpan;
+      this.stagnantSinceTick = this.stagnantSinceTick || earliest.tick;
+      return `STAGNANT: you have been in a ${Math.ceil(spanX / 10)}x${Math.ceil(spanY / 10)} cell area for ${duration} ticks with no score change. You are stuck — move in a NEW direction to explore the map.`;
+    }
+
+    this.stagnantSinceTick = null;
+    return '';
+  }
+
+  // Get the dominant action from the sent-actions log (the full executor
+  // history, not just LLM decisions). Returns { action, count, fraction }
+  // for the most-frequent action in the window, or null if no data.
+  dominantSentAction() {
+    if (this.sentActions.length === 0) return null;
+    const counts = {};
+    for (const entry of this.sentActions) {
+      counts[entry.action] = (counts[entry.action] || 0) + 1;
+    }
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const [action, count] = sorted[0];
+    return { action, count, fraction: count / this.sentActions.length };
+  }
+
+  // Pick a different direction from the one the avatar has been stuck in.
+  // Used by the executor-level loop breaker. Returns a GVGAI action string
+  // from the available list, or null if no alternative exists.
+  suggestAlternativeDirection(availableActions) {
+    if (!availableActions || availableActions.length === 0) return null;
+    const dominant = this.dominantSentAction();
+
+    const moveActions = availableActions.filter(a =>
+      a === 'ACTION_UP' || a === 'ACTION_DOWN' || a === 'ACTION_LEFT' || a === 'ACTION_RIGHT'
+    );
+    if (moveActions.length === 0) return null;
+
+    // If there's a clear dominant action, pick any other movement action.
+    // The 0.6 threshold requires a genuine majority — a 50/50 split means the
+    // avatar is already varying its actions, not stuck on one.
+    if (dominant && dominant.fraction >= 0.6) {
+      const alternatives = moveActions.filter(a => a !== dominant.action);
+      if (alternatives.length > 0) {
+        // Prefer a perpendicular direction (turn, don't reverse)
+        const opposite = {
+          ACTION_UP: 'ACTION_DOWN', ACTION_DOWN: 'ACTION_UP',
+          ACTION_LEFT: 'ACTION_RIGHT', ACTION_RIGHT: 'ACTION_LEFT'
+        };
+        const perpendicular = alternatives.filter(a => a !== opposite[dominant.action]);
+        if (perpendicular.length > 0) {
+          // Rotate through perpendiculars for variety
+          const idx = this.sentActions.length % perpendicular.length;
+          return perpendicular[idx];
+        }
+        return alternatives[0];
+      }
+    }
+    return null;
+  }
+
   // Detect and cache background itypes from the observation grid (call once per level)
   ensureBackgroundDetected(sso) {
     if (this.backgroundItypes === null && sso.observationGrid) {
@@ -112,8 +228,10 @@ class GameStateTracker {
   reset() {
     this.stateHistory = [];
     this.actionHistory = [];
+    this.sentActions = [];
     this.lastState = null;
     this.backgroundItypes = null;
+    this.stagnantSinceTick = null;
   }
 }
 
@@ -401,6 +519,10 @@ function buildPrompt(sso, promptConfig, stateTracker, sessionStrategy) {
   // Layer 5: Loop detection warning
   const loopWarning = stateTracker ? stateTracker.detectLoop() : '';
 
+  // Layer 5b: Stagnation warning — catches the "bouncing in a pocket" failure
+  // that detectLoop misses (non-zero per-tick movement but zero net progress).
+  const stagnationWarning = stateTracker ? stateTracker.detectStagnation() : '';
+
   // Layer 6: Spatial context (position, threats, boundaries)
   const spatialContext = extractSpatialContext(sso);
 
@@ -466,7 +588,7 @@ ACTION: <one action from the list above>`;
 
   const tickState = `Current State — Score: ${sso.gameScore || 0} | Health: ${sso.avatarHealthPoints || 100} | Tick: ${sso.gameTick || 0}${displayLastAction ? ` | Last action: ${displayLastAction}` : ''}
 ${spatialContext ? spatialContext + '\n' : ''}Available actions: ${displayActions.join(', ')}
-${loopWarning ? '\n' + loopWarning + '\n' : ''}
+${loopWarning ? '\n' + loopWarning + '\n' : ''}${stagnationWarning ? '\n' + stagnationWarning + '\n' : ''}
 ${closing}`;
 
   // Combine layers into user message

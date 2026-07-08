@@ -161,6 +161,66 @@ class AttractCoordinator {
     };
   }
 
+  addFinetunedModel(model = {}) {
+    const modelId = model.modelId || model.id;
+    if (!modelId) return { added: false, reason: 'missing_model_id', snapshot: this.getSnapshot() };
+
+    const currentPlan = this._buildPlan();
+    const currentModels = Array.isArray(currentPlan.models) ? currentPlan.models : [];
+    const alreadyPresent = currentModels.some(entry => entry.id === modelId);
+
+    let models = currentModels;
+    if (!alreadyPresent) {
+      models = currentModels.concat({
+        id: modelId,
+        name: model.modelName || model.name || modelId,
+        provider: model.provider || 'ollama-local',
+        fallback: model.fallback || null,
+        description: model.description || `Fine-tuned for ${model.gameName || `game ${model.gameId}`}`,
+        speed: model.speed || 'fast',
+        cost: model.cost || 'free',
+        finetuned: true,
+        gameId: model.gameId ?? null,
+        gameName: model.gameName ?? null
+      });
+    }
+
+    let gameIds = Array.isArray(currentPlan.gameIds) ? [...currentPlan.gameIds] : [];
+    const parsedGameId = Number.parseInt(model.gameId, 10);
+    if (Number.isInteger(parsedGameId) && !gameIds.includes(parsedGameId)) {
+      gameIds.push(parsedGameId);
+    }
+
+    this.planOptions = {
+      ...(this.planOptions || {}),
+      models,
+      gameIds,
+      gameCount: Math.max(
+        Number.isInteger(this.planOptions?.gameCount) ? this.planOptions.gameCount : 0,
+        gameIds.length
+      )
+    };
+
+    const activeRunId = this.currentCase?.runId || null;
+    this.cases = this._buildCases();
+    if (activeRunId) {
+      const activeIndex = this.cases.findIndex(evalCase => evalCase.runId === activeRunId);
+      this.cursor = activeIndex >= 0 ? activeIndex : Math.min(this.cursor, Math.max(this.cases.length - 1, 0));
+    } else {
+      this.cursor = Math.min(this.cursor, Math.max(this.cases.length - 1, 0));
+    }
+
+    this._emit('marble-run-playlist-updated', {
+      modelId,
+      gameId: Number.isInteger(parsedGameId) ? parsedGameId : null,
+      added: !alreadyPresent,
+      total: this.cases.length
+    });
+    this._emitState();
+
+    return { added: !alreadyPresent, snapshot: this.getSnapshot() };
+  }
+
   // --- internals -----------------------------------------------------------
 
   async _runLoop() {
@@ -189,8 +249,18 @@ class AttractCoordinator {
             io: this.io,
             timeoutMs: this.caseOptions.timeoutMs,
             maxActions: this.caseOptions.maxActions,
+            initResponseType: this.caseOptions.initResponseType || 'BOTH',
+            actResponseType: this.caseOptions.actResponseType || 'BOTH',
             onCaseStart: (handle) => {
               this._currentHandle = handle;
+              // If stop() ran while this case was still spawning, cut the late
+              // client instead of reviving the loop to MARBLE_PLAYING after it
+              // was already set IDLE.
+              if (!this.enabled) {
+                this._abortReason = 'stopped';
+                try { handle.llmClient.disconnect(); } catch (e) { /* already gone */ }
+                return;
+              }
               // If a walk-up arrived while this case was spawning, cut it now that
               // the client exists — keeps beginWalkup responsive (seconds, not minutes).
               if (this.walkupActive) {
@@ -273,12 +343,16 @@ class AttractCoordinator {
 
   _buildCases() {
     try {
-      const plan = this.buildArcadeEvalPlan(this.planOptions || {});
+      const plan = this._buildPlan();
       return Array.isArray(plan.cases) ? plan.cases : [];
     } catch (error) {
       console.error('[Attract] failed to build playlist:', error.message);
       return [];
     }
+  }
+
+  _buildPlan() {
+    return this.buildArcadeEvalPlan(this.planOptions || {});
   }
 
   _emit(event, payload) {

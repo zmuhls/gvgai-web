@@ -2,6 +2,12 @@ const net = require('net');
 const telemetry = require('./telemetry-store');
 const traceStore = require('./play-trace-store');
 const { getCachedClassification } = require('./game-classifier');
+const {
+  DEFAULT_INITIAL_LEVEL_ID,
+  DEFAULT_MAX_LEVEL_ID,
+  nextLevelResponse,
+  normalizeLevelId
+} = require('./level-progression');
 
 /**
  * HumanPlayClient — connects to the GVGAI Java TCP socket and sends human
@@ -23,7 +29,8 @@ class HumanPlayClient {
     this.pendingAction = 'ACTION_NIL';
     this.gameId = null;
     this.gameName = null;
-    this.levelCount = 0;
+    this.levelCount = normalizeLevelId(options.initialLevelId, DEFAULT_INITIAL_LEVEL_ID);
+    this.maxLevelId = normalizeLevelId(options.maxLevelId, DEFAULT_MAX_LEVEL_ID);
     this.runId = options.runId || null;
     this.runStartScore = null;
     this.lastSso = null;
@@ -222,6 +229,7 @@ class HumanPlayClient {
 
   handleInit(msgId) {
     console.log('[HumanPlayClient] Game initializing...');
+    this.summaryEmitted = false;
     this.sendMessageWithId(msgId, `INIT_DONE#${this.initResponseType}`);
   }
 
@@ -291,8 +299,9 @@ class HumanPlayClient {
   }
 
   async handleEnd(sso, msgId) {
-    this.levelCount++;
-    console.log(`[HumanPlayClient] Level ${this.levelCount} ended`);
+    const completedLevel = this.levelCount;
+    const progression = nextLevelResponse(completedLevel, sso.gameWinner, { maxLevelId: this.maxLevelId });
+    console.log(`[HumanPlayClient] Level ${completedLevel} ended`);
     console.log(`[HumanPlayClient] Score: ${sso.gameScore}`);
     console.log(`[HumanPlayClient] Winner: ${sso.gameWinner}`);
 
@@ -304,7 +313,7 @@ class HumanPlayClient {
         score: sso.gameScore,
         winner: sso.gameWinner,
         ticks: sso.gameTick,
-        level: this.levelCount
+        level: completedLevel
       });
       this.emitRunSummary(summary);
     }
@@ -315,7 +324,7 @@ class HumanPlayClient {
       source: 'human-play-client',
       runId: this.runId,
       gameId: this.gameId,
-      levelId: this.levelCount,
+      levelId: completedLevel,
       provider: 'human',
       payload: {
         score: sso.gameScore,
@@ -347,10 +356,14 @@ class HumanPlayClient {
     this.actionHistory = [];
     this.runStartScore = null;
     this.pendingAction = 'ACTION_NIL';
-    this.summaryEmitted = false;
 
-    // Send acknowledgment
-    this.sendMessageWithId(msgId, 'END_DONE');
+    if (!progression.finished && progression.nextLevelId !== null) {
+      this.levelCount = progression.nextLevelId;
+    }
+
+    // Reply with the next level id expected by GVGAI's learning protocol:
+    // repeat the current level after a loss, advance after a win.
+    this.sendMessageWithId(msgId, progression.response);
   }
 
   getTrace() {

@@ -182,9 +182,12 @@ async function runEvalCase(evalCase, options = {}) {
     llmClient = options.createLLMClient
       ? options.createLLMClient(evalCase)
       : new LLMClient({
+        initialLevelId: evalCase.levelId,
         synchronousActions: options.synchronousActions !== false,
         actionTimeoutMs: options.actionTimeoutMs,
         maxActions: positiveInteger(options.maxActions, DEFAULT_MAX_ACTIONS),
+        initResponseType: options.initResponseType,
+        actResponseType: options.actResponseType,
         promptConfigOptions: options.promptConfigOptions || {}
       });
     llmClient.onSessionEnd = () => {

@@ -21,12 +21,8 @@ GVGAI (General Video Game AI) framework with a web-based LLM agent integration l
 
 ```bash
 # environment setup (required before any java commands)
-# macOS (Homebrew JDK 11):
 export PATH="/opt/homebrew/opt/openjdk@11/bin:/usr/bin:$PATH"
 export JAVA_HOME="/opt/homebrew/opt/openjdk@11"
-# Linux: use the system JDK already on PATH instead (no export needed).
-# The engine compiles under 11 or 21, but the Dockerfile and the portable
-# runtime (`npm run java:prepare`) pin JDK 11 — target 11 for anything shipped.
 
 # full compile
 /usr/bin/find src -name "*.java" > sources.txt
@@ -105,28 +101,28 @@ The Java engine requires action responses within **40ms** per tick. LLMs take 20
 
 1. **START** → Java signals ready, Node responds `START_DONE`
 2. **INIT** → Per-level init with full SSO JSON, Node responds `INIT_DONE#BOTH`
-3. **ACT** → Per-tick game state, Node responds `msgId#ACTION_NAME#{BOTH|JSON}` (must be <40ms) — the third field is the response-type flag (`BOTH` on the walk-up path, `JSON` in eval/sync), not a literal image; `IMAGE` is a valid Java-side token that Node never emits
+3. **ACT** → Per-tick game state, Node responds `msgId#ACTION_NAME#IMAGE` (must be <40ms)
 4. **END** → Level complete, Node responds `END_DONE`
 5. **FINISH** → All levels done, session cleanup
 
 ### Layered Prompt System (state-converter.js)
 
-`buildPrompt(sso, promptConfig, stateTracker, sessionStrategy)` returns `{ systemMessage, userMessage, promptLayers }`. The **System** layer is a separate `systemMessage`; the **user message** is assembled (state-converter.js ~L473) by joining these layers in order (`.filter(Boolean)` drops empty ones):
-1. **Game rules** (`gameContext`) — game-specific strategy (from template or `customOverride`)
-2. **Play history** (`traceLayer`) — summaries reconstructed from stored human/LLM traces, when present
-3. **Progression** (`levelContext`) — level-specific hints
-4. **Player tactic** (`strategyLayer`) — the *ephemeral* per-session walk-up strategy; present only when `sessionStrategy` is set, and deliberately **demoted to 4th (below the game rules), not first** — fenced in `<<<PLAYER_TACTIC … PLAYER_TACTIC>>>` markers (see Untrusted-input floor)
-5. **History** (`historyContext`) — last 3 actions with score/health/position deltas
-6. **ASCII grid map** (`gridContext`) — full observation grid rendered as characters, with a one-line "row 0 = top, col 0 = left" orientation legend
-7. **Tick state** (`tickState`) — the closing/most-recent block: current score/health/tick, **spatial context** (player position; nearest NPCs/threats/goals as signed axis-split offsets like "3 left, 1 up (4 away)"), available actions, an inline **loop-detection** warning, and the closing instruction
+Prompts are assembled from layers in `buildPrompt(sso, promptConfig, stateTracker, sessionStrategy)`:
+0. **Player Directive** — the *ephemeral* per-session strategy (see below); only present when `sessionStrategy` is set
+1. **System** — base LLM instructions (from template)
+2. **Game context** — game-specific strategy (from template or customOverride)
+3. **Progression** — level-specific hints
+4. **History** — last 3 actions with score/health/position deltas
+5. **Loop detection** — warns if same action repeated with no progress
+6. **Spatial context** — player position; nearest NPCs/threats and goals as signed axis-split offsets ("3 left, 1 up (4 away)"); blocked directions
+7. **ASCII grid map** — full observation grid rendered as characters (with a one-line orientation legend)
+8. **Tick state** — current score, health, available actions, and the closing instruction
 
-The `promptLayers` array (the "Decision Autopsy" slices that ride the `llm-reasoning` event) labels these System / Game rules / Play history / Progression / Player tactic / History / Spatial + grid / Tick state. **Trust that assembly order** — the code's inline `// Layer N` comments number the build steps, not the final order, and disagree with it.
-
-**Ephemeral session strategy (key invariant).** The walk-up user's strategy is threaded `server.js` start request → `llmClient.connect(..., strategy)` → `this.sessionStrategy` (a runtime-only field on the client instance). It is injected as the fenced **Player-tactic layer** (4th, demoted below the game rules) and **never written to `web/data/games/{id}.json`** — `saveGameConfig` is only reachable from the dashboard PUT route. The persistent dashboard config is the base; the strategy layers on top at runtime only.
+**Ephemeral session strategy (key invariant).** The walk-up user's strategy is threaded `server.js` start request → `llmClient.connect(..., strategy)` → `this.sessionStrategy` (a runtime-only field on the client instance). It is injected as Layer 0 and **never written to `web/data/games/{id}.json`** — `saveGameConfig` is only reachable from the dashboard PUT route. The persistent dashboard config is the base; the strategy layers on top at runtime only.
 
 **Closing contract.** When a strategy is active the tick state ends with a structured `REASON: <one sentence> / ACTION: <action>` format (`ACTION:` last, truncation-safe), so the model both narrates and acts. With no strategy it falls back to the legacy "respond with ONLY the action word".
 
-**Untrusted-input floor.** The walk-up strategy is free text a stranger typed, so `sanitizeStrategy()` (state-converter.js) runs at the single storage point (`llm-client.js` `connect`): caps length (~240), collapses newlines, and defangs forged `ACTION:`/`REASON:`/`ANS=` markers, override stems, and role prefixes. The player-tactic layer is then **fenced and demoted below the game rules** in the assembly order, so a hostile note cannot outrank the rules or forge the closing contract; the closed action space (`availableActions`) is the hard backstop. The frontend adds a non-blocking soft-warn, and `GET /api/games/:id/digest` serves each game's VGDL-derived rule facets for the "unfold the rules" scaffold (a user composes a tactic from code-sourced chips). `buildPrompt` also returns `promptLayers` (labeled prompt slices) which ride the `llm-reasoning` payload for the frontend "decision autopsy."
+**Untrusted-input floor.** The walk-up strategy is free text a stranger typed, so `sanitizeStrategy()` (state-converter.js) runs at the single storage point (`llm-client.js` `connect`): caps length (~240), collapses newlines, and defangs forged `ACTION:`/`REASON:`/`ANS=` markers, override stems, and role prefixes. Layer 0 is then **fenced and demoted below the game rules** in the assembly order, so a hostile note cannot outrank the rules or forge the closing contract; the closed action space (`availableActions`) is the hard backstop. The frontend adds a non-blocking soft-warn, and `GET /api/games/:id/digest` serves each game's VGDL-derived rule facets for the "unfold the rules" scaffold (a user composes a tactic from code-sourced chips). `buildPrompt` also returns `promptLayers` (labeled prompt slices) which ride the `llm-reasoning` payload for the frontend "decision autopsy."
 
 Template variables resolved at runtime: `{{gameName}}`, `{{gameScore}}`, `{{availableActions}}`, `{{playerPosition}}`, `{{gridSize}}`, `{{blockedDirections}}`, `{{asciiGrid}}`, `{{lastAction}}`, etc.
 
@@ -141,11 +137,15 @@ Three-tier priority for extracting actions from LLM text:
 
 Per-game `actionAliases` in game configs map internal actions to game-appropriate labels (e.g., `ACTION_USE` → `SHOOT` for Aliens). These aliases are used in prompt display AND parsed back on response.
 
-`parseStructured(text, availableActions)` is used when narration is on: it extracts the `REASON:` rationale and runs `parseAction` only on the text **after the last `ACTION:` marker** — this scoping prevents prose direction words ("the LEFT enemy, so go right") from hijacking the bare-word tier. Returns `{ action, reason }`. This after-`ACTION:` scoping applies **only when an `ACTION:` marker is present**; with no marker, `parseStructured` scans the *whole* reply, so a truncated reply still yields whatever action word it can find — only a reply with nothing parseable becomes `ACTION_NIL`.
+`parseStructured(text, availableActions)` is used when narration is on: it extracts the `REASON:` rationale and runs `parseAction` only on the text **after the last `ACTION:` marker** — this scoping prevents prose direction words ("the LEFT enemy, so go right") from hijacking the bare-word tier. Returns `{ action, reason }`. A reply truncated before `ACTION:` yields `ACTION_NIL` (the model never concluded).
 
 ### ASCII Grid Renderer (grid-renderer.js)
 
 Converts the `observationGrid[x][y][sprites]` 3D array from the SSO JSON into a character map. Category-based defaults: `@`=avatar, `E`=NPC, `#`=static, `$`=resource, `O`=portal, `*`=projectile, `M`=movable, `.`=empty. Background sprites auto-detected (category 4 in >90% of cells) and cached per level in `GameStateTracker.backgroundItypes`. Per-game `gridSymbolMap` overrides available in game config.
+
+### Multimodal Support
+
+Models matching patterns in `config.json:multimodalPatterns` automatically get the `gameStateByBytes.png` screenshot attached as a base64 image content block. The Java engine writes this PNG to disk each frame; `server.js` also streams it to the browser via Socket.IO for visualization.
 
 ### Game classification & class-derived runtime defaults
 
@@ -158,8 +158,6 @@ Precedence, most binding first: env kill switches (`MACRO_ACTIONS_DISABLED=1`, `
 ### Web Frontend — the "Arcade" walk-up flow
 
 `web/public/` (vanilla JS, no framework) drives a kiosk-style flow for the Inference Arcade showcase: pick a game (featured grid + browse-all-122) → tap a preset strategy card that pre-fills an editable text box → watch the game with a **live narration panel** (the model's `reason` per decision + a "following your strategy" badge + the answering `provider`) → an **end-of-run summary card** (score, echoed strategy, stated-adherence label, highlight decisions). The Prompt Dashboard (`dashboard.js`) is the separate power-user config editor. Browser Socket.IO events: `game-state`, `game-frame` (PNG), `llm-reasoning` (now carries `reason`/`strategy`/`provider`), `level-end`, `run-summary` (the summary card payload), `session-end`, `llm-error`.
-
-**Static catalog fallback + popout widgets.** `app.js` `loadGames()` fetches `/api/games` first, but if that returns fewer than 20 games (the Java runtime / `game-registry.js` not hydrated), it falls back to the static **`web/public/data/games.json`** — a flat 122-game metadata array (`id`, `name`, VGDL `file`, `archetype`, `pace`, `featured`) served straight from `public/`. Nothing regenerates it automatically; keep it in sync by hand when the roster or featured set changes. Two frontend modules load alongside `app.js`/`dashboard.js` (see the script order in `index.html`): `js/marble-popout.js` (a floating widget that embeds `/marquee` in an iframe on the main page and can start the run via `POST /api/marble/start`) and `js/telemetry-dashboard.js` (renders the Tote Board / telemetry panels from `getDashboardSnapshot`).
 
 ### Attract mode: the marble run + spectator marquee
 
@@ -218,8 +216,8 @@ The walk-up handoff only protects sessions that go through the server. **Standal
 | `src/core/game/SerializableStateObservation.java` | Game state → JSON serialization (includes `observationGrid`) |
 
 ### Config
-- `web/config.json` — top-level keys are `server` (ports), `ollamaCloud`/`ollama`/`openrouter` (API URLs + `openrouter.defaultModel`), and `gvgai` (paths). `gvgai.projectRoot` and `gvgai.javaPath` are **derived at runtime** when blank/missing (root from `server.js`'s location; java from PATH) so the app is portable across machines/Docker/Railway — don't hardcode absolute paths.
-- `.env` (repo root, not committed) — `OLLAMA_API_KEY` (primary) + `OPENROUTER_API_KEY` (fallback). Telemetry is also configured here (written by `setup-supabase-telemetry.sh`): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD` (for psql/migrations), `SUPABASE_TELEMETRY_TABLE`, plus `TELEMETRY_ENABLED` / `TELEMETRY_BATCH_SIZE` / `TELEMETRY_FLUSH_MS` / `TELEMETRY_FALLBACK_MODE` / `TELEMETRY_STORE_PROMPTS`. `.env.example` holds a starter subset only — it does **not** list `SUPABASE_DB_PASSWORD`, `STRATEGY_MEMORY_DIR`, or the `OLLAMA_GUARDRAIL_*` knobs, though the code reads them. The `STRATEGY_MEMORY_DIR` env var can relocate the strategy-memory store; `OLLAMA_GUARDRAIL_HOURLY/DAILY/SESSION/DISABLED/STATE` tune the Ollama-key usage guardrail (see LLM Routing).
+- `web/config.json` — ports, `ollamaCloud`/`ollama`/`openrouter` API URLs, `multimodalPatterns`. `gvgai.projectRoot` and `gvgai.javaPath` are **derived at runtime** when blank/missing (root from `server.js`'s location; java from PATH) so the app is portable across machines/Docker/Railway — don't hardcode absolute paths.
+- `.env` (repo root, not committed) — `OLLAMA_API_KEY` (primary) + `OPENROUTER_API_KEY` (fallback). Telemetry is also configured here (written by `setup-supabase-telemetry.sh`): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD` (for psql/migrations), `SUPABASE_TELEMETRY_TABLE`, plus `TELEMETRY_ENABLED` / `TELEMETRY_BATCH_SIZE` / `TELEMETRY_FLUSH_MS` / `TELEMETRY_FALLBACK_MODE` / `TELEMETRY_STORE_PROMPTS`. See `.env.example` for the full list. The `STRATEGY_MEMORY_DIR` env var can relocate the strategy-memory store; `OLLAMA_GUARDRAIL_HOURLY/DAILY/SESSION/DISABLED/STATE` tune the Ollama-key usage guardrail (see LLM Routing).
 
 ## Game Config Schema (web/data/games/{id}.json)
 
@@ -268,20 +266,12 @@ Human play traces → training data → QLoRA fine-tune → registry → the mod
 
 - **SSO capture** — `HumanPlayClient.recordActState` and `LLMClient.recordActionDecision` store the per-tick game state (`sso`, pruned of `imageArray` via `pruneSsoForTrace`) on each trace `actionHistory` entry. Traces recorded before this ship carry no `sso` and can't be used for training.
 - **Data prep (`scripts/prepare-finetune-data.js`, `npm run finetune:prepare -- --gameId=0`)** — replays `buildPrompt()` over the stored SSO in live-loop order (`recordTick` → `buildPrompt` → `recordAction`), pairs each prompt with the human action, and writes a chat-messages JSONL to `web/data/finetune/` (gitignored). Forces `codeProtocol` off so targets stay `ACTION_*` words; downsamples `ACTION_NIL` deterministically (`--max-nil-ratio`, default 0.3); errors are typed (`NO_TRACES | NO_SSO | TOO_FEW_EXAMPLES`). The prompt's PLAY HISTORY layer is reconstructed as-of-now — that matches what the tuned model sees at inference.
-- **Training (`scripts/finetune.py`, deps in `scripts/requirements.txt`)** — Unsloth + QLoRA on Gemma 3 4B (`--base-model unsloth/gemma-3-4b-it`, `--epochs 2`, `--quant q4_k_m` by default), `train_on_responses_only` (the target is one action token), GGUF export, atomic registry append. Emits one JSON object per stdout line (`start … train_step … done`); `--dry-run` simulates the full sequence with stdlib only (works on this Mac's python3, no torch) and writes a `dryRun: true` registry entry.
-- **Adapters & artifacts** — the fine-tune product is a **LoRA adapter**, not a full model. One real run writes three things under `web/models/<model-id>/` (all gitignored): `lora/` (the adapter weights), `<model-id>.gguf` (the q4_k_m merge Ollama serves), and the appended entry in `finetune-models.json`. The adapter is small (Gemma 3 4B QLoRA on a handful of plays trains in ~5–15 min on the Legion's 24 GB); the GGUF is what actually gets loaded, because serving goes through Ollama, not through the raw adapter.
-- **Registry + catalog (`web/data/finetune-models.json`, gitignored)** — `lib/models.js` merges registry entries into `getAllModels()` (served by `/api/models`) and, critically, into `resolveModel()`, which routes them to the existing `ollama-local` provider branch. Never featured, so the marble-run playlist is unaffected. `FINETUNE_REGISTRY_PATH` relocates the file (tests use this).
-- **Orchestration (`lib/finetune-pipeline.js`, `routes/finetune.js`)** — `POST /api/finetune/trigger {gameId, dryRun?}` → 202 and a fire-and-forget run through preparing → training (python child, progress parsed from stdout) → loading (`lib/ollama-loader.js` runs `ollama create`; skipped when the daemon is absent — the registry entry still stands) → complete/failed. `GET /api/finetune/status`, `POST /api/finetune/cancel`. Socket events: `finetune-progress`/`finetune-complete`/`finetune-error`; telemetry (`system` family): `finetune_started`/`finetune_stage`/`finetune_completed`/`finetune_error` (stage transitions only, never per train step). `shutdown()` kills an active training child. Missing python3 (Railway) fails the run gracefully — the route is deploy-safe.
+- **Training (`scripts/finetune.py`, deps in `scripts/requirements.txt`)** — Unsloth + QLoRA on Gemma 3 4B, `train_on_responses_only` (the target is one action token), GGUF export, atomic registry append. Emits one JSON object per stdout line (`start … train_step … done`); `--dry-run` simulates the full sequence with stdlib only (works on this Mac's python3, no torch) and writes a `dryRun: true` registry entry.
+- **Registry + catalog (`web/data/finetune-models.json`, gitignored)** — `lib/models.js` merges registry entries into `getAllModels()` (served by `/api/models`) and, critically, into `resolveModel()`, which routes them to the existing `ollama-local` provider branch. Registry entries are never globally featured; when a server-side run actually loads a non-dry model into local Ollama, `finetune-pipeline.js` asks `attract-coordinator.js` to add that tuned model and game to the current marble-run playlist so comparison happens on the existing single Java process. `FINETUNE_REGISTRY_PATH` relocates the file (tests use this).
+- **Orchestration (`lib/finetune-pipeline.js`, `routes/finetune.js`)** — `POST /api/finetune/trigger {gameId, dryRun?}` → 202 and a fire-and-forget run through preparing → training (python child, progress parsed from stdout) → loading (`lib/ollama-loader.js` runs `ollama create`; skipped when the daemon is absent — the registry entry still stands) → complete/failed. `GET /api/finetune/status`, `POST /api/finetune/cancel`. Socket events: `finetune-progress`/`finetune-complete`/`finetune-error`; telemetry (`system` family): `finetune_started`/`finetune_stage`/`finetune_completed`/`finetune_error` (stage transitions only, never per train step). `shutdown()` kills an active training child. Missing python3 (Railway) fails the run gracefully — the route is deploy-safe. Successful non-dry local loads emit `marble_eval_queued` after the model is added to the marble playlist.
 - **Auto-trigger is opt-in**: `FINETUNE_AUTO_ENABLED=1` checks featured games every 10 min and triggers when a game has `FINETUNE_MIN_NEW_TRACES` (default 10) new human traces since its last non-dry training (derived from the registry itself). Other env knobs: `FINETUNE_PYTHON`, `FINETUNE_DRY_RUN=1` (force dry-run server-wide), `FINETUNE_TIMEOUT_MS`, `FINETUNE_MIN_EXAMPLES`.
 - **Frontend** — telemetry dashboard has a Fine-Tune Pipeline panel (live stage + loss via socket events); the tote board annotates fine-tuned rows with a score delta vs the default featured model; game cards show "FT ready" at 3+ human plays; `app.js` refreshes the model picker on `finetune-complete`.
 - **Ollama Modelfile gotchas** (encoded in `ollama-loader.js`): `max_tokens` is not an Ollama parameter (use `num_predict`), and a `TEMPLATE {{ .Prompt }}` override breaks chat formatting — omit TEMPLATE and let Ollama read the GGUF's embedded chat template.
-
-**Where we are (as of 2026-07-08).** The pipeline is code-complete and merged, and the **dry-run path is test-verified** — the three fine-tune test files (`finetune-pipeline`, `prepare-finetune-data`, `ollama-loader`) pass, and `--dry-run` / `POST /api/finetune/trigger {"dryRun":true}` exercise the full stage sequence with stdlib only. **No real model has been trained into this repo yet.** The registry (`data/finetune-models.json`), prepared JSONL (`data/finetune/`), and adapters/GGUF (`web/models/`) are all gitignored and absent in a fresh checkout; the server-side play-trace store here is empty. Any real artifacts live off-repo on the split setup FINETUNE.md describes: the **Legion** (CUDA, 24 GB) trains; the **arcade Mac** preps data and serves via its local Ollama. This tree never carries the trained weights.
-
-**Where we need to go next.**
-  1. **Land a first real end-to-end run.** Capture SSO-bearing human plays on a featured game (a game card lights "FT ready" at `humanCount >= 3`, but data prep needs `--min-examples`, default 20), train on the Legion, then bring the model back per FINETUNE.md §4 (`scp` the model dir, merge the registry entry, `node scripts/load-finetuned-model.js`). Until this happens the whole path is only proven on the simulated dry-run.
-  2. **Serving is local-only — the deployed instance can't run tuned models.** Fine-tuned entries hard-route to the `ollama-local` provider (`localhost:11434`), so only a box with Ollama + the GGUF loaded can serve them. **Railway has no GPU and no local Ollama**, so a fine-tuned model is an arcade-Mac/local capability today, not a production one. Serving tuned models on the public site would need a separate Ollama-backed host (or a hosted-inference provider) wired into `models.js` routing — that decision is still open.
-  3. **Validate with the harness, not by eye.** Once a real `gvgai-<game>-ft-*` model exists, the tote board's finetuned-vs-baseline score delta and a scored `npm run eval:arcade:execute` against that model id are the gate. Remember the port-8080 rule: stop the marble run first (`curl -X POST localhost:3000/api/marble/stop`).
 
 ## Deployment (Railway + Cloudflare + Supabase)
 

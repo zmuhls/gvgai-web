@@ -1,0 +1,26 @@
+# systemd unit: persistent vLLM multi-LoRA server for the Inference Arcade rooms.
+# Install on the Legion:
+#   sudo cp serve-vllm.sh bootstrap.sh /srv/legion/
+#   sudo cp vllm.service /etc/systemd/system/vllm.service   # edit User= first
+#   sudo systemctl daemon-reload && sudo systemctl enable --now vllm
+#   journalctl -u vllm -f          # watch per-request LoRA selection
+[Unit]
+Description=vLLM multi-LoRA server (Inference Arcade adapters)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=CHANGE_ME
+Environment=VLLM_VENV=/srv/vllm-serve
+Environment=BASE_MODEL=unsloth/gemma-3-4b-it
+Environment=ADAPTERS_DIR=/srv/adapters
+Environment=VLLM_PORT=8000
+ExecStart=/usr/bin/env bash /srv/legion/serve-vllm.sh
+Restart=on-failure
+RestartSec=5
+# vLLM's first load can be slow; don't let systemd kill a healthy startup.
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target
