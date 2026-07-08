@@ -105,7 +105,8 @@
 
   function updateSoundButton(btn) {
     btn.setAttribute('aria-pressed', soundOn ? 'true' : 'false');
-    btn.textContent = soundOn ? 'SND ON' : 'SND OFF';
+    btn.setAttribute('aria-label', soundOn ? 'Sound on' : 'Sound off');
+    btn.textContent = soundOn ? '♫' : '♪';
   }
 
   try {

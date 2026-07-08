@@ -61,6 +61,20 @@ button {
   display: block;
 }
 
+/* Minimalism: step headings fade until the step area is hovered.
+   Game cards and room cards remain always visible. */
+#game-selector .step-label,
+#game-selector h2,
+#game-selector .step-note {
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+#game-selector:hover .step-label,
+#game-selector:hover h2,
+#game-selector:hover .step-note {
+  opacity: 1;
+}
+
 .step-label {
   margin: 0 0 var(--space-2);
   font-family: var(--font-display);
@@ -261,6 +275,17 @@ label {
   border-bottom: 1px solid var(--arcade-border-soft);
 }
 
+/* Minimalism: toolbar chrome fades until hovered */
+.games-toolbar .games-mode-label,
+.games-toolbar .btn-toggle {
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+.games-toolbar:hover .games-mode-label,
+.games-toolbar:hover .btn-toggle {
+  opacity: 1;
+}
+
 .games-mode-label {
   font-family: var(--font-display);
   font-size: 0.9rem;
@@ -282,6 +307,49 @@ label {
   max-height: min(58vh, 620px);
   overflow-y: auto;
   padding: var(--space-1);
+}
+
+/* Featured cabinet row on narrow viewports: horizontal scroll strip
+   so all five cards are visible without wrapping into 2-wide grid. */
+@media (max-width: 760px) {
+  #games-grid {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-height: none;
+    padding: var(--space-2) 0;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #games-grid .game-card {
+    flex: 0 0 auto;
+    width: 140px;
+    min-height: 120px;
+    scroll-snap-align: start;
+  }
+
+  #games-grid .game-card h3 {
+    font-size: 0.78rem;
+  }
+
+  #games-grid .game-card .levels {
+    font-size: 0.68rem;
+  }
+
+  #games-grid .game-card-meta {
+    font-size: 0.58rem;
+  }
+}
+
+@media (max-width: 400px) {
+  #games-grid .game-card {
+    width: 120px;
+    min-height: 104px;
+    padding: var(--space-2);
+  }
 }
 
 .game-card {
@@ -387,6 +455,17 @@ label {
   margin-top: var(--space-8);
   padding-top: var(--space-6);
   border-top: 1px solid var(--arcade-border-soft);
+}
+
+/* Minimalism: section headings fade until hovered; cards stay visible */
+.companion-games .companion-kicker,
+.companion-games h3 {
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+.companion-games:hover .companion-kicker,
+.companion-games:hover h3 {
+  opacity: 1;
 }
 
 .companion-kicker {
@@ -2929,7 +3008,22 @@ label {
   .arcade-titlebar .nav-link {
     flex: 1;
     padding: var(--space-2) 0;
-    border: 1px solid var(--arcade-border-soft);
+  }
+
+  /* On touch devices hover is unreliable — keep chrome visible */
+  .arcade-titlebar .nav-link:not(.active),
+  .arcade-titlebar .titlebar-backend,
+  .arcade-titlebar .titlebar-clock,
+  .arcade-titlebar .lamp,
+  .titlebar-sound,
+  .games-toolbar .games-mode-label,
+  .games-toolbar .btn-toggle,
+  .companion-games .companion-kicker,
+  .companion-games h3,
+  #game-selector .step-label,
+  #game-selector h2,
+  #game-selector .step-note {
+    opacity: 1;
   }
 }
 
