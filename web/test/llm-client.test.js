@@ -41,7 +41,7 @@ test('authoritative code policy answers ACT ticks without provider latency', asy
   const sent = [];
   const emitted = [];
 
-  client.model = 'gemma3:27b';
+  client.model = 'gemma4:31b';
   client.gameId = 4;
   client.gameName = 'bait';
   client.promptConfig = {
@@ -308,7 +308,7 @@ test('requestLLMAction can let authoritative game code override a valid model ac
   const originalFetch = global.fetch;
   const client = new LLMClient({ actionTimeoutMs: 1000 });
 
-  client.model = 'gemma3:27b';
+  client.model = 'gemma4:31b';
   client.gameId = 0;
   client.levelCount = 0;
   client.promptConfig = {
@@ -512,7 +512,7 @@ test('handleEnd repeats failed levels and advances only after a win', async () =
 test('authoritative code policy bypasses a non-empty plan queue', async () => {
   const client = new LLMClient();
   const sent = [];
-  client.model = 'gemma3:27b';
+  client.model = 'gemma4:31b';
   client.gameId = 4;
   client.gameName = 'bait';
   client.promptConfig = {

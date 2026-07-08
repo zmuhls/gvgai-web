@@ -1,4 +1,4 @@
 {
-  "_comment": "Featured games for the Inference Arcade showcase. Order = display order. Curation is data — edit freely up to event day, no redeploy. Finalize via the empirical eval (run each candidate x frontier models x contrasting strategies; keep games where the model survives >50 ticks without ACTION_NIL looping AND two strategies yield visibly different play).",
-  "featured": [0, 32, 4, 11, 18]
+  "_comment": "Featured games for the Inference Arcade showcase. Order = display order. Curation is data — edit freely up to event day, no redeploy. Finalize via the empirical eval (run each candidate x frontier models x contrasting strategies; keep games where the model survives >50 ticks without ACTION_NIL looping AND two strategies yield visibly different play). Replaced doorkoban (32) and boulderdash (11) — both consistently scored 0 with action loops. Removed bait (4): score 0 with gemma4:31b despite prior gemma3 win, so not a showcase fit. Added boulderchase (10, score 7), cakybaky (14, score 2), and butterflies (13, best remaining variety candidate).",
+  "featured": [0, 10, 14, 18, 13]
 }

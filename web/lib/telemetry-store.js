@@ -118,25 +118,28 @@ class TelemetryStore {
       this.flushTimer = null;
     }
 
+    const env = options.useEnv === false ? {} : process.env;
+
     this.io = options.io || this.io || null;
-    this.enabled = options.enabled ?? process.env.TELEMETRY_ENABLED !== 'false';
-    this.maxEvents = parsePositiveInteger(options.maxEvents || process.env.TELEMETRY_EVENT_LIMIT, DEFAULT_EVENT_LIMIT);
-    this.batchSize = parsePositiveInteger(options.batchSize || process.env.TELEMETRY_BATCH_SIZE, DEFAULT_BATCH_SIZE);
+    this.enabled = options.enabled ?? env.TELEMETRY_ENABLED !== 'false';
+    this.maxEvents = parsePositiveInteger(options.maxEvents || env.TELEMETRY_EVENT_LIMIT, DEFAULT_EVENT_LIMIT);
+    this.batchSize = parsePositiveInteger(options.batchSize || env.TELEMETRY_BATCH_SIZE, DEFAULT_BATCH_SIZE);
     this.flushMs = options.flushMs === 0
       ? 0
-      : parsePositiveInteger(options.flushMs || process.env.TELEMETRY_FLUSH_MS, DEFAULT_FLUSH_MS);
-    this.tableName = cleanToken(options.tableName || process.env.SUPABASE_TELEMETRY_TABLE, 'telemetry_events');
-    this.fallbackMode = cleanToken(options.fallbackMode || process.env.TELEMETRY_FALLBACK_MODE, 'on-error');
-    this.fallbackPath = path.resolve(options.fallbackPath || process.env.TELEMETRY_FALLBACK_PATH || this.fallbackPath);
+      : parsePositiveInteger(options.flushMs || env.TELEMETRY_FLUSH_MS, DEFAULT_FLUSH_MS);
+    this.tableName = cleanToken(options.tableName || env.SUPABASE_TELEMETRY_TABLE, 'telemetry_events');
+    this.fallbackMode = cleanToken(options.fallbackMode || env.TELEMETRY_FALLBACK_MODE, 'on-error');
+    this.fallbackPath = path.resolve(options.fallbackPath || env.TELEMETRY_FALLBACK_PATH || this.fallbackPath);
     this.fallbackReadBytes = parsePositiveInteger(
-      options.fallbackReadBytes || process.env.TELEMETRY_FALLBACK_READ_BYTES,
+      options.fallbackReadBytes || env.TELEMETRY_FALLBACK_READ_BYTES,
       DEFAULT_FALLBACK_READ_BYTES
     );
-    this.supabaseUrl = trimTrailingSlash(options.supabaseUrl || process.env.SUPABASE_URL);
-    this.supabaseServiceRoleKey = options.supabaseServiceRoleKey ||
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      process.env.SUPABASE_SERVICE_KEY ||
-      '';
+    const hasSupabaseUrl = Object.prototype.hasOwnProperty.call(options, 'supabaseUrl');
+    const hasServiceRoleKey = Object.prototype.hasOwnProperty.call(options, 'supabaseServiceRoleKey');
+    this.supabaseUrl = trimTrailingSlash(hasSupabaseUrl ? options.supabaseUrl : env.SUPABASE_URL);
+    this.supabaseServiceRoleKey = hasServiceRoleKey
+      ? (options.supabaseServiceRoleKey || '')
+      : (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY || '');
     this.configured = true;
 
     if (this.enabled && this.flushMs > 0) {

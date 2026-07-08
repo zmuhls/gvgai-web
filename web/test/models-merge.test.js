@@ -72,7 +72,7 @@ test('resolveModel routes registry ids to ollama-local, not inferred ollama-clou
     assert.equal(resolved.provider, 'ollama-local');
     assert.equal(resolved.fallback, null);
     // built-ins and inference untouched
-    assert.equal(models.resolveModel('gemma3:27b').provider, 'ollama-cloud');
+    assert.equal(models.resolveModel('gemma4:31b').provider, 'ollama-cloud');
     assert.equal(models.resolveModel('some/openrouter-slug').provider, 'openrouter');
     assert.equal(models.resolveModel('unknown-tag').provider, 'ollama-cloud');
   } finally {
@@ -111,11 +111,11 @@ test('registry cache invalidates on mtime change and explicit invalidation', () 
 });
 
 test('registry ids colliding with built-in catalog ids are skipped', () => {
-  withRegistry({ models: [{ ...ENTRY, id: 'gemma3:27b' }] });
+  withRegistry({ models: [{ ...ENTRY, id: 'gemma4:31b' }] });
   try {
     const all = models.getAllModels();
     assert.equal(all.length, models.MODELS.length);
-    assert.equal(all.find(m => m.id === 'gemma3:27b').provider, 'ollama-cloud');
+    assert.equal(all.find(m => m.id === 'gemma4:31b').provider, 'ollama-cloud');
   } finally {
     restore();
   }

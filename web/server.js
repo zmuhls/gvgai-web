@@ -3,6 +3,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { loadRootEnv } = require('./scripts/load-root-env');
 const { getConfig, getConfigLoadStatus } = require('./lib/runtime-config');
 const { resolveScreenshotPath } = require('./lib/screenshot-path');
@@ -30,13 +31,26 @@ const io = socketIo(server);
 
 // Screenshot streaming — native fs.watch for low-latency macOS FSEvents
 let screenshotWatcher = null;
-let lastScreenshotSignature = null;
+let lastScreenshotDigest = null;
 let lastFrameSendTime = 0;
 let pendingFrameTimeout = null;
 let frameReadInFlight = false;
 let frameReadQueued = false;
 const FRAME_MIN_INTERVAL = 33;  // ~30fps cap
 const screenshotPath = resolveScreenshotPath(config.gvgai);
+const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const PNG_IEND = Buffer.from([0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82]);
+
+function isCompletePng(buffer) {
+  return Buffer.isBuffer(buffer) &&
+    buffer.length >= 45 &&
+    buffer.subarray(0, PNG_SIG.length).equals(PNG_SIG) &&
+    buffer.subarray(buffer.length - PNG_IEND.length).equals(PNG_IEND);
+}
+
+function screenshotDigest(buffer) {
+  return crypto.createHash('sha1').update(buffer).digest('hex');
+}
 
 function startScreenshotStreaming() {
   stopScreenshotStreaming();
@@ -58,6 +72,13 @@ function startScreenshotStreaming() {
     screenshotWatcher.on('error', (error) => {
       console.error('[Server] Screenshot watcher error:', error);
     });
+
+    // macOS FSEvents can silently stop delivering change notifications after
+    // the watched file is deleted and recreated (which prepareScreenshotTarget
+    // does on every game start). A 1s polling heartbeat catches the silent
+    // failure case without adding duplicate sends (content-hash dedup still
+    // applies).
+    screenshotWatcher._pollFallback = setInterval(() => scheduleFrameSend(), 1000);
   } catch (error) {
     console.error('[Server] Failed to start file watcher, falling back to polling:', error.message);
     // Fallback: poll every 33ms
@@ -92,28 +113,25 @@ async function sendScreenshotAsync() {
 
   frameReadInFlight = true;
   try {
-    const stats = await fs.promises.stat(screenshotPath);
-    const signature = `${stats.mtimeMs}:${stats.size}`;
-
-    // Deduplicate by timestamp and size
-    if (lastScreenshotSignature === signature) {
-      return;
-    }
-    lastScreenshotSignature = signature;
-    lastFrameSendTime = Date.now();
-
-    // Async file read
+    // Read the file first, then validate and dedup by content hash. Java writes
+    // the PNG in-place, so fs.watch often fires mid-write and macOS stat values
+    // can be stale across repeated overwrites. The frame bytes are tiny, so a
+    // full hash is cheaper and more reliable than mtime/size bookkeeping.
     const imageBuffer = await fs.promises.readFile(screenshotPath);
 
-    // Guard against partial writes: validate PNG signature (8 bytes) and
-    // minimum sane size (IHDR chunk = 25 bytes minimum for a valid PNG).
-    // Java overwrites this file in-place; without this check, a fs.watch
-    // callback can fire mid-write and we'd send a truncated PNG that the
-    // browser rejects with "The source image cannot be decoded."
-    const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-    if (imageBuffer.length < 33 || !imageBuffer.subarray(0, 8).equals(PNG_SIG)) {
-      return;  // partial write — skip this frame, next fs.watch fires
+    // Guard against partial writes: the browser will reject a header-only or
+    // truncated data URL with "Invalid encoded image data". Do not remember a
+    // partial frame as the last frame; the next fs.watch/poll tick will retry.
+    if (!isCompletePng(imageBuffer)) {
+      return;
     }
+
+    const digest = screenshotDigest(imageBuffer);
+    if (lastScreenshotDigest === digest) {
+      return;
+    }
+    lastScreenshotDigest = digest;
+    lastFrameSendTime = Date.now();
 
     // Convert to base64 data URL so the client can use it directly as img.src
     const base64 = imageBuffer.toString('base64');
@@ -144,10 +162,14 @@ function stopScreenshotStreaming() {
     if (screenshotWatcher._isInterval) {
       clearInterval(screenshotWatcher);
     } else {
+      if (screenshotWatcher._pollFallback) {
+        clearInterval(screenshotWatcher._pollFallback);
+        screenshotWatcher._pollFallback = null;
+      }
       screenshotWatcher.close();
     }
     screenshotWatcher = null;
-    lastScreenshotSignature = null;
+    lastScreenshotDigest = null;
     lastFrameSendTime = 0;
     frameReadInFlight = false;
     frameReadQueued = false;
@@ -564,5 +586,7 @@ if (require.main === module) {
 module.exports = {
   app,
   server,
-  startServer
+  startServer,
+  isCompletePng,
+  screenshotDigest
 };

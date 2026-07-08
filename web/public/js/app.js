@@ -78,32 +78,32 @@ const GENERIC_TACTIC_WORDS = new Set(['avoid', 'dodge', 'defend', 'defensive', '
 
 const PREVIEW_GAMES = [
   { id: 0, name: 'aliens', category: 'gridphysics', archetype: 'shooter-lane', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
-  { id: 32, name: 'doorkoban', category: 'gridphysics', archetype: 'pusher-puzzle', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
-  { id: 4, name: 'bait', category: 'gridphysics', archetype: 'pusher-puzzle', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
-  { id: 11, name: 'boulderdash', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
-  { id: 18, name: 'chase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true }
+  { id: 10, name: 'boulderchase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
+  { id: 14, name: 'cakybaky', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
+  { id: 18, name: 'chase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
+  { id: 13, name: 'butterflies', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true }
 ];
 
 const FEATURED_CABINET_COUNT = 15;
-const FEATURED_FIRST_ROW_IDS = [0, 4, 11, 18, 32];
+const FEATURED_FIRST_ROW_IDS = [0, 10, 14, 18, 13];
 const SINGLE_PLAYER_CABINET_COUNT = 122;
 
 const PREVIEW_MODELS = [
   {
+    id: 'gemma4:31b',
+    name: 'Gemma 4 31B',
+    description: 'Open-weight model',
+    featured: true
+  },
+  {
+    id: 'gemma4:e4b',
+    name: 'Gemma 4 E4B',
+    description: 'Open-weight model · local',
+    featured: true
+  },
+  {
     id: 'gemma3:27b',
     name: 'Gemma 3 27B',
-    description: 'Open-weight model',
-    featured: true
-  },
-  {
-    id: 'gemma3:12b',
-    name: 'Gemma 3 12B',
-    description: 'Open-weight model',
-    featured: true
-  },
-  {
-    id: 'ministral-3:14b',
-    name: 'Ministral 3 14B',
     description: 'Open-weight model',
     featured: false
   }

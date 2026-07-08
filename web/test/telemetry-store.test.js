@@ -10,8 +10,11 @@ test('telemetry store normalizes events and computes dashboard rollups', async (
   const store = new TelemetryStore();
   store.configure({
     enabled: true,
+    useEnv: false,
     flushMs: 0,
     batchSize: 10,
+    supabaseUrl: '',
+    supabaseServiceRoleKey: '',
     fallbackPath: path.join(os.tmpdir(), `gvgai-telemetry-${Date.now()}.jsonl`)
   });
 
@@ -61,8 +64,11 @@ test('telemetry store writes JSONL fallback when Supabase credentials are absent
   const store = new TelemetryStore();
   store.configure({
     enabled: true,
+    useEnv: false,
     flushMs: 0,
     batchSize: 10,
+    supabaseUrl: '',
+    supabaseServiceRoleKey: '',
     fallbackPath
   });
 
@@ -92,8 +98,11 @@ test('telemetry dashboard hydrates local fallback records after restart', async 
   const writer = new TelemetryStore();
   writer.configure({
     enabled: true,
+    useEnv: false,
     flushMs: 0,
     batchSize: 10,
+    supabaseUrl: '',
+    supabaseServiceRoleKey: '',
     fallbackPath
   });
 
@@ -124,7 +133,10 @@ test('telemetry dashboard hydrates local fallback records after restart', async 
   const reader = new TelemetryStore();
   reader.configure({
     enabled: true,
+    useEnv: false,
     flushMs: 0,
+    supabaseUrl: '',
+    supabaseServiceRoleKey: '',
     fallbackPath
   });
 
@@ -146,8 +158,11 @@ test('telemetry dashboard clamps clickthrough rate to a valid ratio', async () =
   const store = new TelemetryStore();
   store.configure({
     enabled: true,
+    useEnv: false,
     flushMs: 0,
     batchSize: 10,
+    supabaseUrl: '',
+    supabaseServiceRoleKey: '',
     fallbackPath: path.join(os.tmpdir(), `gvgai-telemetry-rate-${Date.now()}.jsonl`)
   });
 
@@ -179,8 +194,11 @@ test('telemetry dashboard ranks runs, usage, and active sessions', async () => {
   const store = new TelemetryStore();
   store.configure({
     enabled: true,
+    useEnv: false,
     flushMs: 0,
     batchSize: 10,
+    supabaseUrl: '',
+    supabaseServiceRoleKey: '',
     fallbackPath: path.join(os.tmpdir(), `gvgai-telemetry-ranks-${Date.now()}.jsonl`)
   });
 
@@ -268,6 +286,7 @@ test('telemetry dashboard can hydrate from Supabase rows', async () => {
   const store = new TelemetryStore();
   store.configure({
     enabled: true,
+    useEnv: false,
     flushMs: 0,
     supabaseUrl: 'https://example.supabase.co',
     supabaseServiceRoleKey: 'service-role-key'

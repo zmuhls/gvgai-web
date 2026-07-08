@@ -98,7 +98,7 @@ test('a guardrail block skips the OpenRouter fallback and surfaces llm-error', a
     const originalFetch = global.fetch;
     const events = [];
     const client = new LLMClient({ actionTimeoutMs: 1000 });
-    client.model = 'gemma3:27b'; // catalog entry WITH an OpenRouter fallback
+    client.model = 'gemma4:31b'; // catalog entry WITH an OpenRouter fallback
     client.gameId = 0;
     client.levelCount = 0;
     client.promptConfig = { gameName: 'aliens' };

@@ -28,6 +28,12 @@
     marqueeState.screen = 'live-frame';
     ctx.drawImage(img, 0, 0);
   };
+  // On decode failure: clear lastImage so shouldShowAttract() can flip back
+  // to the attract template instead of silently freezing on a bad frame.
+  img.onerror = () => {
+    lastImage = null;
+    marqueeState.screen = 'attract';
+  };
   function drawFrame(dataUrl) {
     if (!dataUrl || dataUrl === lastImage) return;
     lastImage = dataUrl;

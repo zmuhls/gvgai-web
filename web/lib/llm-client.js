@@ -703,6 +703,15 @@ class LLMClient {
   // Call a single provider's OpenAI-compatible chat endpoint. Returns the response
   // text, or throws on a non-OK status so the caller can trigger the fallback.
   async callProvider(provider, modelId, messages, settings) {
+    // Local Ollama thinking models (gemma4 E-series) burn all max_tokens on
+    // reasoning and return empty content via the OpenAI-compatible endpoint.
+    // Route them through the native /api/chat endpoint with think:false so they
+    // produce answer tokens directly — 0.4s instead of 1.5s, and the response
+    // parser actually finds an action in the output.
+    if (provider === 'ollama-local' && this._isLocalThinkingModel(modelId)) {
+      return this._callLocalOllamaNative(modelId, messages, settings);
+    }
+
     let apiUrl;
     const headers = { 'Content-Type': 'application/json' };
 
@@ -782,6 +791,57 @@ class LLMClient {
     const msg = data.choices?.[0]?.message || {};
     // Fall back to the reasoning field if a reasoning model truncated before content
     return msg.content || msg.reasoning || '';
+  }
+
+  // Local Ollama models that use thinking/reasoning tokens by default (gemma4
+  // E-series). These need the native /api/chat endpoint with think:false to
+  // produce answer tokens within the game's max_tokens budget.
+  _isLocalThinkingModel(modelId) {
+    return /^gemma4:e[0-9]+b/.test(modelId);
+  }
+
+  // Call the native Ollama /api/chat endpoint (not OpenAI-compatible) with
+  // think:false to suppress reasoning tokens. Returns the message content.
+  async _callLocalOllamaNative(modelId, messages, settings) {
+    const baseUrl = config.ollama.apiUrl.replace(/\/v1\/chat\/completions$/, '');
+    const apiUrl = `${baseUrl}/api/chat`;
+    const body = {
+      model: modelId,
+      messages,
+      stream: false,
+      think: false,
+      options: {
+        num_predict: settings.maxTokens || 200,
+        temperature: settings.temperature !== undefined ? settings.temperature : 0.7
+      }
+    };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.actionTimeoutMs);
+    let response;
+    try {
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      });
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error(`ollama-local timed out after ${this.actionTimeoutMs}ms`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`ollama-local ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.message?.content || '';
   }
 
   async requestLLMAction(jsonPayload) {

@@ -10,21 +10,28 @@
 // NOTE: confirm exact Ollama Cloud tags and OpenRouter slugs near the event —
 // a stale id 404s at call time (surfaced via the 'llm-error' socket event), and
 // for Ollama-primary models the fallback simply takes over. Fallback slugs
-// below were verified against OpenRouter /api/v1/models on 2026-07-05.
+// below were verified against OpenRouter /api/v1/models on 2026-07-08.
 
 const MODELS = [
-  // --- Gemma (Google) ---
+  // --- Gemma 4 (Google) — current generation ---
+  {
+    id: 'gemma4:31b', name: 'Gemma 4 31B',
+    provider: 'ollama-cloud', fallback: 'google/gemma-4-31b-it',
+    description: 'Open-weight · Gemma 4 dense, non-reasoning · fastest on Cloud',
+    speed: 'fast', cost: 'low', featured: true
+  },
+  {
+    id: 'gemma4:e4b', name: 'Gemma 4 E4B',
+    provider: 'ollama-local', fallback: null,
+    description: 'Open-weight · Gemma 4 effective-4B, edge device · local inference',
+    speed: 'fast', cost: 'free', featured: true
+  },
+  // --- Gemma 3 (Google) — previous gen, still on Cloud ---
   {
     id: 'gemma3:27b', name: 'Gemma 3 27B',
     provider: 'ollama-cloud', fallback: 'google/gemma-3-27b-it',
     description: 'Open-weight · flagship small Gemma, non-reasoning',
-    speed: 'fast', cost: 'low', featured: true
-  },
-  {
-    id: 'gemma3:12b', name: 'Gemma 3 12B',
-    provider: 'ollama-cloud', fallback: 'google/gemma-3-12b-it',
-    description: 'Open-weight · mid-size Gemma, non-reasoning',
-    speed: 'fast', cost: 'low', featured: true
+    speed: 'fast', cost: 'low', featured: false
   },
   // --- Qwen (Alibaba) ---
   {
@@ -33,25 +40,7 @@ const MODELS = [
     description: 'Open-weight · MoE coder, non-reasoning (small active params)',
     speed: 'fast', cost: 'low', featured: false
   },
-  // --- Mistral small tier ---
-  {
-    id: 'ministral-3:14b', name: 'Ministral 3 14B',
-    provider: 'ollama-cloud', fallback: 'mistralai/ministral-14b-2512',
-    description: 'Open-weight · Mistral small tier, non-reasoning',
-    speed: 'fast', cost: 'low', featured: false
-  },
-  {
-    id: 'ministral-3:8b', name: 'Ministral 3 8B',
-    provider: 'ollama-cloud', fallback: 'mistralai/ministral-8b-2512',
-    description: 'Open-weight · Mistral small tier, non-reasoning',
-    speed: 'fast', cost: 'low', featured: false
-  },
-  {
-    id: 'ministral-3:3b', name: 'Ministral 3 3B',
-    provider: 'ollama-cloud', fallback: 'mistralai/ministral-3b-2512',
-    description: 'Open-weight · tiny end of the roster, non-reasoning',
-    speed: 'fast', cost: 'low', featured: false
-  },
+  // --- Devstral (Mistral) ---
   {
     id: 'devstral-small-2:24b', name: 'Devstral Small 2 24B',
     provider: 'ollama-cloud', fallback: null,
