@@ -339,7 +339,7 @@ body {
 
 .arcade-titlebar .nav-link.active {
   color: var(--mint);
-  background: var(--mint-faint);
+  background: transparent;
   box-shadow: inset 0 -2px 0 var(--mint);
 }
 
@@ -381,39 +381,17 @@ body {
   place-items: center;
   padding: 0;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity var(--transition-fast), color var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.titlebar-status:hover .titlebar-sound,
+.titlebar-sound:hover,
 .titlebar-sound:focus-visible {
-  opacity: 1;
-}
-
-.titlebar-sound:hover {
   color: var(--mint-bright);
+  background: var(--mint-faint);
 }
 
 .titlebar-sound[aria-pressed="true"] {
   color: var(--mint);
-  opacity: 1;
-}
-
-/* Minimalism: nav links and status chrome fade until the titlebar is hovered.
-   The brand (title + mark) and active nav stay visible. */
-.arcade-titlebar .nav-link:not(.active),
-.arcade-titlebar .titlebar-backend,
-.arcade-titlebar .titlebar-clock,
-.arcade-titlebar .lamp {
-  opacity: 0;
-  transition: opacity var(--transition-base);
-}
-
-.arcade-titlebar:hover .nav-link:not(.active),
-.arcade-titlebar:hover .titlebar-backend,
-.arcade-titlebar:hover .titlebar-clock,
-.arcade-titlebar:hover .lamp {
-  opacity: 1;
 }
 
 /* ---------- boot screen ---------- */

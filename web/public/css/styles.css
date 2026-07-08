@@ -61,20 +61,6 @@ button {
   display: block;
 }
 
-/* Minimalism: step headings fade until the step area is hovered.
-   Game cards and room cards remain always visible. */
-#game-selector .step-label,
-#game-selector h2,
-#game-selector .step-note {
-  opacity: 0;
-  transition: opacity var(--transition-base);
-}
-#game-selector:hover .step-label,
-#game-selector:hover h2,
-#game-selector:hover .step-note {
-  opacity: 1;
-}
-
 .step-label {
   margin: 0 0 var(--space-2);
   font-family: var(--font-display);
@@ -147,43 +133,46 @@ small {
 }
 
 .btn-primary {
-  background: var(--arcade-accent);
-  border: 1px solid var(--arcade-accent);
-  color: var(--abyss);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--arcade-accent-bright);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--arcade-accent-bright);
-  border-color: var(--arcade-accent-bright);
+  background: var(--arcade-accent);
+  border-color: var(--arcade-accent);
+  color: var(--abyss);
   box-shadow: var(--shadow-hover);
 }
 
 .btn-primary:disabled {
-  background: var(--arcade-accent-dim);
-  border-color: var(--arcade-accent-dim);
-  color: rgba(8, 17, 14, 0.7);
+  background: transparent;
+  border-color: transparent;
+  color: var(--arcade-accent-dim);
   cursor: wait;
 }
 
 .btn-secondary {
   background: transparent;
-  border: 1px solid var(--arcade-border);
+  border: 1px solid transparent;
   color: var(--arcade-text-secondary);
 }
 
 .btn-secondary:hover {
   color: var(--arcade-accent-bright);
-  border-color: var(--arcade-accent);
+  background: var(--arcade-accent-faint);
+  border-color: var(--arcade-accent-dim);
 }
 
 .btn-danger {
   background: transparent;
-  border: 1px solid var(--arcade-danger);
+  border: 1px solid transparent;
   color: var(--arcade-danger);
 }
 
 .btn-danger:hover {
   background: var(--arcade-danger);
+  border-color: var(--arcade-danger);
   color: var(--foam);
 }
 
@@ -273,17 +262,6 @@ label {
   margin-bottom: var(--space-4);
   padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--arcade-border-soft);
-}
-
-/* Minimalism: toolbar chrome fades until hovered */
-.games-toolbar .games-mode-label,
-.games-toolbar .btn-toggle {
-  opacity: 0;
-  transition: opacity var(--transition-base);
-}
-.games-toolbar:hover .games-mode-label,
-.games-toolbar:hover .btn-toggle {
-  opacity: 1;
 }
 
 .games-mode-label {
@@ -455,17 +433,6 @@ label {
   margin-top: var(--space-8);
   padding-top: var(--space-6);
   border-top: 1px solid var(--arcade-border-soft);
-}
-
-/* Minimalism: section headings fade until hovered; cards stay visible */
-.companion-games .companion-kicker,
-.companion-games h3 {
-  opacity: 0;
-  transition: opacity var(--transition-base);
-}
-.companion-games:hover .companion-kicker,
-.companion-games:hover h3 {
-  opacity: 1;
 }
 
 .companion-kicker {
@@ -3008,22 +2975,6 @@ label {
   .arcade-titlebar .nav-link {
     flex: 1;
     padding: var(--space-2) 0;
-  }
-
-  /* On touch devices hover is unreliable — keep chrome visible */
-  .arcade-titlebar .nav-link:not(.active),
-  .arcade-titlebar .titlebar-backend,
-  .arcade-titlebar .titlebar-clock,
-  .arcade-titlebar .lamp,
-  .titlebar-sound,
-  .games-toolbar .games-mode-label,
-  .games-toolbar .btn-toggle,
-  .companion-games .companion-kicker,
-  .companion-games h3,
-  #game-selector .step-label,
-  #game-selector h2,
-  #game-selector .step-note {
-    opacity: 1;
   }
 }
 
