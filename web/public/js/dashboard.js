@@ -13,12 +13,22 @@
 
   document.querySelectorAll('#main-nav .nav-link').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('#main-nav .nav-link').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#main-nav .nav-link').forEach(b => {
+        b.classList.remove('active');
+        b.removeAttribute('aria-current');
+      });
       btn.classList.add('active');
+      btn.setAttribute('aria-current', 'page');
       const target = btn.dataset.target;
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => {
+        s.classList.remove('active');
+        s.hidden = true;
+      });
       const section = document.getElementById(target);
-      if (section) section.classList.add('active');
+      if (section) {
+        section.hidden = false;
+        section.classList.add('active');
+      }
 
       // Load dashboard data when switching to it
       if (target === 'prompt-dashboard') {
@@ -30,8 +40,12 @@
   // Sidebar tabs
   document.querySelectorAll('.sidebar-tab').forEach(tab => {
     tab.addEventListener('click', () => {
-      document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.sidebar-tab').forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
       tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
       document.querySelectorAll('.sidebar-panel').forEach(p => p.classList.remove('active'));
       const panel = document.getElementById(tab.dataset.tab);
       if (panel) panel.classList.add('active');
@@ -80,11 +94,11 @@
     const configIds = new Set(gameConfigs.map(c => c.gameId));
 
     list.innerHTML = games.map(g => `
-      <div class="sidebar-item ${activeGameId === g.id ? 'active' : ''}" data-game-id="${g.id}">
+      <button type="button" class="sidebar-item ${activeGameId === g.id ? 'active' : ''}" data-game-id="${g.id}">
         <span class="config-indicator ${configIds.has(g.id) ? 'configured' : ''}"></span>
         <span class="sidebar-item-name">${escapeHtml(g.name)}</span>
         <span class="sidebar-item-meta">${g.category}</span>
-      </div>
+      </button>
     `).join('');
 
     list.querySelectorAll('.sidebar-item').forEach(item => {
@@ -121,10 +135,10 @@
       if (items.length === 0) continue;
       html += `<div class="sidebar-group-label">${layer.toUpperCase()}</div>`;
       html += items.map(t => `
-        <div class="sidebar-item ${activeTemplateId === t.id ? 'active' : ''}" data-template-id="${t.id}">
+        <button type="button" class="sidebar-item ${activeTemplateId === t.id ? 'active' : ''}" data-template-id="${t.id}">
           <span class="layer-badge layer-${layer}">${layer[0].toUpperCase()}</span>
           <span class="sidebar-item-name">${escapeHtml(t.name)}</span>
-        </div>
+        </button>
       `).join('');
     }
 

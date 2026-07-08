@@ -24,6 +24,23 @@ button {
   font-family: inherit;
 }
 
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+summary,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* ---------- 1. app shell ---------- */
 
 #app {
@@ -63,29 +80,29 @@ button {
 
 .step-label {
   margin: 0 0 var(--space-2);
-  font-family: var(--font-display);
-  font-size: 0.9rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: none;
-  color: var(--arcade-accent-bright);
-  text-shadow: 0 0 10px rgba(123, 239, 195, 0.22);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: var(--arcade-text-dim);
+  text-shadow: none;
 }
 
 .step-label::before {
-  content: "▸ ";
-  color: var(--arcade-accent-dim);
+  content: none;
 }
 
 .step h2,
 .dashboard-heading h2 {
   margin: 0 0 var(--space-3);
   font-family: var(--font-display);
-  font-size: 1.34rem;
-  font-weight: 400;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: clamp(1.55rem, 2.2vw, 2.15rem);
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--arcade-text);
+  line-height: 1.15;
 }
 
 .step h2 span {
@@ -94,10 +111,10 @@ button {
 
 .step-note {
   margin: 0 0 var(--space-5);
-  max-width: 78ch;
+  max-width: 64ch;
   color: var(--arcade-text-secondary);
-  font-size: 1.08rem;
-  line-height: 1.55;
+  font-size: 1.02rem;
+  line-height: 1.65;
 }
 
 h3 {
@@ -124,9 +141,11 @@ small {
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-md);
   font-family: var(--font-display);
-  font-size: 0.74rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 0.86rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  min-height: 40px;
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast),
     border-color var(--transition-fast), box-shadow var(--transition-fast);
@@ -152,8 +171,8 @@ small {
 }
 
 .btn-secondary {
-  background: transparent;
-  border: 1px solid var(--arcade-border);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--arcade-border-soft);
   color: var(--arcade-text-secondary);
 }
 
@@ -176,13 +195,13 @@ small {
 .btn-start {
   margin-top: var(--space-5);
   padding: var(--space-3) var(--space-8);
-  font-size: 0.78rem;
+  font-size: 0.92rem;
 }
 
 .btn-sm {
   margin: var(--space-2);
   padding: var(--space-1) var(--space-3);
-  font-size: 0.58rem;
+  font-size: 0.76rem;
 }
 
 /* ---------- form controls ---------- */
@@ -194,12 +213,14 @@ textarea {
   width: 100%;
   padding: var(--space-2) var(--space-3);
   background: var(--arcade-well);
-  border: 1px solid var(--arcade-border);
+  border: 1px solid var(--arcade-border-soft);
   border-radius: var(--radius-md);
   color: var(--arcade-text);
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  transition: border-color var(--transition-fast);
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  min-height: 42px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast),
+    background var(--transition-fast);
 }
 
 input::placeholder,
@@ -212,7 +233,7 @@ select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--arcade-accent);
-  box-shadow: 0 0 0 1px var(--arcade-accent-faint);
+  box-shadow: 0 0 0 3px rgba(114, 214, 189, 0.14);
 }
 
 textarea {
@@ -224,8 +245,8 @@ label {
   display: block;
   margin-bottom: var(--space-2);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
+  font-size: 0.74rem;
+  letter-spacing: 0;
   text-transform: uppercase;
   color: var(--arcade-text-secondary);
 }
@@ -277,7 +298,7 @@ label {
 
 #games-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: var(--space-3);
   max-height: min(58vh, 620px);
   overflow-y: auto;
@@ -289,12 +310,15 @@ label {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 142px;
+  min-height: 120px;
   padding: var(--space-3);
   background: var(--arcade-panel);
   border: 1px solid var(--arcade-border);
   border-radius: var(--radius-md);
+  color: inherit;
   cursor: pointer;
+  font: inherit;
+  text-align: left;
   text-decoration: none;
   transition: border-color var(--transition-fast), background var(--transition-fast),
     box-shadow var(--transition-fast);
@@ -858,7 +882,7 @@ label {
 
 .chip-rack {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: var(--space-2);
   margin-bottom: var(--space-2);
 }
@@ -1593,13 +1617,19 @@ label {
 }
 
 .sidebar-item {
+  appearance: none;
+  width: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 0;
   border-bottom: 1px solid rgba(123, 239, 195, 0.06);
   color: var(--arcade-text-secondary);
+  font: inherit;
   font-size: 0.8rem;
+  text-align: left;
   cursor: pointer;
   transition: background var(--transition-fast);
 }
@@ -1694,9 +1724,10 @@ label {
   align-items: center;
   justify-content: center;
   min-height: 300px;
-  color: var(--arcade-text-dim);
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
+  color: var(--arcade-text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  line-height: 1.6;
   text-align: center;
 }
 
@@ -2468,11 +2499,11 @@ label {
 
 .telemetry-empty {
   padding: var(--space-4);
-  color: var(--arcade-text-dim);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  color: var(--arcade-text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* ---------- 8b. floating autoplay player ---------- */
@@ -2482,7 +2513,7 @@ label {
   right: clamp(16px, 2vw, 28px);
   bottom: clamp(16px, 2vw, 28px);
   z-index: 420;
-  width: clamp(330px, 31vw, 500px);
+  width: clamp(280px, 31vw, 500px);
   background: #000;
   border: 1px solid rgba(123, 239, 195, 0.34);
   border-radius: 8px;
@@ -2619,6 +2650,391 @@ label {
   background: #000;
 }
 
+/* ---------- 8c. mature visual-system refinements ---------- */
+
+#app,
+#app *,
+.marble-popout,
+.marble-popout * {
+  letter-spacing: 0;
+}
+
+.games-toolbar,
+.leaderboard-title-row,
+.editor-actions {
+  border-color: var(--arcade-border-soft);
+}
+
+.games-mode-label,
+.companion-kicker,
+.human-controls-ref h4,
+.reasoning-panel h3,
+.summary-highlights h4,
+.prompt-preview h4,
+.sidebar-group-label,
+.telemetry-status-strip span,
+.backend-status-card span,
+.leaderboard-title-row span,
+.telemetry-metric span,
+.pipeline-step span,
+.telemetry-empty,
+.marble-popout-title {
+  letter-spacing: 0;
+  text-shadow: none;
+}
+
+.games-mode-label,
+.companion-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--arcade-text-dim);
+}
+
+#games-grid {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-1) var(--space-1) var(--space-3);
+}
+
+.game-card,
+.strategy-card,
+.model-chip,
+.unfold-rules,
+.human-controls-ref,
+.reasoning-panel,
+#game-end-message,
+.dashboard-sidebar,
+.editor-panel,
+.electric-panel,
+.backend-status-card,
+.prompt-preview,
+.preview-message pre,
+.telemetry-flow,
+.telemetry-event-table,
+.pipeline-rail {
+  background: rgba(17, 24, 29, 0.86);
+  border-color: var(--arcade-border-soft);
+  box-shadow: none;
+}
+
+.game-card {
+  min-height: 136px;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+}
+
+.game-card:hover,
+.strategy-card:hover,
+.model-chip:hover,
+.sidebar-item:hover {
+  background: rgba(23, 32, 39, 0.92);
+  box-shadow: var(--shadow-hover);
+}
+
+.game-card::after,
+.backend-status-card::before,
+.config-indicator,
+.lamp-dot {
+  box-shadow: none;
+}
+
+.game-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.2;
+}
+
+.game-card-meta,
+.game-card .levels,
+.trace-badge,
+.selected-game-info h3,
+.control-key,
+.strategy-card,
+.model-chip,
+.chip-badge,
+.frame-status,
+.game-overlay strong,
+.panel-note,
+.strategy-active,
+.reasoning-entry .narration,
+.reasoning-entry .response,
+.summary-strategy,
+.sidebar-item-name,
+.sidebar-item-meta,
+.preview-message pre,
+.variable-hints,
+.telemetry-panel-heading > span,
+.leaderboard-row,
+.bar-row,
+.pipeline-step small,
+.flow-label,
+.flow-count,
+.telemetry-event-row,
+.model-row strong,
+.model-row span,
+.guardrail-bar,
+.finetune-stage,
+.btn-small {
+  letter-spacing: 0;
+}
+
+.companion-games {
+  margin-top: var(--space-8);
+}
+
+.companion-games h3 {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 650;
+}
+
+.companion-list {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.companion-link {
+  min-height: 150px;
+}
+
+.room-cloze,
+.room-cloze:hover,
+.room-jeopardy,
+.room-jeopardy:hover {
+  color: var(--arcade-text);
+  background:
+    linear-gradient(135deg, rgba(114, 214, 189, 0.09), transparent 48%),
+    rgba(17, 24, 29, 0.9);
+  border-color: var(--arcade-border-soft);
+  box-shadow: none;
+}
+
+.room-cloze::before,
+.room-jeopardy::after,
+.room-cloze .companion-subtitle::before {
+  content: none;
+}
+
+.room-cloze .companion-subtitle,
+.room-jeopardy .companion-subtitle,
+.room-cloze h3,
+.room-jeopardy h3,
+.room-cloze:hover h3,
+.room-jeopardy:hover h3,
+.companion-link.room-cloze .companion-url,
+.companion-link.room-cloze:hover .companion-url,
+.companion-link.room-jeopardy .companion-url,
+.companion-link.room-jeopardy:hover .companion-url {
+  color: inherit;
+  text-shadow: none;
+}
+
+.companion-link .companion-subtitle {
+  font-size: 0.82rem;
+  white-space: normal;
+}
+
+.companion-link .companion-url {
+  color: var(--arcade-text-dim);
+}
+
+.toggle-group,
+.sidebar-tabs {
+  padding: var(--space-1);
+  gap: var(--space-1);
+  border: 1px solid var(--arcade-border-soft);
+  border-radius: var(--radius-lg);
+  background: var(--arcade-well);
+}
+
+.toggle-btn,
+.sidebar-tab {
+  min-height: 38px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-size: 0.84rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.toggle-btn.active,
+.sidebar-tab.active {
+  color: var(--arcade-accent-bright);
+  background: rgba(114, 214, 189, 0.1);
+  border-color: rgba(114, 214, 189, 0.28);
+  box-shadow: none;
+}
+
+.strategy-card,
+.model-chip,
+.unfold-chip,
+.control-key,
+.chip-badge,
+.layer-badge,
+.adherence-label,
+.reasoning-entry .action {
+  border-radius: var(--radius-md);
+}
+
+.strategy-card,
+.model-chip {
+  min-height: 52px;
+  font-size: 0.84rem;
+}
+
+.model-chip-name {
+  font-size: 0.88rem;
+}
+
+.chip-badge {
+  font-size: 0.66rem;
+}
+
+.cabinet-frame {
+  padding: var(--space-4);
+  border-color: var(--arcade-border-soft);
+  border-radius: var(--radius-lg);
+  background: #040608;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+}
+
+.game-display::after,
+.screen::after {
+  opacity: 0.42;
+}
+
+.game-overlay {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.game-overlay span {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0;
+}
+
+.reasoning-panel::before {
+  display: none;
+}
+
+#reasoning-log {
+  padding: var(--space-3);
+  background-image: none;
+  border-radius: var(--radius-md);
+}
+
+.reasoning-entry {
+  animation: none;
+}
+
+.dashboard-heading {
+  max-width: 760px;
+}
+
+.dashboard-heading p:last-child {
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.dashboard-layout {
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: var(--space-5);
+}
+
+.dashboard-sidebar,
+.editor-panel {
+  border-radius: var(--radius-lg);
+}
+
+.editor-panel h3,
+.telemetry-panel-heading h3,
+.telemetry-chart h3 {
+  font-family: var(--font-display);
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.sidebar-item {
+  min-height: 42px;
+}
+
+.sidebar-item.active {
+  box-shadow: inset 3px 0 0 var(--arcade-accent);
+}
+
+.dashboard-toast {
+  border-radius: var(--radius-md);
+}
+
+.electric-panel {
+  border-radius: var(--radius-lg);
+}
+
+.telemetry-heading.electric-panel,
+.telemetry-backend-panel {
+  background:
+    linear-gradient(135deg, rgba(114, 214, 189, 0.07), transparent 46%),
+    rgba(17, 24, 29, 0.88);
+}
+
+.telemetry-status-strip strong,
+.telemetry-metric strong,
+.pipeline-step strong {
+  color: var(--arcade-accent-bright);
+}
+
+.backend-status-card {
+  border-radius: var(--radius-lg);
+}
+
+.bar-row::before,
+.funnel-step::before {
+  border-radius: var(--radius-sm);
+  opacity: 0.9;
+}
+
+.marble-popout {
+  border-color: var(--arcade-border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+}
+
+.marble-popout-chrome {
+  background: rgba(12, 17, 21, 0.94);
+  border-color: var(--arcade-border-soft);
+}
+
+.marble-popout-title {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  text-shadow: none;
+}
+
+.marble-popout-action {
+  width: 32px;
+  height: 30px;
+  border-color: var(--arcade-border-soft);
+}
+
+.btn-small {
+  min-height: 36px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 650;
+  background: rgba(255, 255, 255, 0.025);
+}
+
 /* ---------- 9. responsive ---------- */
 
 @media (max-width: 1024px) {
@@ -2645,7 +3061,7 @@ label {
 
 @media (min-width: 760px) {
   #game-selector .step-note {
-    white-space: nowrap;
+    white-space: normal;
   }
 }
 
@@ -2708,7 +3124,33 @@ label {
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 760px) {
+  #games-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: var(--space-2);
+  }
+
+  .game-card {
+    min-height: 108px;
+    padding: var(--space-2);
+  }
+
+  .game-card h3 {
+    font-size: 0.78rem;
+  }
+
+  .game-card-meta {
+    font-size: 0.64rem;
+  }
+
+  .companion-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .marble-popout {
+    width: clamp(240px, 42vw, 380px);
+  }
+
   #app {
     padding: 0 var(--space-3) calc(var(--space-8) + 58px);
   }
