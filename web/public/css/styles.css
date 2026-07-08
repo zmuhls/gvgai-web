@@ -415,232 +415,79 @@ label {
 
 .companion-kicker {
   margin: 0 0 var(--space-2);
-  font-family: var(--font-display);
-  font-size: 0.96rem;
-  letter-spacing: 0.12em;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0;
   text-transform: uppercase;
-  color: var(--arcade-accent);
+  color: var(--arcade-text-dim);
 }
 
 .companion-games h3 {
   margin: 0 0 var(--space-5);
-  font-size: 1.34rem;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 650;
   line-height: 1.2;
 }
 
 .companion-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(430px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: var(--space-4);
   max-width: 960px;
 }
 
 .companion-link {
   isolation: isolate;
-  min-height: 190px;
+  min-height: 150px;
   overflow: hidden;
   padding: var(--space-4);
+  background:
+    linear-gradient(135deg, rgba(114, 214, 189, 0.09), transparent 48%),
+    rgba(17, 24, 29, 0.9);
+  border-color: var(--arcade-border-soft);
+  box-shadow: none;
 }
 
-.companion-link > * {
-  position: relative;
-  z-index: 1;
+.companion-link:hover {
+  background: rgba(23, 32, 39, 0.92);
+  border-color: var(--arcade-accent);
 }
 
 .companion-link .companion-subtitle {
   justify-content: flex-start;
-  padding-right: 52px;
   color: var(--arcade-text-secondary);
-  flex-wrap: nowrap;
-  font-size: 0.9rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
   font-weight: 600;
-  line-height: 1.25;
-  white-space: nowrap;
+  line-height: 1.35;
+  white-space: normal;
 }
 
-.companion-link .companion-subtitle span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.room-cloze {
-  color: #26180a;
-  background:
-    radial-gradient(circle at 18% 18%, rgba(96, 57, 21, 0.13), transparent 26%),
-    radial-gradient(circle at 84% 76%, rgba(96, 57, 21, 0.1), transparent 25%),
-    linear-gradient(90deg, transparent 0 64%, rgba(58, 37, 14, 0.18) 64% 65%, transparent 65%),
-    linear-gradient(0deg, transparent 0 64%, rgba(58, 37, 14, 0.14) 64% 65%, transparent 65%),
-    linear-gradient(145deg, rgba(255, 245, 210, 0.92), rgba(229, 195, 128, 0.72) 55%, rgba(201, 155, 84, 0.6)),
-    #e5c383;
-  border-color: rgba(93, 61, 24, 0.72);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 249, 222, 0.38),
-    inset 0 0 0 6px rgba(60, 40, 17, 0.08),
-    0 10px 24px rgba(40, 25, 9, 0.24);
-}
-
-.room-cloze::before {
-  content: "";
-  position: absolute;
-  inset: 8px;
-  z-index: 0;
-  pointer-events: none;
-  border: 2px solid rgba(43, 29, 12, 0.42);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 249, 222, 0.32),
-    inset 0 -18px 36px rgba(70, 45, 18, 0.1);
-}
-
-.room-cloze::after {
-  content: none;
-}
-
-.room-cloze .companion-subtitle::before {
-  content: "";
-  flex: 0 0 auto;
-  width: 13px;
-  height: 38px;
-  margin-right: 10px;
-  border-radius: 85% 20% 75% 25%;
-  background:
-    linear-gradient(90deg, rgba(35, 24, 11, 0.92) 0 2px, transparent 2px),
-    repeating-linear-gradient(135deg, rgba(35, 24, 11, 0.58) 0 1px, transparent 1px 5px);
-  transform: rotate(-10deg);
-}
-
-.room-cloze .companion-subtitle {
-  color: #5a3514;
-  text-shadow: 0 1px 0 rgba(255, 247, 219, 0.72);
-}
-
-.room-cloze h3 {
-  margin-top: var(--space-4);
+.companion-link h3 {
+  margin-top: var(--space-3);
+  margin-bottom: auto;
   font-size: 1.08rem;
-  color: #201306;
-}
-
-.room-cloze .companion-url {
-  color: #34210d;
-}
-
-.room-jeopardy {
-  color: #f4f9ff;
-  background:
-    linear-gradient(90deg, rgba(255, 218, 64, 0.14) 0 2px, transparent 2px 50%),
-    repeating-linear-gradient(0deg, rgba(214, 234, 255, 0.08) 0 1px, transparent 1px 13px),
-    linear-gradient(145deg, rgba(28, 90, 188, 0.9), rgba(11, 61, 159, 0.84) 58%, rgba(7, 37, 111, 0.8)),
-    #164fba;
-  border-color: rgba(255, 211, 47, 0.58);
-  box-shadow:
-    inset 0 0 0 1px rgba(214, 234, 255, 0.14),
-    inset 0 -28px 48px rgba(4, 24, 88, 0.24),
-    0 10px 28px rgba(7, 37, 111, 0.36);
-}
-
-.room-jeopardy .companion-subtitle {
-  color: #d9eaff;
-  text-shadow: 0 1px 0 rgba(2, 18, 67, 0.72);
-}
-
-.room-jeopardy::after {
-  content: "J";
-  position: absolute;
-  top: 13px;
-  right: 13px;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  width: 31px;
-  height: 31px;
-  border: 2px solid rgba(255, 220, 59, 0.78);
-  border-radius: 4px;
-  background:
-    linear-gradient(180deg, rgba(32, 93, 201, 0.92), rgba(7, 38, 121, 0.9));
-  color: #ffdc3b;
-  font-family: var(--font-display);
-  font-size: 0.96rem;
-  line-height: 1;
-  box-shadow:
-    inset 0 0 0 1px rgba(214, 234, 255, 0.12),
-    0 0 16px rgba(255, 220, 59, 0.42);
-}
-
-.room-jeopardy h3 {
-  margin-top: var(--space-4);
-  font-size: 1.08rem;
-  color: #ffdc3b;
-  text-shadow: 0 2px 0 rgba(2, 18, 67, 0.62);
-}
-
-.room-jeopardy .companion-url {
-  color: #eef7ff;
-}
-
-.room-cloze:hover {
-  background:
-    radial-gradient(circle at 18% 18%, rgba(96, 57, 21, 0.13), transparent 26%),
-    radial-gradient(circle at 84% 76%, rgba(96, 57, 21, 0.1), transparent 25%),
-    linear-gradient(90deg, transparent 0 64%, rgba(58, 37, 14, 0.18) 64% 65%, transparent 65%),
-    linear-gradient(0deg, transparent 0 64%, rgba(58, 37, 14, 0.14) 64% 65%, transparent 65%),
-    linear-gradient(145deg, rgba(255, 248, 220, 0.98), rgba(235, 202, 137, 0.82) 55%, rgba(207, 162, 91, 0.66)),
-    #ecd19a;
-  border-color: rgba(108, 70, 26, 0.84);
-}
-
-.room-cloze:hover h3 {
-  color: #211305;
-}
-
-.room-jeopardy:hover {
-  background:
-    linear-gradient(90deg, rgba(255, 218, 64, 0.16) 0 2px, transparent 2px 50%),
-    repeating-linear-gradient(0deg, rgba(214, 234, 255, 0.09) 0 1px, transparent 1px 13px),
-    linear-gradient(145deg, rgba(35, 104, 211, 0.94), rgba(12, 70, 174, 0.88) 58%, rgba(7, 42, 128, 0.84)),
-    #195cc7;
-  border-color: rgba(255, 222, 76, 0.72);
-}
-
-.room-jeopardy:hover h3 {
-  color: #ffe36a;
+  color: var(--arcade-text);
+  text-shadow: none;
 }
 
 .companion-link .companion-url {
-  color: var(--arcade-accent-dim);
+  display: block;
+  font-size: 0.86rem;
+  font-weight: 600;
+  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--arcade-text-dim);
   transition: color var(--transition-fast);
 }
 
 .companion-link:hover .companion-url {
   color: var(--arcade-accent);
-}
-
-.companion-link.room-cloze .companion-url,
-.companion-link.room-cloze:hover .companion-url {
-  color: #34210d;
-  display: block;
-  font-size: 0.86rem;
-  font-weight: 600;
-  max-width: 100%;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.companion-link.room-jeopardy .companion-url,
-.companion-link.room-jeopardy:hover .companion-url {
-  color: #eef7ff;
-  display: block;
-  font-size: 0.86rem;
-  font-weight: 600;
-  max-width: 100%;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* ---------- 3. step 2 — tactic + machine settings ---------- */
@@ -2782,65 +2629,6 @@ label {
   letter-spacing: 0;
 }
 
-.companion-games {
-  margin-top: var(--space-8);
-}
-
-.companion-games h3 {
-  font-family: var(--font-display);
-  font-size: 1.45rem;
-  font-weight: 650;
-}
-
-.companion-list {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-}
-
-.companion-link {
-  min-height: 150px;
-}
-
-.room-cloze,
-.room-cloze:hover,
-.room-jeopardy,
-.room-jeopardy:hover {
-  color: var(--arcade-text);
-  background:
-    linear-gradient(135deg, rgba(114, 214, 189, 0.09), transparent 48%),
-    rgba(17, 24, 29, 0.9);
-  border-color: var(--arcade-border-soft);
-  box-shadow: none;
-}
-
-.room-cloze::before,
-.room-jeopardy::after,
-.room-cloze .companion-subtitle::before {
-  content: none;
-}
-
-.room-cloze .companion-subtitle,
-.room-jeopardy .companion-subtitle,
-.room-cloze h3,
-.room-jeopardy h3,
-.room-cloze:hover h3,
-.room-jeopardy:hover h3,
-.companion-link.room-cloze .companion-url,
-.companion-link.room-cloze:hover .companion-url,
-.companion-link.room-jeopardy .companion-url,
-.companion-link.room-jeopardy:hover .companion-url {
-  color: inherit;
-  text-shadow: none;
-}
-
-.companion-link .companion-subtitle {
-  font-size: 0.82rem;
-  white-space: normal;
-}
-
-.companion-link .companion-url {
-  color: var(--arcade-text-dim);
-}
-
 .toggle-group,
 .sidebar-tabs {
   padding: var(--space-1);
@@ -3136,11 +2924,12 @@ label {
   }
 
   .game-card h3 {
-    font-size: 0.78rem;
+    font-size: 0.9rem;
+    line-height: 1.18;
   }
 
   .game-card-meta {
-    font-size: 0.64rem;
+    font-size: 0.68rem;
   }
 
   .companion-list {
