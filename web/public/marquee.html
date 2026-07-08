@@ -23,7 +23,7 @@
       position: relative;
       display: grid;
       grid-template-rows: auto auto auto 1fr auto;
-      height: 100vh;
+      height: 100dvh;
       gap: 12px;
       padding: 14px;
     }
@@ -194,7 +194,7 @@
     html.marquee-embed .marquee {
       display: grid;
       grid-template-rows: minmax(0, 1fr) 42px;
-      height: 100vh;
+      height: 100dvh;
       min-height: 0;
       padding: 0;
       gap: 0;
@@ -250,7 +250,9 @@
     }
     html.marquee-embed.marquee-full .marquee {
       display: grid;
-      grid-template-rows: auto auto auto 1fr auto;
+      grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+      height: 100dvh;
+      min-height: 0;
       gap: 12px;
       padding: 14px;
       background: var(--abyss);
@@ -263,6 +265,7 @@
     }
     html.marquee-embed.marquee-full .side {
       display: grid;
+      min-height: 0;
     }
     html.marquee-embed.marquee-full .overlay {
       display: flex;
@@ -280,8 +283,10 @@
       grid-row: auto;
       grid-template-columns: minmax(0, 1.7fr) minmax(220px, 0.8fr);
       gap: 12px;
+      min-height: 0;
     }
     html.marquee-embed.marquee-full .screen {
+      min-height: 0;
       border: 1px solid var(--mint-dim);
       border-radius: var(--radius-lg);
     }
@@ -296,6 +301,73 @@
       .screen { min-height: 280px; max-height: 48vh; }
       .side { grid-template-rows: auto minmax(180px, 1fr) auto; }
       #narration { max-height: 40vh; }
+
+      html.marquee-embed.marquee-full .marquee {
+        height: 100dvh;
+        min-height: 0;
+        gap: clamp(8px, 1.4dvh, 12px);
+        padding: clamp(8px, 2.5vw, 14px);
+      }
+      html.marquee-embed.marquee-full .marquee-nav {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      html.marquee-embed.marquee-full header {
+        gap: 10px;
+      }
+      html.marquee-embed.marquee-full .title {
+        font-size: clamp(0.56rem, 2.3vw, 0.72rem);
+        line-height: 1.35;
+      }
+      html.marquee-embed.marquee-full .nowplaying {
+        font-size: clamp(0.7rem, 2.3vw, 0.8rem);
+        line-height: 1.35;
+      }
+      html.marquee-embed.marquee-full .stage {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: clamp(150px, 42dvh, 300px) minmax(0, 1fr);
+      }
+      html.marquee-embed.marquee-full .screen {
+        min-height: 0;
+        max-height: none;
+      }
+      html.marquee-embed.marquee-full .side {
+        grid-template-rows: auto minmax(0, 1fr) auto;
+      }
+      html.marquee-embed.marquee-full #narration {
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 520px) {
+      html.marquee-embed.marquee-full .marquee-nav-title,
+      html.marquee-embed.marquee-full .live {
+        font-size: 0.58rem;
+      }
+      html.marquee-embed.marquee-full .marquee-nav-actions {
+        gap: 6px;
+      }
+      html.marquee-embed.marquee-full .marquee-nav a,
+      html.marquee-embed.marquee-full .marquee-nav button {
+        min-height: 30px;
+        padding: 0 9px;
+        font-size: 0.55rem;
+      }
+      html.marquee-embed.marquee-full .stage {
+        grid-template-rows: clamp(136px, 38dvh, 240px) minmax(0, 1fr);
+      }
+      html.marquee-embed.marquee-full .overlay {
+        gap: 7px;
+        padding: 4px 7px;
+        font-size: 0.64rem;
+      }
+      html.marquee-embed:not(.marquee-full) .marquee {
+        grid-template-rows: minmax(0, 1fr) 38px;
+      }
+      html.marquee-embed:not(.marquee-full) .nowplaying {
+        padding: 6px 8px;
+        font-size: 0.7rem;
+      }
     }
   </style>
 </head>

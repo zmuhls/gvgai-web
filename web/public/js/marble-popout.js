@@ -108,7 +108,8 @@
   }
 
   function isMobileDrawer() {
-    return window.matchMedia && window.matchMedia('(max-width: 600px)').matches;
+    return window.matchMedia &&
+      window.matchMedia('(max-width: 700px), ((max-height: 520px) and (max-width: 900px))').matches;
   }
 
   if (expandBtn) {

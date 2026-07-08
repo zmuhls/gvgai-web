@@ -406,9 +406,10 @@ label {
 
 .companion-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(430px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr));
   gap: var(--space-4);
-  max-width: 960px;
+  width: min(100%, 1120px);
+  max-width: 100%;
 }
 
 .companion-link {
@@ -2478,11 +2479,14 @@ label {
 /* ---------- 8b. floating autoplay player ---------- */
 
 .marble-popout {
+  --marble-popout-inset: clamp(12px, 2vmin, 28px);
   position: fixed;
-  right: clamp(16px, 2vw, 28px);
-  bottom: clamp(16px, 2vw, 28px);
+  right: var(--marble-popout-inset);
+  bottom: var(--marble-popout-inset);
   z-index: 420;
-  width: clamp(330px, 31vw, 500px);
+  width: clamp(320px, min(36vw, 62vh), 720px);
+  max-width: calc(100vw - var(--marble-popout-inset) - var(--marble-popout-inset));
+  max-height: calc(100dvh - var(--marble-popout-inset) - var(--marble-popout-inset));
   background: #000;
   border: 1px solid rgba(123, 239, 195, 0.34);
   border-radius: 8px;
@@ -2499,8 +2503,8 @@ label {
 }
 
 .marble-popout.is-expanded {
-  width: min(980px, calc(100vw - 48px));
-  height: min(620px, calc(100vh - 88px));
+  width: min(1120px, calc(100vw - var(--marble-popout-inset) - var(--marble-popout-inset)));
+  height: min(720px, calc(100dvh - var(--marble-popout-inset) - var(--marble-popout-inset)));
 }
 
 .marble-popout-chrome {
@@ -2708,7 +2712,7 @@ label {
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 700px), ((max-height: 520px) and (max-width: 900px)) {
   #app {
     padding: 0 var(--space-3) calc(var(--space-8) + 58px);
   }
@@ -2793,7 +2797,7 @@ label {
     height: auto;
     min-height: 0;
     max-height: none;
-    top: calc(104px + var(--space-2));
+    top: clamp(58px, 14dvh, 112px);
     left: 0;
     right: 0;
     bottom: 0;
