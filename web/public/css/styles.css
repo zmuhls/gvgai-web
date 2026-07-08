@@ -406,17 +406,17 @@ label {
 
 .companion-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr));
-  gap: var(--space-4);
-  width: min(100%, 1120px);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 470px), 1fr));
+  gap: var(--space-5);
+  width: min(100%, 1160px);
   max-width: 100%;
 }
 
 .companion-link {
   isolation: isolate;
-  min-height: 190px;
+  min-height: 210px;
   overflow: hidden;
-  padding: var(--space-4);
+  padding: var(--space-5);
 }
 
 .companion-link > * {
@@ -426,10 +426,10 @@ label {
 
 .companion-link .companion-subtitle {
   justify-content: flex-start;
-  padding-right: 52px;
+  padding-right: 62px;
   color: var(--arcade-text-secondary);
   flex-wrap: nowrap;
-  font-size: 0.9rem;
+  font-size: 0.98rem;
   font-weight: 600;
   line-height: 1.25;
   white-space: nowrap;
@@ -441,9 +441,17 @@ label {
   white-space: nowrap;
 }
 
+.companion-link h3 {
+  font-size: 1.2rem;
+  letter-spacing: 0.12em;
+}
+
 .room-cloze {
   color: #26180a;
   background:
+    linear-gradient(112deg, transparent 0 48%, rgba(115, 78, 34, 0.12) 48.4% 49.4%, transparent 49.8%),
+    linear-gradient(0deg, rgba(67, 42, 17, 0.08) 0 1px, transparent 1px 38px),
+    linear-gradient(90deg, rgba(67, 42, 17, 0.07) 0 1px, transparent 1px 42px),
     radial-gradient(circle at 18% 18%, rgba(96, 57, 21, 0.13), transparent 26%),
     radial-gradient(circle at 84% 76%, rgba(96, 57, 21, 0.1), transparent 25%),
     linear-gradient(90deg, transparent 0 64%, rgba(58, 37, 14, 0.18) 64% 65%, transparent 65%),
@@ -470,7 +478,28 @@ label {
 }
 
 .room-cloze::after {
-  content: none;
+  content: "A_";
+  position: absolute;
+  top: 13px;
+  right: 13px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid rgba(48, 31, 12, 0.74);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 250, 226, 0.72), transparent 34%),
+    linear-gradient(145deg, rgba(239, 212, 150, 0.94), rgba(186, 132, 57, 0.78));
+  color: #2f1f0d;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255, 246, 215, 0.55);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 246, 215, 0.28),
+    0 0 14px rgba(80, 47, 16, 0.22);
 }
 
 .room-cloze .companion-subtitle::before {
@@ -493,7 +522,6 @@ label {
 
 .room-cloze h3 {
   margin-top: var(--space-4);
-  font-size: 1.08rem;
   color: #201306;
 }
 
@@ -504,10 +532,11 @@ label {
 .room-jeopardy {
   color: #f4f9ff;
   background:
-    linear-gradient(90deg, rgba(255, 218, 64, 0.14) 0 2px, transparent 2px 50%),
-    repeating-linear-gradient(0deg, rgba(214, 234, 255, 0.08) 0 1px, transparent 1px 13px),
-    linear-gradient(145deg, rgba(28, 90, 188, 0.9), rgba(11, 61, 159, 0.84) 58%, rgba(7, 37, 111, 0.8)),
-    #164fba;
+    linear-gradient(90deg, rgba(255, 218, 64, 0.18) 0 2px, transparent 2px 16.66%, rgba(255, 218, 64, 0.16) 16.66% calc(16.66% + 2px), transparent calc(16.66% + 2px) 33.33%, rgba(255, 218, 64, 0.13) 33.33% calc(33.33% + 2px), transparent calc(33.33% + 2px) 50%),
+    repeating-linear-gradient(0deg, rgba(214, 234, 255, 0.09) 0 1px, transparent 1px 14px),
+    radial-gradient(circle at 88% 18%, rgba(255, 218, 64, 0.2), transparent 24%),
+    linear-gradient(145deg, rgba(33, 105, 214, 0.95), rgba(10, 63, 171, 0.9) 58%, rgba(5, 34, 118, 0.86)),
+    #174fbd;
   border-color: rgba(255, 211, 47, 0.58);
   box-shadow:
     inset 0 0 0 1px rgba(214, 234, 255, 0.14),
@@ -545,7 +574,6 @@ label {
 
 .room-jeopardy h3 {
   margin-top: var(--space-4);
-  font-size: 1.08rem;
   color: #ffdc3b;
   text-shadow: 0 2px 0 rgba(2, 18, 67, 0.62);
 }
@@ -556,6 +584,9 @@ label {
 
 .room-cloze:hover {
   background:
+    linear-gradient(112deg, transparent 0 48%, rgba(115, 78, 34, 0.14) 48.4% 49.4%, transparent 49.8%),
+    linear-gradient(0deg, rgba(67, 42, 17, 0.08) 0 1px, transparent 1px 38px),
+    linear-gradient(90deg, rgba(67, 42, 17, 0.07) 0 1px, transparent 1px 42px),
     radial-gradient(circle at 18% 18%, rgba(96, 57, 21, 0.13), transparent 26%),
     radial-gradient(circle at 84% 76%, rgba(96, 57, 21, 0.1), transparent 25%),
     linear-gradient(90deg, transparent 0 64%, rgba(58, 37, 14, 0.18) 64% 65%, transparent 65%),
@@ -571,9 +602,10 @@ label {
 
 .room-jeopardy:hover {
   background:
-    linear-gradient(90deg, rgba(255, 218, 64, 0.16) 0 2px, transparent 2px 50%),
-    repeating-linear-gradient(0deg, rgba(214, 234, 255, 0.09) 0 1px, transparent 1px 13px),
-    linear-gradient(145deg, rgba(35, 104, 211, 0.94), rgba(12, 70, 174, 0.88) 58%, rgba(7, 42, 128, 0.84)),
+    linear-gradient(90deg, rgba(255, 218, 64, 0.2) 0 2px, transparent 2px 16.66%, rgba(255, 218, 64, 0.18) 16.66% calc(16.66% + 2px), transparent calc(16.66% + 2px) 33.33%, rgba(255, 218, 64, 0.15) 33.33% calc(33.33% + 2px), transparent calc(33.33% + 2px) 50%),
+    repeating-linear-gradient(0deg, rgba(214, 234, 255, 0.1) 0 1px, transparent 1px 14px),
+    radial-gradient(circle at 88% 18%, rgba(255, 218, 64, 0.24), transparent 24%),
+    linear-gradient(145deg, rgba(39, 115, 225, 0.98), rgba(13, 73, 186, 0.92) 58%, rgba(7, 42, 128, 0.86)),
     #195cc7;
   border-color: rgba(255, 222, 76, 0.72);
 }
@@ -584,16 +616,31 @@ label {
 
 /* ---- Haggle: coral bartering cabinet ---- */
 .room-haggle {
-  color: #2a0f0c;
+  color: #fff3ef;
   background:
-    radial-gradient(circle at 82% 22%, rgba(255, 214, 208, 0.16), transparent 30%),
-    linear-gradient(145deg, rgba(224, 138, 128, 0.95), rgba(196, 82, 74, 0.86) 55%, rgba(150, 52, 46, 0.82)),
-    #c4524a;
-  border-color: rgba(120, 40, 35, 0.7);
+    linear-gradient(90deg, transparent 0 calc(50% - 1px), rgba(255, 225, 216, 0.24) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)),
+    repeating-linear-gradient(0deg, rgba(255, 225, 216, 0.12) 0 1px, transparent 1px 28px),
+    radial-gradient(circle at 82% 22%, rgba(255, 236, 218, 0.22), transparent 30%),
+    radial-gradient(circle at 16% 76%, rgba(86, 35, 24, 0.22), transparent 28%),
+    linear-gradient(145deg, rgba(210, 112, 91, 0.96), rgba(170, 68, 52, 0.92) 55%, rgba(102, 38, 32, 0.9)),
+    #aa4434;
+  border-color: rgba(255, 190, 156, 0.44);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 232, 228, 0.22),
-    inset 0 -28px 48px rgba(90, 25, 20, 0.24),
-    0 10px 28px rgba(90, 25, 20, 0.34);
+    inset 0 0 0 1px rgba(255, 232, 222, 0.24),
+    inset 0 -28px 48px rgba(55, 18, 14, 0.28),
+    0 10px 28px rgba(80, 25, 18, 0.36);
+}
+
+.room-haggle::before {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  z-index: 0;
+  pointer-events: none;
+  border: 1px solid rgba(255, 226, 210, 0.28);
+  background:
+    linear-gradient(90deg, transparent 0 30%, rgba(255, 226, 210, 0.12) 30% 31%, transparent 31% 70%, rgba(255, 226, 210, 0.12) 70% 71%, transparent 71%),
+    linear-gradient(0deg, transparent 0 48%, rgba(255, 226, 210, 0.1) 48% 49%, transparent 49%);
 }
 
 .room-haggle::after {
@@ -619,13 +666,12 @@ label {
 }
 
 .room-haggle .companion-subtitle {
-  color: #ffe1db;
+  color: #ffe7df;
   text-shadow: 0 1px 0 rgba(70, 18, 14, 0.6);
 }
 
 .room-haggle h3 {
   margin-top: var(--space-4);
-  font-size: 1.08rem;
   color: #fff2ef;
   text-shadow: 0 2px 0 rgba(70, 18, 14, 0.5);
 }
@@ -636,9 +682,12 @@ label {
 
 .room-haggle:hover {
   background:
-    radial-gradient(circle at 82% 22%, rgba(255, 214, 208, 0.2), transparent 30%),
-    linear-gradient(145deg, rgba(230, 148, 138, 0.98), rgba(206, 90, 82, 0.9) 55%, rgba(160, 58, 51, 0.84)),
-    #ce5a52;
+    linear-gradient(90deg, transparent 0 calc(50% - 1px), rgba(255, 225, 216, 0.28) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)),
+    repeating-linear-gradient(0deg, rgba(255, 225, 216, 0.14) 0 1px, transparent 1px 28px),
+    radial-gradient(circle at 82% 22%, rgba(255, 236, 218, 0.26), transparent 30%),
+    radial-gradient(circle at 16% 76%, rgba(86, 35, 24, 0.22), transparent 28%),
+    linear-gradient(145deg, rgba(224, 124, 100, 0.98), rgba(186, 76, 58, 0.94) 55%, rgba(116, 42, 35, 0.9)),
+    #ba4c3a;
   border-color: rgba(255, 176, 168, 0.62);
 }
 
@@ -648,16 +697,32 @@ label {
 
 /* ---- LanGames: cyan language cabinet ---- */
 .room-langgames {
-  color: #04222b;
+  color: #061d2a;
   background:
-    radial-gradient(circle at 18% 20%, rgba(224, 246, 255, 0.16), transparent 28%),
-    linear-gradient(145deg, rgba(126, 214, 240, 0.95), rgba(90, 176, 224, 0.86) 55%, rgba(42, 120, 160, 0.82)),
-    #5ab0e0;
-  border-color: rgba(30, 96, 128, 0.66);
+    linear-gradient(120deg, transparent 0 30%, rgba(8, 45, 90, 0.14) 30% 31%, transparent 31% 62%, rgba(8, 45, 90, 0.13) 62% 63%, transparent 63%),
+    repeating-linear-gradient(0deg, rgba(237, 251, 255, 0.16) 0 1px, transparent 1px 24px),
+    radial-gradient(circle at 18% 20%, rgba(224, 246, 255, 0.26), transparent 28%),
+    radial-gradient(circle at 84% 76%, rgba(0, 64, 138, 0.22), transparent 30%),
+    linear-gradient(145deg, rgba(138, 216, 236, 0.96), rgba(72, 160, 213, 0.92) 55%, rgba(31, 90, 154, 0.9)),
+    #48a0d5;
+  border-color: rgba(189, 235, 250, 0.46);
   box-shadow:
     inset 0 0 0 1px rgba(224, 246, 255, 0.22),
-    inset 0 -28px 48px rgba(10, 60, 84, 0.22),
-    0 10px 28px rgba(10, 60, 84, 0.32);
+    inset 0 -28px 48px rgba(10, 45, 84, 0.24),
+    0 10px 28px rgba(10, 45, 84, 0.34);
+}
+
+.room-langgames::before {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  z-index: 0;
+  pointer-events: none;
+  border: 1px solid rgba(237, 251, 255, 0.26);
+  background:
+    radial-gradient(circle at 74% 32%, transparent 0 15px, rgba(237, 251, 255, 0.18) 16px 17px, transparent 18px),
+    linear-gradient(90deg, rgba(237, 251, 255, 0.14) 0 1px, transparent 1px 100%),
+    repeating-linear-gradient(90deg, transparent 0 42px, rgba(237, 251, 255, 0.08) 42px 43px);
 }
 
 .room-langgames::after {
@@ -683,13 +748,12 @@ label {
 }
 
 .room-langgames .companion-subtitle {
-  color: #dff4ff;
+  color: #e9f9ff;
   text-shadow: 0 1px 0 rgba(4, 40, 56, 0.6);
 }
 
 .room-langgames h3 {
   margin-top: var(--space-4);
-  font-size: 1.08rem;
   color: #f2fbff;
   text-shadow: 0 2px 0 rgba(4, 40, 56, 0.5);
 }
@@ -700,9 +764,12 @@ label {
 
 .room-langgames:hover {
   background:
-    radial-gradient(circle at 18% 20%, rgba(224, 246, 255, 0.2), transparent 28%),
-    linear-gradient(145deg, rgba(140, 220, 244, 0.98), rgba(100, 184, 230, 0.9) 55%, rgba(48, 130, 172, 0.84)),
-    #64b8e6;
+    linear-gradient(120deg, transparent 0 30%, rgba(8, 45, 90, 0.16) 30% 31%, transparent 31% 62%, rgba(8, 45, 90, 0.15) 62% 63%, transparent 63%),
+    repeating-linear-gradient(0deg, rgba(237, 251, 255, 0.18) 0 1px, transparent 1px 24px),
+    radial-gradient(circle at 18% 20%, rgba(224, 246, 255, 0.3), transparent 28%),
+    radial-gradient(circle at 84% 76%, rgba(0, 64, 138, 0.24), transparent 30%),
+    linear-gradient(145deg, rgba(148, 224, 244, 0.98), rgba(82, 171, 222, 0.94) 55%, rgba(38, 104, 168, 0.9)),
+    #52abde;
   border-color: rgba(180, 232, 250, 0.62);
 }
 
@@ -738,6 +805,32 @@ label {
 .companion-link.room-jeopardy .companion-url,
 .companion-link.room-jeopardy:hover .companion-url {
   color: #eef7ff;
+  display: block;
+  font-size: 0.86rem;
+  font-weight: 600;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.companion-link.room-haggle .companion-url,
+.companion-link.room-haggle:hover .companion-url {
+  color: #fff0eb;
+  display: block;
+  font-size: 0.86rem;
+  font-weight: 600;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.companion-link.room-langgames .companion-url,
+.companion-link.room-langgames:hover .companion-url {
+  color: #ecfaff;
   display: block;
   font-size: 0.86rem;
   font-weight: 600;
@@ -2842,7 +2935,7 @@ label {
 
 @media (max-width: 700px), ((max-height: 520px) and (max-width: 900px)) {
   #app {
-    padding: 0 var(--space-3) calc(var(--space-8) + 58px);
+    padding: 0 var(--space-3) calc(var(--space-8) + 52px);
   }
 
   .telemetry-backend-grid {
@@ -2882,26 +2975,24 @@ label {
   }
 
   .marble-popout {
-    left: 0;
-    right: 0;
-    bottom: 0;
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: var(--space-2);
     width: auto;
-    min-height: 54px;
-    max-height: 54px;
-    border-right: 0;
-    border-bottom: 0;
-    border-left: 0;
-    border-radius: 8px 8px 0 0;
+    min-height: 44px;
+    max-height: 44px;
+    border: 1px solid rgba(123, 239, 195, 0.3);
+    border-radius: 8px;
   }
 
   .marble-popout:not(.is-expanded)::before {
     content: "";
     position: absolute;
-    top: 6px;
+    top: 5px;
     left: 50%;
     z-index: 4;
-    width: 38px;
-    height: 3px;
+    width: 34px;
+    height: 2px;
     border-radius: 999px;
     background: rgba(228, 251, 240, 0.55);
     transform: translateX(-50%);
@@ -2909,9 +3000,14 @@ label {
 
   .marble-popout:not(.is-expanded) .marble-popout-chrome {
     position: relative;
-    min-height: 54px;
-    padding: 15px var(--space-3) 8px;
+    min-height: 44px;
+    padding: 12px var(--space-2) 6px;
     opacity: 1;
+    border-bottom: 0;
+  }
+
+  .marble-popout:not(.is-expanded) .marble-popout-action:not(#marble-popout-expand) {
+    display: none;
   }
 
   .marble-popout:not(.is-expanded) .marble-popout-frame {
@@ -2922,27 +3018,34 @@ label {
 
   .marble-popout.is-expanded {
     width: auto;
-    height: auto;
+    height: min(58dvh, 460px);
     min-height: 0;
-    max-height: none;
-    top: clamp(58px, 14dvh, 112px);
-    left: 0;
-    right: 0;
-    bottom: 0;
+    max-height: calc(100dvh - 96px);
+    top: auto;
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: var(--space-2);
+    border-radius: 8px;
   }
 
   .marble-popout.is-expanded .marble-popout-chrome {
-    min-height: 42px;
-    padding: 6px var(--space-2);
+    min-height: 38px;
+    padding: 5px var(--space-2);
   }
 
   .marble-popout.is-expanded .marble-popout-frame {
-    height: calc(100% - 42px);
+    height: calc(100% - 38px);
     min-height: 0;
   }
 
   .marble-popout-title {
-    font-size: 0.58rem;
+    font-size: 0.55rem;
+  }
+
+  .marble-popout-action {
+    width: 23px;
+    height: 22px;
+    font-size: 0.88rem;
   }
 
   #game-selector .step-note {
