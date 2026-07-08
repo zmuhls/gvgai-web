@@ -147,10 +147,6 @@ Per-game `actionAliases` in game configs map internal actions to game-appropriat
 
 Converts the `observationGrid[x][y][sprites]` 3D array from the SSO JSON into a character map. Category-based defaults: `@`=avatar, `E`=NPC, `#`=static, `$`=resource, `O`=portal, `*`=projectile, `M`=movable, `.`=empty. Background sprites auto-detected (category 4 in >90% of cells) and cached per level in `GameStateTracker.backgroundItypes`. Per-game `gridSymbolMap` overrides available in game config.
 
-### Screenshots are browser-only (no multimodal LLM path)
-
-LLM prompts are **text-only**. There is no vision/screenshot-to-model path and `config.json` has **no `multimodalPatterns` key** (an earlier multimodal feature was removed — grep finds zero `multimodal` references in the backend). The Java engine writes a `gameStateByBytes.png` each frame; `server.js` converts it to a base64 `data:` URL and streams it to the **browser** via Socket.IO for visualization only. `llm-client.js` never attaches an image to the `messages` payload.
-
 ### Game classification & class-derived runtime defaults
 
 Every game gets a computed classification (`lib/game-classifier.js`, pure rules over the VGDL digest): an **archetype** (`shooter-lane`, `shooter-roaming`, `pusher-puzzle`, `collector`, `chaser`, `survivor`, `reflex-pilot`, `navigator`), **subtypes** (`hazard-dense`, `timed`, `transform`, …), and a **pace** (`twitch` | `reactive` | `deliberate`) keyed to the staleness constraint above. Classification is stored in each game config (backfilled by `scripts/classify-games.js`) and computed lazily for configs without one. It must never be added to the hashed digest object itself — that would churn every `digestHash`, which is the strategy-memory key.
