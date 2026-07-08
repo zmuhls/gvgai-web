@@ -251,6 +251,11 @@ class AttractCoordinator {
             maxActions: this.caseOptions.maxActions,
             onCaseStart: (handle) => {
               this._currentHandle = handle;
+              if (!this.enabled) {
+                this._abortReason = 'stopped';
+                try { handle.llmClient.disconnect(); } catch (e) { /* already gone */ }
+                return;
+              }
               // If a walk-up arrived while this case was spawning, cut it now that
               // the client exists — keeps beginWalkup responsive (seconds, not minutes).
               if (this.walkupActive) {

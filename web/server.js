@@ -212,6 +212,10 @@ app.use('/api/finetune', require('./routes/finetune'));
 // Clean URL for the embeddable spectator page (also served as /marquee.html).
 app.get('/marquee', (req, res) => res.sendFile(path.join(__dirname, 'public', 'marquee.html')));
 
+// Companion room subpages: iframe the external game, housed within this domain.
+app.get('/haggle', (req, res) => res.sendFile(path.join(__dirname, 'public', 'haggle.html')));
+app.get('/langgames', (req, res) => res.sendFile(path.join(__dirname, 'public', 'langgames.html')));
+
 // Active game instances
 const activeGames = new Map();
 
@@ -479,6 +483,12 @@ async function startServer() {
     io,
     fallbackPath: path.resolve(__dirname, 'data', 'telemetry-events.jsonl')
   });
+  // Fine-tune pipeline: route is always mounted; the auto-trigger is opt-in
+  // (FINETUNE_AUTO_ENABLED=1) so the deployed instance stays inert.
+  finetunePipeline.configure({ io, telemetry });
+  if (process.env.FINETUNE_AUTO_ENABLED === '1') {
+    finetunePipeline.startAutoTrigger();
+  }
   telemetry.track({
     eventFamily: 'system',
     eventType: 'server_started',

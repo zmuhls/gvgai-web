@@ -75,11 +75,12 @@ Human plays Aliens
 
 Trigger (manual button or auto after 10 new traces)
   → prepare-finetune-data.js replays buildPrompt() over stored SSO
-  → outputs chat-message JSONL pairs
-  → finetune.py loads Gemma 3 4B, applies QLoRA, trains, exports GGUF, and writes the registry entry
+  → outputs { instruction, input, output } JSONL pairs
+  → finetune.py loads Gemma 3 4B, applies QLoRA rank 4, trains 5 epochs
+  → exports GGUF, writes registry entry
   → ollama-loader runs `ollama create` to serve the model locally
-  → catalog reloads and the picker includes the new model
-  → marble run adds the tuned model and game to its existing playlist
+  → catalog reloads and picker, eval plan, marble run include the new model
+  → eval comparison runs automatically between baseline and fine-tuned
   → tote board shows the score delta
 ```
 
@@ -97,7 +98,7 @@ Every tick during human or LLM play the client stores the raw SerializableStateO
 
 ### Orchestration
 
-`POST /api/finetune/trigger` accepts a game ID and returns 202 while the server prepares trace data in-process, then spawns the Python training script. Progress streams through Socket.IO as `finetune-progress` events with stage labels for preparing, training, exporting, loading, complete. The telemetry dashboard shows a live pipeline panel. When training finishes the server loads the GGUF into Ollama, refreshes the model catalog, and asks the marble run to add the tuned model and game to its existing playlist. The tote board annotates the fine-tuned row with a score delta against the baseline.
+`POST /api/finetune/trigger` accepts a game ID and returns 202 while the server spawns the data prep script as a Node child process, parses its stdout for statistics, then spawns the Python training script. Progress streams through Socket.IO as `finetune-progress` events with stage labels for preparing, training, exporting, loading, complete. The telemetry dashboard shows a live pipeline panel. When training finishes the server loads the GGUF into Ollama, refreshes the model catalog, auto-runs an eval comparison between the baseline and the fine-tuned model on the same game. The tote board annotates the fine-tuned row with a score delta against the baseline.
 
 Auto-trigger is opt-in via `FINETUNE_AUTO_ENABLED=1`. When enabled the server checks featured games every 10 minutes, triggering the pipeline for any game with 10 or more new human traces since its last training run.
 

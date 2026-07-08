@@ -44,7 +44,6 @@ function makePipeline(overrides = {}) {
   const io = { events: [], emit(event, payload) { this.events.push({ event, payload }); } };
   const telemetry = { events: [], track(e) { this.events.push(e); } };
   const children = [];
-  const marbleQueue = [];
 
   const pipeline = new FinetunePipeline().configure({
     io,
@@ -68,14 +67,13 @@ function makePipeline(overrides = {}) {
     },
     readGameRegistry: () => new Map([[0, { id: 0, name: 'aliens' }]]),
     readFeaturedIds: () => [0],
-    enqueueMarbleEval: model => marbleQueue.push(model),
     registryPath: path.join(tempDir, 'registry.json'),
     jsonlDir: tempDir,
     modelsDir: path.join(tempDir, 'models'),
     forceDryRun: false,
     ...overrides
   });
-  return { pipeline, io, telemetry, children, tempDir, marbleQueue };
+  return { pipeline, io, telemetry, children, tempDir };
 }
 
 function emitLines(child, objects) {
@@ -102,7 +100,7 @@ test('trigger rejects a second run while one is active', async () => {
 });
 
 test('dry run completes through the full stage sequence', async () => {
-  const { pipeline, io, telemetry, children, marbleQueue } = makePipeline();
+  const { pipeline, io, telemetry, children } = makePipeline();
   const { runId } = pipeline.trigger({ gameId: 0, dryRun: true });
   await until(() => children.length === 1);
   assert.equal(pipeline.getStatus().run.state, 'training');
@@ -129,7 +127,6 @@ test('dry run completes through the full stage sequence', async () => {
   assert.ok(completeEvent, 'finetune-complete emitted');
   assert.equal(completeEvent.payload.modelId, 'gvgai-aliens-ft-1');
   assert.ok(io.events.some(e => e.event === 'finetune-progress' && e.payload.stage === 'train_step'));
-  assert.deepEqual(marbleQueue, [], 'dry runs do not queue marble eval');
 
   const types = telemetry.events.map(e => e.eventType);
   assert.ok(types.includes('finetune_started'));
@@ -141,7 +138,7 @@ test('dry run completes through the full stage sequence', async () => {
 
 test('a real (non-dry) run loads the model into ollama', async () => {
   const loads = [];
-  const { pipeline, children, marbleQueue, telemetry } = makePipeline({
+  const { pipeline, children } = makePipeline({
     ollamaLoader: {
       isOllamaAvailable: async () => true,
       loadModel: async (opts) => { loads.push(opts); return { loaded: true }; }
@@ -158,15 +155,6 @@ test('a real (non-dry) run loads the model into ollama', async () => {
 
   assert.equal(pipeline.getStatus().run.loadedToOllama, true);
   assert.deepEqual(loads, [{ modelId: 'gvgai-aliens-ft-2', ggufPath: '/models/x.gguf' }]);
-  assert.deepEqual(marbleQueue, [{
-    modelId: 'gvgai-aliens-ft-2',
-    modelName: 'gvgai-aliens-ft-2',
-    gameId: 0,
-    gameName: 'aliens',
-    provider: 'ollama-local',
-    description: 'Fine-tuned on 3 aliens play(s)'
-  }]);
-  assert.ok(telemetry.events.some(e => e.payload?.stage === 'marble_eval_queued'));
 });
 
 test('missing python fails the run with PYTHON_MISSING', async () => {

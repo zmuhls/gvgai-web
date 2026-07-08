@@ -1,0 +1,586 @@
+{
+  "exportedAt": "2026-07-06T01:29:11.461Z",
+  "startedAt": "2026-07-06T01:28:47.368Z",
+  "game": {
+    "id": 0,
+    "name": "aliens",
+    "archetype": "shooter-lane"
+  },
+  "level": 0,
+  "model": "google/gemini-2.5-flash",
+  "playerType": "human",
+  "strategy": "Pursue points. Collect resources and take measured risks when a clear scoring route appears.",
+  "summary": null,
+  "decisions": [
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_LEFT",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_RIGHT",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_RIGHT",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_RIGHT",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_RIGHT",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_LEFT",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_LEFT",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_RIGHT",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_LEFT",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_LEFT",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    },
+    {
+      "tick": 0,
+      "score": 0,
+      "action": "ACTION_USE",
+      "human": true
+    }
+  ]
+}

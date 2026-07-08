@@ -71,13 +71,9 @@ appears in the picker (`GET /api/models`) and routes to local Ollama
 
 Pick the `gvgai-<game>-ft-*` model in the arcade picker and start the game. It
 answers from local Ollama; the tote board and narration panel treat it like any
-other model.
-
-When the server-side pipeline loads a non-dry model into local Ollama, it adds
-that tuned model and game to the marble-run playlist, so scored comparison uses
-the existing single Java process. Manual Legion imports through this runbook do
-not notify the running Node process; restart the server or trigger a server-side
-load if you need the marble playlist to pick the model up automatically.
+other model. For a scored comparison, run the eval harness against it —
+remember the port-8080 rule: stop the marble run first
+(`curl -X POST localhost:3000/api/marble/stop`).
 
 ## Dry-run (no GPU, any machine)
 
