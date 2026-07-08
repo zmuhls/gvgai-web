@@ -193,3 +193,33 @@ test('6. clearCache forces a fresh read from disk', () => {
   assert.equal(traces.length, 2, 'should see externally-added trace after cache clear');
   assert.equal(traces[0].finalScore, 500, 'highest score should be first');
 });
+test('sso objects on actionHistory entries survive the save/load round trip', () => {
+  const tempDir = makeTempDir();
+  const store = freshModule(tempDir);
+  const fixture = require('./fixtures/finetune/sso-tick.json');
+  const prunedSso = store.pruneSsoForTrace(fixture);
+
+  const trace = makeTrace({
+    actionHistory: [
+      { tick: 0, action: 'ACTION_USE', score: 0, health: 100, scoreDelta: 0, sso: prunedSso },
+      { tick: 1, action: 'ACTION_LEFT', score: 0, health: 100, scoreDelta: 0, sso: prunedSso }
+    ]
+  });
+  const saved = store.saveTrace(trace);
+  const loaded = store.getTrace(0, saved.traceId);
+
+  assert.equal(loaded.actionHistory.length, 2);
+  assert.equal(loaded.actionHistory[0].sso.gameTick, fixture.gameTick);
+  assert.deepEqual(loaded.actionHistory[1].sso.observationGrid, fixture.observationGrid);
+  assert.equal(loaded.actionHistory[0].sso.imageArray, undefined);
+});
+
+test('pruneSsoForTrace drops imageArray and handles null', () => {
+  const tempDir = makeTempDir();
+  const store = freshModule(tempDir);
+
+  const pruned = store.pruneSsoForTrace({ gameTick: 1, imageArray: [1, 2, 3] });
+  assert.deepEqual(pruned, { gameTick: 1 });
+  assert.equal(store.pruneSsoForTrace(null), null);
+  assert.equal(store.pruneSsoForTrace('raw-string'), null);
+});

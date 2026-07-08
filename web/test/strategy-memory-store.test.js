@@ -120,7 +120,7 @@ test('STRATEGY_MEMORY_DISABLED=1 blocks accepted records from prompts', () => {
   }
 });
 
-test('accepted digest memory does not change codeProtocol prompts', () => {
+test('accepted digest memory injects into natural-language prompts (codeProtocol disabled)', () => {
   const memoryDir = tempMemoryDir();
   const originalDir = process.env.STRATEGY_MEMORY_DIR;
   process.env.STRATEGY_MEMORY_DIR = memoryDir;
@@ -135,9 +135,10 @@ test('accepted digest memory does not change codeProtocol prompts', () => {
       promptText: 'ACCEPTED ALIENS DIGEST TEXT'
     }), { memoryDir });
 
-    const config = promptStore.resolveGamePromptConfig(0, 0);
-    assert.equal(config.codeProtocol.enabled, true);
-    assert.doesNotMatch(config.gameContent, /ACCEPTED ALIENS DIGEST TEXT/);
+    const config = promptStore.resolveGamePromptConfig(0, 0, { strategyMemory: 'accepted' });
+    assert.equal(config.codeProtocol.enabled, false);
+    // With codeProtocol disabled, accepted memory replaces the game context layer
+    assert.match(config.gameContent || '', /ACCEPTED ALIENS DIGEST TEXT/);
 
     const prompt = buildPrompt({
       blockSize: 10,
@@ -149,8 +150,8 @@ test('accepted digest memory does not change codeProtocol prompts', () => {
       gameTick: 0,
       availableActions: ['ACTION_NIL', 'ACTION_LEFT', 'ACTION_RIGHT', 'ACTION_USE']
     }, config);
-    assert.equal(prompt.responseMode, 'code');
-    assert.doesNotMatch(prompt.userMessage, /ACCEPTED ALIENS DIGEST TEXT/);
+    assert.equal(prompt.responseMode, undefined);
+    assert.match(prompt.userMessage, /ACCEPTED ALIENS DIGEST TEXT/);
   } finally {
     if (originalDir === undefined) delete process.env.STRATEGY_MEMORY_DIR;
     else process.env.STRATEGY_MEMORY_DIR = originalDir;

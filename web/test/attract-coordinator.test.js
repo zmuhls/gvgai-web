@@ -166,6 +166,59 @@ test('stop(): tears down and returns to IDLE', async () => {
   assert.equal(coord.mode, 'IDLE');
 });
 
+test('addFinetunedModel(): adds tuned model and game to the marble playlist once', () => {
+  const io = makeIo();
+  const coord = new AttractCoordinator();
+  const buildCalls = [];
+  const buildPlan = (options = {}) => {
+    buildCalls.push(options);
+    const models = options.models || [
+      { id: 'base', name: 'Base', provider: 'ollama-cloud', fallback: null }
+    ];
+    const gameIds = options.gameIds || [0];
+    return {
+      models,
+      gameIds,
+      cases: gameIds.flatMap(gameId => models.map(model => ({
+        ...makeCase(gameId),
+        runId: `run-${gameId}-${model.id}`,
+        modelId: model.id,
+        modelName: model.name,
+        provider: model.provider
+      })))
+    };
+  };
+
+  coord.configure({
+    io,
+    buildArcadeEvalPlan: buildPlan,
+    runEvalCase: () => Promise.resolve({})
+  });
+  coord.cases = coord._buildCases();
+  assert.equal(coord.cases.length, 1);
+
+  const first = coord.addFinetunedModel({
+    modelId: 'gvgai-aliens-ft-1',
+    gameId: 4,
+    gameName: 'bait'
+  });
+  assert.equal(first.added, true);
+  assert.deepEqual(coord.planOptions.gameIds, [0, 4]);
+  assert.deepEqual(coord.planOptions.models.map(model => model.id), ['base', 'gvgai-aliens-ft-1']);
+  assert.equal(coord.cases.length, 4);
+  assert.ok(io.events.some(e => e.event === 'marble-run-playlist-updated' && e.payload.added === true));
+
+  const second = coord.addFinetunedModel({
+    modelId: 'gvgai-aliens-ft-1',
+    gameId: 4,
+    gameName: 'bait'
+  });
+  assert.equal(second.added, false);
+  assert.deepEqual(coord.planOptions.models.map(model => model.id), ['base', 'gvgai-aliens-ft-1']);
+  assert.equal(coord.cases.length, 4);
+  assert.ok(buildCalls.length >= 3);
+});
+
 test('stops the loop after repeated case failures (engine-unavailable backstop)', async () => {
   const io = makeIo();
   let calls = 0;

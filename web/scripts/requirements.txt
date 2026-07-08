@@ -1,0 +1,8 @@
+# Training dependencies for scripts/finetune.py — Legion (CUDA, 24 GB VRAM) only.
+# Not installable on the arcade Mac (no CUDA) or the Railway image; those run
+# finetune.py --dry-run, which needs stdlib only.
+#
+# unsloth pins its own compatible torch/trl/transformers/peft/bitsandbytes.
+# GGUF export compiles llama.cpp on first use: needs cmake + a C compiler.
+unsloth
+datasets

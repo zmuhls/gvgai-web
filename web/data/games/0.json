@@ -8,7 +8,7 @@
   },
   "progressionContexts": {},
   "llmSettings": {
-    "maxTokens": 50,
+    "maxTokens": 100,
     "temperature": 0.1
   },
   "actionAliases": {
@@ -18,7 +18,7 @@
     "ACTION_RIGHT": "RIGHT"
   },
   "codeProtocol": {
-    "enabled": true,
+    "enabled": false,
     "id": "GV1",
     "actionCodes": {
       "N": "ACTION_NIL",

@@ -16,12 +16,12 @@ const DEFAULT_CONFIG = {
     projectRoot: PROJECT_ROOT,
     screenshotPath: 'logs/game.png',
     classpath: ['out', 'gson-2.6.2.jar'].join(path.delimiter),
-    mainClass: 'tracks.singlePlayer.GameServer',
+    mainClass: 'tracks.singleLearning.utils.JavaServer',
     runtimeRoot: ''
   },
   openrouter: {
     apiUrl: 'https://openrouter.ai/api/v1/chat/completions',
-    defaultModel: 'anthropic/claude-3-5-haiku'
+    defaultModel: 'gemma3:27b'
   },
   ollamaCloud: {
     apiUrl: 'https://ollama.com/v1/chat/completions'

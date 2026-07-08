@@ -57,6 +57,7 @@ class HumanPlayClient {
     this.actionHistory = [];
     this.runStartScore = null;
     this.summaryEmitted = false;
+    this.lastSso = null;
     this.runId = this.runId || telemetry.createRunId(`human-game-${this.gameId ?? 'unknown'}`);
 
     return new Promise((resolve, reject) => {
@@ -238,7 +239,14 @@ class HumanPlayClient {
         : this.runStartScore;
       const scoreDelta = score - (prevScore || 0);
 
-      this.actionHistory.push({ tick, action: actionToSend, score, health, scoreDelta });
+      this.actionHistory.push({
+        tick,
+        action: actionToSend,
+        score,
+        health,
+        scoreDelta,
+        sso: traceStore.pruneSsoForTrace(sso)
+      });
 
       // Telemetry: one event per human action
       const classification = getCachedClassification(this.gameId);

@@ -94,3 +94,19 @@ test('buildRunSummary produces summary with playerType human and provider human'
   assert.equal(summary.level, 1);
   assert.deepEqual(summary.actions, ['ACTION_RIGHT', 'ACTION_USE']);
 });
+test('recordActState stores pruned SSO (no imageArray) in actionHistory', () => {
+  const client = new HumanPlayClient();
+  const fixture = require('./fixtures/finetune/sso-tick.json');
+  const jsonPayload = JSON.stringify(fixture);
+
+  client.recordActState(jsonPayload, 'ACTION_USE');
+
+  assert.equal(client.actionHistory.length, 1);
+  const entry = client.actionHistory[0];
+  assert.equal(entry.action, 'ACTION_USE');
+  assert.equal(entry.tick, fixture.gameTick);
+  assert.equal(entry.sso.gameTick, fixture.gameTick);
+  assert.deepEqual(entry.sso.availableActions, fixture.availableActions);
+  assert.ok(entry.sso.observationGrid, 'observationGrid kept for prompt reconstruction');
+  assert.equal(entry.sso.imageArray, undefined, 'screenshot bytes pruned from trace');
+});

@@ -78,6 +78,9 @@ function getTemplate(id) {
 }
 
 function saveTemplate(template) {
+  if (!template.id || typeof template.id !== 'string' || template.id === 'undefined') {
+    return { error: 'Template must have a valid string id' };
+  }
   const now = new Date().toISOString();
   if (!template.createdAt) template.createdAt = now;
   template.updatedAt = now;

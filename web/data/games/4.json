@@ -8,11 +8,11 @@
   },
   "progressionContexts": {},
   "llmSettings": {
-    "maxTokens": 50,
+    "maxTokens": 100,
     "temperature": 0.1
   },
   "codeProtocol": {
-    "enabled": true,
+    "enabled": false,
     "id": "GV1",
     "policyId": "bait-level0",
     "authoritative": false,

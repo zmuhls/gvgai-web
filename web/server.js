@@ -8,6 +8,7 @@ const { getConfig, getConfigLoadStatus } = require('./lib/runtime-config');
 const { resolveScreenshotPath } = require('./lib/screenshot-path');
 const { sanitizeStrategy } = require('./lib/state-converter');
 const coordinator = require('./lib/attract-coordinator');
+const finetunePipeline = require('./lib/finetune-pipeline');
 const config = getConfig();
 
 const telemetry = require('./lib/telemetry-store');
@@ -206,6 +207,7 @@ app.use('/api/evals', require('./routes/evals'));
 app.use('/api/telemetry', require('./routes/telemetry'));
 app.use('/api/marble', require('./routes/marble'));
 app.use('/api/traces', require('./routes/traces-local'));
+app.use('/api/finetune', require('./routes/finetune'));
 
 // Clean URL for the embeddable spectator page (also served as /marquee.html).
 app.get('/marquee', (req, res) => res.sendFile(path.join(__dirname, 'public', 'marquee.html')));
@@ -283,7 +285,11 @@ app.post('/api/game/start', async (req, res) => {
     try {
       const gameName = resolveGameName(gameId);
       if (isHumanPlay) {
-        await client.connect(config.gvgai.socketPort, io, gameId, gameName);
+        // connect(port, model, io, gameId, gameName) — keep the LLMClient arg
+        // order. Dropping 'human' here shifts io into model and the game NAME
+        // into gameId, which files human traces under the wrong key and mutes
+        // the client's socket emits (the pre-2026-07-06 human-trace bug).
+        await client.connect(config.gvgai.socketPort, 'human', io, gameId, gameName);
       } else {
         await client.connect(config.gvgai.socketPort, model, io, gameId, gameName, cleanStrategy);
       }
@@ -433,8 +439,8 @@ io.on('connection', (socket) => {
 });
 
 // Cleanup on server shutdown
-process.on('SIGINT', () => {
-  console.log('\n[Server] Shutting down...');
+function shutdown(signal) {
+  console.log(`\n[Server] Shutting down (${signal})...`);
 
   // Stop all games
   for (const [processId, game] of activeGames) {
@@ -444,6 +450,7 @@ process.on('SIGINT', () => {
 
   activeGames.clear();
   coordinator.stop();
+  finetunePipeline.shutdown();
   stopScreenshotStreaming();
   telemetry.track({
     eventFamily: 'system',
@@ -451,7 +458,10 @@ process.on('SIGINT', () => {
     source: 'server'
   });
   telemetry.flush().finally(() => process.exit(0));
-});
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 const PORT = Number.parseInt(process.env.PORT || config.server.port || 3000, 10);
 
@@ -514,6 +524,18 @@ async function startServer() {
         telemetry,
         caseOptions: { maxActions: 40 }
       });
+      // Fine-tune pipeline: route is always mounted; the auto-trigger is opt-in
+      // (FINETUNE_AUTO_ENABLED=1) so the deployed instance stays inert. Completed
+      // local Ollama loads are delegated to the marble run, which already owns
+      // the single Java port.
+      finetunePipeline.configure({
+        io,
+        telemetry,
+        enqueueMarbleEval: model => coordinator.addFinetunedModel(model)
+      });
+      if (process.env.FINETUNE_AUTO_ENABLED === '1') {
+        finetunePipeline.startAutoTrigger();
+      }
       // Always-on by default (attract mode); set MARBLE_RUN_AUTOSTART=false to disable.
       if (process.env.MARBLE_RUN_AUTOSTART !== 'false') {
         coordinator.start();

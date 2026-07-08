@@ -1,10 +1,10 @@
 const express = require('express');
-const { MODELS } = require('../lib/models');
+const { getAllModels } = require('../lib/models');
 
 const router = express.Router();
 
 router.get('/', (req, res) => {
-  res.json(MODELS);
+  res.json(getAllModels());
 });
 
 module.exports = router;

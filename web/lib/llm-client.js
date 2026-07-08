@@ -7,6 +7,7 @@ const { resolveModel } = require('./models');
 const promptStore = require('./prompt-store');
 const telemetry = require('./telemetry-store');
 const traceStore = require('./play-trace-store');
+const guardrail = require('./usage-guardrail');
 const { getCachedClassification } = require('./game-classifier');
 
 // Macro-action executor tuning. The plan queue is a bridge across LLM latency,
@@ -261,7 +262,7 @@ class LLMClient {
             const sso = this.recordActState(jsonPayload, directPolicy.action);
             if (sso) {
               this.pendingLLMAction = directPolicy.action;
-              this.recordActionDecision(directPolicy.action, sso.gameTick || 0, directPolicy.reason);
+              this.recordActionDecision(directPolicy.action, sso.gameTick || 0, directPolicy.reason, sso);
               this.emitPolicyDecision(directPolicy, sso);
             }
             this.sendMessageWithId(msgId, `${directPolicy.action}#${this.actResponseType}`);
@@ -273,7 +274,7 @@ class LLMClient {
             this.sendMessageWithId(msgId, `${decision.action}#${this.actResponseType}`);
           } catch (error) {
             console.error('[LLMClient] Error in synchronous LLM action:', error.message);
-            this.recordActionDecision('ACTION_NIL', sso ? sso.gameTick : 0, error.message);
+            this.recordActionDecision('ACTION_NIL', sso ? sso.gameTick : 0, error.message, sso);
             this.sendMessageWithId(msgId, `ACTION_NIL#${this.actResponseType}`);
           }
           return;
@@ -286,7 +287,7 @@ class LLMClient {
             const sso = this.recordActState(jsonPayload, directPolicy.action);
             if (sso) {
               this.pendingLLMAction = directPolicy.action;
-              this.recordActionDecision(directPolicy.action, sso.gameTick || 0, directPolicy.reason);
+              this.recordActionDecision(directPolicy.action, sso.gameTick || 0, directPolicy.reason, sso);
               this.emitPolicyDecision(directPolicy, sso);
             }
           });
@@ -648,6 +649,27 @@ class LLMClient {
     };
 
     if (provider === 'ollama-cloud') {
+      // Light usage guardrail on the Ollama Cloud key. A blocked call throws a
+      // flagged error so the caller skips the OpenRouter fallback (which would
+      // silently shift spend) and surfaces it via 'llm-error' instead.
+      const verdict = guardrail.admitOllamaCall(this.ollamaCloudCallCount || 0);
+      if (!verdict.allowed) {
+        telemetry.track({
+          eventFamily: 'system',
+          eventType: 'guardrail_block',
+          source: 'llm-client',
+          runId: this.runId,
+          gameId: this.gameId,
+          levelId: this.levelCount,
+          modelId,
+          provider: 'ollama-cloud',
+          payload: { scope: verdict.scope, message: verdict.reason }
+        });
+        const guardErr = new Error(`ollama-cloud usage guardrail: ${verdict.reason}`);
+        guardErr.guardrail = true;
+        throw guardErr;
+      }
+      this.ollamaCloudCallCount = (this.ollamaCloudCallCount || 0) + 1;
       apiUrl = config.ollamaCloud.apiUrl;
       if (this.ollamaApiKey) headers['Authorization'] = `Bearer ${this.ollamaApiKey}`;
     } else if (provider === 'ollama-local') {
@@ -656,7 +678,7 @@ class LLMClient {
       apiUrl = config.openrouter.apiUrl;
       if (this.apiKey) {
         headers['Authorization'] = `Bearer ${this.apiKey}`;
-        headers['HTTP-Referer'] = 'https://github.com/yourusername/gvgai-llm';
+        headers['HTTP-Referer'] = 'https://github.com/zmuhls/gvgai';
         headers['X-Title'] = 'GVGAI LLM Agent';
       }
     }
@@ -750,7 +772,7 @@ class LLMClient {
           fallback: resolved.fallback || null
         }
       });
-      if (resolved.fallback) {
+      if (resolved.fallback && !primaryErr.guardrail) {
         usedProvider = 'openrouter';
         usedModel = resolved.fallback;
         try {
@@ -820,7 +842,7 @@ class LLMClient {
     const aliases = this.promptConfig?.actionAliases || null;
     const displayPlan = aliases ? planActions.map(a => aliases[a] || a) : planActions;
 
-    this.recordActionDecision(action, sso.gameTick, reason);
+    this.recordActionDecision(action, sso.gameTick, reason, sso);
 
     console.log(`[LLMClient] LLM completed (${elapsed}ms): ${action}${reason ? ' — ' + reason : ''}`);
 
@@ -895,14 +917,15 @@ class LLMClient {
     return { action, reason, decisionSource, elapsed, provider: usedProvider, modelUsed: usedModel };
   }
 
-  recordActionDecision(action, tick, reason = '') {
+  recordActionDecision(action, tick, reason = '', sso = null) {
     this.stateTracker.recordAction(action, tick);
     const lastDelta = this.stateTracker.actionHistory[this.stateTracker.actionHistory.length - 1];
     this.runLog.push({
       tick,
       action,
       reason,
-      scoreDelta: lastDelta ? lastDelta.scoreDelta : 0
+      scoreDelta: lastDelta ? lastDelta.scoreDelta : 0,
+      sso: traceStore.pruneSsoForTrace(sso)
     });
   }
 
@@ -975,7 +998,8 @@ class LLMClient {
       actionHistory: this.runLog.map(e => ({
         tick: e.tick,
         action: e.action,
-        scoreDelta: e.scoreDelta
+        scoreDelta: e.scoreDelta,
+        sso: e.sso || null
       })),
       finalScore: sso.gameScore || 0,
       winner: sso.gameWinner,
