@@ -590,7 +590,9 @@ async function startServer() {
         isWalkupActive: () => activeGames.size > 0,
         gameManager: runtime.gameManager,
         telemetry,
-        caseOptions: { maxActions: 40, synchronousActions: false }
+        caseOptions: { maxActions: 40, synchronousActions: false },
+        minCaseDwellMs: Number.parseInt(process.env.MARBLE_RUN_MIN_CASE_DWELL_MS || '4500', 10),
+        maxConsecutiveFastFailures: Number.parseInt(process.env.MARBLE_RUN_FAST_FAILURE_LIMIT || '0', 10)
       });
       // Fine-tune pipeline: route is always mounted; the auto-trigger is opt-in
       // (FINETUNE_AUTO_ENABLED=1) so the deployed instance stays inert. Completed

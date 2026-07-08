@@ -3183,6 +3183,40 @@ details[open] > .station-head .station-caret {
   display: none;
 }
 
+.marble-popout-reopen {
+  appearance: none;
+  position: fixed;
+  right: clamp(12px, 2vmin, 28px);
+  bottom: clamp(12px, 2vmin, 28px);
+  z-index: 421;
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  background: linear-gradient(180deg, rgba(18, 37, 29, 0.98), rgba(5, 11, 9, 0.94));
+  border: 1px solid rgba(123, 239, 195, 0.38);
+  border-radius: var(--radius-md);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.75),
+    0 12px 32px rgba(0, 0, 0, 0.52),
+    0 0 18px rgba(123, 239, 195, 0.12);
+  color: var(--arcade-accent-bright);
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.marble-popout-reopen[hidden] {
+  display: none;
+}
+
+.marble-popout-reopen:hover,
+.marble-popout-reopen:focus-visible {
+  background: var(--arcade-accent-faint);
+  border-color: var(--arcade-accent);
+  color: var(--arcade-accent-bright);
+}
+
 .marble-popout.is-expanded {
   width: min(1120px, calc(100vw - var(--marble-popout-inset) - var(--marble-popout-inset)));
   height: min(720px, calc(100dvh - var(--marble-popout-inset) - var(--marble-popout-inset)));
