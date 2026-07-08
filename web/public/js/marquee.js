@@ -17,7 +17,6 @@
 
   // --- game screen ---------------------------------------------------------
   let lastImage = null;
-  let lastFrameAt = 0;
   let attractOffset = 0;
   let attractRaf = null;
   const img = new Image();
@@ -32,12 +31,11 @@
   function drawFrame(dataUrl) {
     if (!dataUrl || dataUrl === lastImage) return;
     lastImage = dataUrl;
-    lastFrameAt = performance.now();
     img.src = dataUrl;
   }
-  function shouldShowAttract(now) {
-    const waitingForFrame = !lastImage || now - lastFrameAt > 1500;
-    return marqueeState.mode !== 'MARBLE_PLAYING' || waitingForFrame;
+  // Gate lives in marquee-screen.js (loaded first) so it can be unit-tested.
+  function shouldShowAttract() {
+    return MarqueeScreen.shouldShowAttract(marqueeState.mode, Boolean(lastImage));
   }
   function ensureAttractCanvas() {
     if (canvas.width !== 320 || canvas.height !== 240) {
@@ -132,14 +130,13 @@
   function startAttractLoop() {
     if (attractRaf) return;
     const step = now => {
-      if (shouldShowAttract(now)) drawAttractFrame(now);
+      if (shouldShowAttract()) drawAttractFrame(now);
       attractRaf = requestAnimationFrame(step);
     };
     attractRaf = requestAnimationFrame(step);
   }
   function resetScreen() {
     lastImage = null;
-    lastFrameAt = 0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     el('score').textContent = '0';
     el('health').textContent = '—';
