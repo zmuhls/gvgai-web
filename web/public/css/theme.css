@@ -71,6 +71,7 @@
   --foam-dim: #8fb3a5;       /* secondary text */
   --brass: #e0b25a;          /* slow / warning */
   --buoy: #c4524a;           /* timeout / error / danger */
+  --surf: #5ab0e0;           /* companion room lamp: language / water-blue */
 
   /* semantic aliases (component CSS reads these) */
   --arcade-bg: var(--abyss);

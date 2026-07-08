@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LanGames · Inference Arcade</title>
+  <meta name="description" content="LanGames — AI-powered language-learning games by Stefano Morello, housed in the Inference Arcade." />
+  <link rel="stylesheet" href="/css/theme.css" />
+  <style>
+    :root { --room: var(--surf); --room-glow: rgba(90, 176, 224, 0.55); }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: flex; flex-direction: column;
+      background: var(--abyss); color: var(--foam);
+      font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    }
+    .room-bar {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 0.55rem 1rem;
+      background: var(--deck);
+      border-bottom: 1px solid var(--arcade-border-soft);
+      font-family: 'IBM Plex Mono', ui-monospace, monospace;
+      font-size: 0.8rem;
+    }
+    .room-bar a { color: var(--foam-dim); text-decoration: none; }
+    .room-bar a:hover { color: var(--foam); }
+    .room-bar .back::before { content: "\25C4  "; }
+    .room-title {
+      display: flex; align-items: center; gap: 0.5rem;
+      margin: 0 auto 0 0; padding-left: 1rem;
+      color: var(--foam); font-weight: 600; letter-spacing: 0.02em;
+    }
+    .room-title::before {
+      content: ""; width: 0.6rem; height: 0.6rem; border-radius: 50%;
+      background: var(--room); box-shadow: 0 0 8px var(--room-glow);
+    }
+    .room-bar .external { color: var(--room); }
+    .frame-wrap { flex: 1 1 auto; position: relative; }
+    iframe {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      border: 0; background: var(--well);
+    }
+  </style>
+</head>
+<body>
+  <nav class="room-bar">
+    <a class="back" href="/">Inference Arcade</a>
+    <span class="room-title">LanGames</span>
+    <a class="external" href="https://stefanomorello.com/langames/" target="_blank" rel="noopener noreferrer">open original &#8599;</a>
+  </nav>
+  <div class="frame-wrap">
+    <iframe src="https://stefanomorello.com/langames/" title="LanGames — AI language-learning games"
+            allow="clipboard-write; fullscreen"></iframe>
+  </div>
+</body>
+</html>
