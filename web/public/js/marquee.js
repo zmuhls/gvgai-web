@@ -17,7 +17,6 @@
 
   // --- game screen ---------------------------------------------------------
   let lastImage = null;
-  let lastFrameAt = 0;
   let attractOffset = 0;
   let attractRaf = null;
   const img = new Image();
@@ -32,12 +31,18 @@
   function drawFrame(dataUrl) {
     if (!dataUrl || dataUrl === lastImage) return;
     lastImage = dataUrl;
-    lastFrameAt = performance.now();
     img.src = dataUrl;
   }
-  function shouldShowAttract(now) {
-    const waitingForFrame = !lastImage || now - lastFrameAt > 1500;
-    return marqueeState.mode !== 'MARBLE_PLAYING' || waitingForFrame;
+  // Delegates to the unit-tested pure gate (marquee-screen.js). No time-based
+  // staleness: once a live frame exists for an active case, HOLD it between the
+  // multi-second gaps of LLM moves instead of flashing the attract template.
+  function shouldShowAttract() {
+    const gate = (typeof MarqueeScreen !== 'undefined' && MarqueeScreen.shouldShowAttract) || null;
+    if (gate) return gate(marqueeState.mode, Boolean(lastImage));
+    // Fallback if the gate script failed to load: attract only when not in an
+    // active case, or before the first frame arrives.
+    const playing = marqueeState.mode === 'MARBLE_PLAYING' || marqueeState.mode === 'MARBLE_STARTING';
+    return !playing || !lastImage;
   }
   function ensureAttractCanvas() {
     if (canvas.width !== 320 || canvas.height !== 240) {
@@ -132,14 +137,13 @@
   function startAttractLoop() {
     if (attractRaf) return;
     const step = now => {
-      if (shouldShowAttract(now)) drawAttractFrame(now);
+      if (shouldShowAttract()) drawAttractFrame(now);
       attractRaf = requestAnimationFrame(step);
     };
     attractRaf = requestAnimationFrame(step);
   }
   function resetScreen() {
     lastImage = null;
-    lastFrameAt = 0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     el('score').textContent = '0';
     el('health').textContent = '—';

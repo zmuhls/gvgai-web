@@ -302,6 +302,15 @@
       .side { grid-template-rows: auto minmax(180px, 1fr) auto; }
       #narration { max-height: 40vh; }
 
+      html.marquee-embed:not(.marquee-full) .stage {
+        height: 100%;
+      }
+      html.marquee-embed:not(.marquee-full) .screen {
+        height: 100%;
+        min-height: 0;
+        max-height: none;
+      }
+
       html.marquee-embed.marquee-full .marquee {
         height: 100dvh;
         min-height: 0;
@@ -406,6 +415,7 @@
     </footer>
   </div>
   <script src="/socket.io/socket.io.js"></script>
+  <script src="js/marquee-screen.js"></script>
   <script src="js/marquee.js"></script>
   <script>
     document.getElementById('marquee-back')?.addEventListener('click', () => {
