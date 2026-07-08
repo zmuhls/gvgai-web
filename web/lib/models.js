@@ -1,11 +1,9 @@
-// Shared model catalog + routing resolution.
+// Shared model catalog and routing resolution.
 //
-// The catalog is open-weight small language models hosted on **Ollama Cloud**
-// (the primary inference provider, drawing on OLLAMA_API_KEY). **OpenRouter**
-// is the per-call fallback only — used automatically when an Ollama Cloud call
-// fails. Every entry is a non-reasoning model: nothing here has the `thinking`
-// capability flag on Ollama Cloud (/api/show), so no hidden reasoning-token
-// burn and no empty-content replies.
+// The built-in catalog is the stated Ollama Cloud roster, drawing on
+// OLLAMA_API_KEY. OpenRouter is the per-call fallback for rows with a known
+// compatible slug. Each entry is a non-reasoning model, so the game receives
+// answer tokens rather than hidden reasoning tokens.
 //
 // NOTE: confirm exact Ollama Cloud tags and OpenRouter slugs near the event —
 // a stale id 404s at call time (surfaced via the 'llm-error' socket event), and
@@ -13,31 +11,43 @@
 // below were verified against OpenRouter /api/v1/models on 2026-07-08.
 
 const MODELS = [
-  // --- Gemma 4 (Google) — current generation ---
-  {
-    id: 'gemma4:31b', name: 'Gemma 4 31B',
-    provider: 'ollama-cloud', fallback: 'google/gemma-4-31b-it',
-    description: 'Open-weight · Gemma 4 dense, non-reasoning · fastest on Cloud',
-    speed: 'fast', cost: 'low', featured: true
-  },
-  {
-    id: 'gemma4:e4b', name: 'Gemma 4 E4B',
-    provider: 'ollama-local', fallback: null,
-    description: 'Open-weight · Gemma 4 effective-4B, edge device · local inference',
-    speed: 'fast', cost: 'free', featured: true
-  },
-  // --- Gemma 3 (Google) — previous gen, still on Cloud ---
+  // --- Gemma 3 (Google) ---
   {
     id: 'gemma3:27b', name: 'Gemma 3 27B',
     provider: 'ollama-cloud', fallback: 'google/gemma-3-27b-it',
     description: 'Open-weight · flagship small Gemma, non-reasoning',
-    speed: 'fast', cost: 'low', featured: false
+    speed: 'fast', cost: 'low', featured: true
+  },
+  {
+    id: 'gemma3:12b', name: 'Gemma 3 12B',
+    provider: 'ollama-cloud', fallback: 'google/gemma-3-12b-it',
+    description: 'Open-weight · compact Gemma, non-reasoning',
+    speed: 'fast', cost: 'low', featured: true
   },
   // --- Qwen (Alibaba) ---
   {
     id: 'qwen3-coder-next', name: 'Qwen3 Coder Next',
     provider: 'ollama-cloud', fallback: 'qwen/qwen3-coder-next',
     description: 'Open-weight · MoE coder, non-reasoning (small active params)',
+    speed: 'fast', cost: 'low', featured: false
+  },
+  // --- Ministral (Mistral) ---
+  {
+    id: 'ministral-3:14b', name: 'Ministral 3 14B',
+    provider: 'ollama-cloud', fallback: 'mistralai/ministral-14b-2512',
+    description: 'Open-weight · compact Mistral family model, non-reasoning',
+    speed: 'fast', cost: 'low', featured: false
+  },
+  {
+    id: 'ministral-3:8b', name: 'Ministral 3 8B',
+    provider: 'ollama-cloud', fallback: 'mistralai/ministral-8b-2512',
+    description: 'Open-weight · smaller Mistral family model, non-reasoning',
+    speed: 'fast', cost: 'low', featured: false
+  },
+  {
+    id: 'ministral-3:3b', name: 'Ministral 3 3B',
+    provider: 'ollama-cloud', fallback: 'mistralai/ministral-3b-2512',
+    description: 'Open-weight · smallest stated Mistral family model, non-reasoning',
     speed: 'fast', cost: 'low', featured: false
   },
   // --- Devstral (Mistral) ---
@@ -95,7 +105,8 @@ function loadFinetunedModels() {
       id: e.id,
       name: e.name || e.id,
       provider: e.provider || 'ollama-local',
-      fallback: null,
+      fallback: e.fallback || null,
+      fallbackProvider: e.fallbackProvider || null,
       description: e.description || `Fine-tuned on ${e.trainedOnPlays ?? '?'} plays`,
       speed: 'fast',
       cost: 'free',

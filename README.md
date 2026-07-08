@@ -57,7 +57,7 @@ Seven open-weight small language models all hosted on Ollama Cloud with none car
 | Ministral 3 3B | Ollama Cloud | `mistralai/ministral-3b-2512` |
 | Devstral Small 2 24B | Ollama Cloud | none |
 
-The server calls the primary provider, retrying the fallback slug through OpenRouter on any error. The provider that actually answered is reported on the `llm-reasoning` socket event and on the telemetry dashboard. A usage guardrail caps Ollama Cloud calls at 3000 per hour and 15000 per day with counters persisted across restarts. A tripped guardrail blocks the call rather than silently shifting spend to OpenRouter.
+The server calls the selected primary provider first. Legion vLLM routes fall back to `LEGION_FALLBACK_MODEL` on Ollama Cloud, then to the matching OpenRouter slug when one exists. Ollama Cloud routes fall back to OpenRouter directly when the selected model has a slug. The provider that answered is reported on the `llm-reasoning` socket event and on the telemetry dashboard. A usage guardrail caps Ollama Cloud calls at 3000 per hour and 15000 per day with counters persisted across restarts; a tripped guardrail now moves to OpenRouter when the model has a fallback slug.
 
 Fine-tuned models appear in the catalog automatically once registered, routing through the local Ollama daemon at `localhost:11434`, separate from the cloud API.
 
@@ -141,8 +141,9 @@ javac -cp "gson-2.6.2.jar" -d out @sources.txt
 Add API keys to a `.env` file in the project root.
 
 ```
-OLLAMA_API_KEY=...        # primary inference provider (Ollama Cloud)
-OPENROUTER_API_KEY=...    # per-call fallback
+OLLAMA_API_KEY=...        # Ollama Cloud roster
+OPENROUTER_API_KEY=...    # fallback when vLLM or Ollama Cloud cannot answer
+LEGION_FALLBACK_MODEL=gemma3:27b
 ```
 
 Start the server.
