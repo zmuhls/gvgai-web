@@ -34,9 +34,10 @@ const STAGNATION_BREAK_INTERVAL = 8; // ticks between forced direction changes
 class LLMClient {
   constructor(options = {}) {
     this.socket = null;
-    // Load API keys from environment (Ollama Cloud is primary, OpenRouter is fallback)
-    this.apiKey = process.env.OPENROUTER_API_KEY || null;          // OpenRouter (fallback)
-    this.ollamaApiKey = process.env.OLLAMA_API_KEY || null;        // Ollama Cloud (primary)
+    // Load provider keys from environment. OLLAMA_API_KEY serves the cloud
+    // roster; OPENROUTER_API_KEY is the fallback key.
+    this.apiKey = process.env.OPENROUTER_API_KEY || null;
+    this.ollamaApiKey = process.env.OLLAMA_CLOUD_API_KEY || process.env.OLLAMA_API_KEY || null;
     this.model = config.openrouter.defaultModel;
     this.io = null;
     this.lastReceivedMessageId = null;  // Track the messageId from Java
@@ -103,6 +104,41 @@ class LLMClient {
       console.error('[LLMClient] Error validating API key:', error);
       return false;
     }
+  }
+
+  buildProviderRoutes(resolved) {
+    const routes = [];
+    const pushRoute = (provider, modelId, stage) => {
+      if (!provider || !modelId) return;
+      if (routes.some(route => route.provider === provider && route.modelId === modelId)) return;
+      routes.push({ provider, modelId, stage });
+    };
+
+    pushRoute(resolved.provider, resolved.id, 'primary');
+
+    if (resolved.provider === 'legion-vllm') {
+      const cloudFallback = resolved.fallbackProvider === 'ollama-cloud' && resolved.fallback
+        ? resolved.fallback
+        : process.env.LEGION_FALLBACK_MODEL || config.openrouter.defaultModel;
+      pushRoute('ollama-cloud', cloudFallback, 'fallback');
+
+      const cloudResolved = resolveModel(cloudFallback);
+      if (cloudResolved?.fallback) {
+        pushRoute('openrouter', cloudResolved.fallback, 'fallback');
+      }
+      if (resolved.fallbackProvider === 'openrouter' && resolved.fallback) {
+        pushRoute('openrouter', resolved.fallback, 'fallback');
+      }
+      return routes;
+    }
+
+    if (resolved.provider === 'ollama-cloud' && resolved.fallback) {
+      pushRoute('openrouter', resolved.fallback, 'fallback');
+    } else if (resolved.provider !== 'openrouter' && resolved.fallback) {
+      pushRoute('openrouter', resolved.fallback, 'fallback');
+    }
+
+    return routes;
   }
 
   async connect(port, model, io, gameId, gameName, sessionStrategy = null) {
@@ -724,8 +760,7 @@ class LLMClient {
 
     if (provider === 'ollama-cloud') {
       // Light usage guardrail on the Ollama Cloud key. A blocked call throws a
-      // flagged error so the caller skips the OpenRouter fallback (which would
-      // silently shift spend) and surfaces it via 'llm-error' instead.
+      // flagged error; the route loop can still use a configured fallback.
       const verdict = guardrail.admitOllamaCall(this.ollamaCloudCallCount || 0);
       if (!verdict.allowed) {
         telemetry.track({
@@ -884,53 +919,51 @@ class LLMClient {
     let llmResponse;
     let usedProvider = resolved.provider;
     let usedModel = resolved.id;
+    const routes = this.buildProviderRoutes(resolved);
 
-    try {
-      llmResponse = await this.callProvider(resolved.provider, resolved.id, messages, settings);
-    } catch (primaryErr) {
-      console.warn(`[LLMClient] Primary ${resolved.provider}/${resolved.id} failed: ${primaryErr.message}`);
-      telemetry.track({
-        eventFamily: 'model_telemetry',
-        eventType: 'provider_error',
-        source: 'llm-client',
-        runId: this.runId,
-        gameId: this.gameId,
-        levelId: this.levelCount,
-        modelId: resolved.id,
-        provider: resolved.provider,
-        payload: {
-          message: primaryErr.message,
-          fallback: resolved.fallback || null
+    for (let index = 0; index < routes.length; index++) {
+      const route = routes[index];
+      const nextRoute = routes[index + 1] || null;
+      usedProvider = route.provider;
+      usedModel = route.modelId;
+
+      try {
+        llmResponse = await this.callProvider(route.provider, route.modelId, messages, settings);
+        if (index > 0) {
+          console.log(`[LLMClient] Fell back to ${route.provider}/${route.modelId}`);
         }
-      });
-      if (resolved.fallback && !primaryErr.guardrail) {
-        usedProvider = 'openrouter';
-        usedModel = resolved.fallback;
-        try {
-          llmResponse = await this.callProvider('openrouter', resolved.fallback, messages, settings);
-          console.log(`[LLMClient] Fell back to openrouter/${resolved.fallback}`);
-        } catch (fallbackErr) {
-          if (this.io) this.io.emit('llm-error', { status: 0, message: `primary + fallback failed: ${fallbackErr.message}` });
-          telemetry.track({
-            eventFamily: 'model_telemetry',
-            eventType: 'provider_error',
-            source: 'llm-client',
-            runId: this.runId,
-            gameId: this.gameId,
-            levelId: this.levelCount,
-            modelId: resolved.fallback,
-            provider: 'openrouter',
-            payload: {
-              message: fallbackErr.message,
-              stage: 'fallback'
-            }
-          });
-          throw fallbackErr;
+        break;
+      } catch (err) {
+        const label = index === 0 ? 'Primary' : 'Fallback';
+        console.warn(`[LLMClient] ${label} ${route.provider}/${route.modelId} failed: ${err.message}`);
+        telemetry.track({
+          eventFamily: 'model_telemetry',
+          eventType: 'provider_error',
+          source: 'llm-client',
+          runId: this.runId,
+          gameId: this.gameId,
+          levelId: this.levelCount,
+          modelId: route.modelId,
+          provider: route.provider,
+          payload: {
+            message: err.message,
+            stage: route.stage,
+            fallback: nextRoute ? `${nextRoute.provider}/${nextRoute.modelId}` : null
+          }
+        });
+
+        if (!nextRoute) {
+          const message = routes.length > 1
+            ? `provider fallback chain failed: ${err.message}`
+            : err.message;
+          if (this.io) this.io.emit('llm-error', { status: 0, message });
+          throw err;
         }
-      } else {
-        if (this.io) this.io.emit('llm-error', { status: 0, message: primaryErr.message });
-        throw primaryErr;
       }
+    }
+
+    if (llmResponse === undefined) {
+      throw new Error('provider fallback chain produced no response');
     }
 
     const elapsed = Date.now() - startTime;

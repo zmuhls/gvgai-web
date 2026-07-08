@@ -10,7 +10,8 @@ const GUARDRAIL_ENV = [
   'OLLAMA_GUARDRAIL_HOURLY',
   'OLLAMA_GUARDRAIL_DAILY',
   'OLLAMA_GUARDRAIL_SESSION',
-  'OLLAMA_GUARDRAIL_DISABLED'
+  'OLLAMA_GUARDRAIL_DISABLED',
+  'OPENROUTER_API_KEY'
 ];
 
 function withCleanEnv(fn) {
@@ -92,35 +93,43 @@ test('kill switch admits everything', () => {
   });
 });
 
-test('a guardrail block skips the OpenRouter fallback and surfaces llm-error', async () => {
+test('a guardrail block uses the OpenRouter fallback key when a fallback slug exists', async () => {
   await withCleanEnv(async () => {
     process.env.OLLAMA_GUARDRAIL_SESSION = '3';
+    process.env.OPENROUTER_API_KEY = 'fallback-key';
     const originalFetch = global.fetch;
-    const events = [];
+    const calls = [];
     const client = new LLMClient({ actionTimeoutMs: 1000 });
-    client.model = 'gemma4:31b'; // catalog entry WITH an OpenRouter fallback
+    client.model = 'gemma3:27b';
     client.gameId = 0;
     client.levelCount = 0;
     client.promptConfig = { gameName: 'aliens' };
     client.ollamaCloudCallCount = 3; // session cap already spent
-    client.io = { emit: (event, payload) => events.push({ event, payload }) };
 
-    global.fetch = async () => {
-      throw new Error('no provider call should be made when the guardrail blocks');
+    global.fetch = async (url, options) => {
+      calls.push({ url, options, body: JSON.parse(options.body) });
+      return {
+        ok: true,
+        async json() {
+          return { choices: [{ message: { content: 'ACTION_RIGHT' } }] };
+        }
+      };
     };
 
     try {
-      await assert.rejects(
-        () => client.requestLLMAction(JSON.stringify({
-          gameTick: 1,
-          gameScore: 0,
-          availableActions: ['ACTION_LEFT', 'ACTION_RIGHT']
-        })),
-        /usage guardrail/
-      );
-      const errorEvent = events.find(e => e.event === 'llm-error');
-      assert.ok(errorEvent, 'llm-error emitted');
-      assert.match(errorEvent.payload.message, /usage guardrail/);
+      const result = await client.requestLLMAction(JSON.stringify({
+        gameTick: 1,
+        gameScore: 0,
+        availableActions: ['ACTION_LEFT', 'ACTION_RIGHT']
+      }));
+
+      assert.equal(result.action, 'ACTION_RIGHT');
+      assert.equal(result.provider, 'openrouter');
+      assert.equal(result.modelUsed, 'google/gemma-3-27b-it');
+      assert.equal(calls.length, 1);
+      assert.match(calls[0].url, /openrouter\.ai/);
+      assert.equal(calls[0].options.headers.Authorization, 'Bearer fallback-key');
+      assert.equal(calls[0].body.model, 'google/gemma-3-27b-it');
     } finally {
       global.fetch = originalFetch;
     }

@@ -8,6 +8,27 @@ const path = require('path');
 
 const models = require('../lib/models');
 
+test('built-in catalog exposes every stated Ollama Cloud model', () => {
+  assert.deepEqual(models.MODELS.map(model => model.id), [
+    'gemma3:27b',
+    'gemma3:12b',
+    'qwen3-coder-next',
+    'ministral-3:14b',
+    'ministral-3:8b',
+    'ministral-3:3b',
+    'devstral-small-2:24b'
+  ]);
+
+  assert.deepEqual(models.MODELS.map(model => model.provider), Array(7).fill('ollama-cloud'));
+  assert.deepEqual(models.MODELS.filter(model => model.featured).map(model => model.id), [
+    'gemma3:27b',
+    'gemma3:12b'
+  ]);
+  assert.equal(models.resolveModel('gemma3:27b').fallback, 'google/gemma-3-27b-it');
+  assert.equal(models.resolveModel('ministral-3:14b').fallback, 'mistralai/ministral-14b-2512');
+  assert.equal(models.resolveModel('devstral-small-2:24b').fallback, null);
+});
+
 function withRegistry(content) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ft-registry-test-'));
   const registryPath = path.join(dir, 'finetune-models.json');
@@ -72,7 +93,7 @@ test('resolveModel routes registry ids to ollama-local, not inferred ollama-clou
     assert.equal(resolved.provider, 'ollama-local');
     assert.equal(resolved.fallback, null);
     // built-ins and inference untouched
-    assert.equal(models.resolveModel('gemma4:31b').provider, 'ollama-cloud');
+    assert.equal(models.resolveModel('gemma3:27b').provider, 'ollama-cloud');
     assert.equal(models.resolveModel('some/openrouter-slug').provider, 'openrouter');
     assert.equal(models.resolveModel('unknown-tag').provider, 'ollama-cloud');
   } finally {
@@ -111,11 +132,11 @@ test('registry cache invalidates on mtime change and explicit invalidation', () 
 });
 
 test('registry ids colliding with built-in catalog ids are skipped', () => {
-  withRegistry({ models: [{ ...ENTRY, id: 'gemma4:31b' }] });
+  withRegistry({ models: [{ ...ENTRY, id: 'gemma3:27b' }] });
   try {
     const all = models.getAllModels();
     assert.equal(all.length, models.MODELS.length);
-    assert.equal(all.find(m => m.id === 'gemma4:31b').provider, 'ollama-cloud');
+    assert.equal(all.find(m => m.id === 'gemma3:27b').provider, 'ollama-cloud');
   } finally {
     restore();
   }

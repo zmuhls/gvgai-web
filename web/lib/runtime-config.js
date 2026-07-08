@@ -21,7 +21,7 @@ const DEFAULT_CONFIG = {
   },
   openrouter: {
     apiUrl: 'https://openrouter.ai/api/v1/chat/completions',
-    defaultModel: 'gemma4:31b'
+    defaultModel: 'gemma3:27b'
   },
   ollamaCloud: {
     apiUrl: 'https://ollama.com/v1/chat/completions'

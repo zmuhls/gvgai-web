@@ -5,8 +5,14 @@ const os = require('node:os');
 const path = require('node:path');
 
 process.env.GVGAI_TRACE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'llm-client-traces-'));
+process.env.OLLAMA_GUARDRAIL_STATE = path.join(
+  fs.mkdtempSync(path.join(os.tmpdir(), 'llm-client-guardrail-')),
+  'usage-guardrail.json'
+);
 
 const LLMClient = require('../lib/llm-client');
+const models = require('../lib/models');
+const guardrail = require('../lib/usage-guardrail');
 
 test('live LLM client requests full state and frame data for ACT ticks', () => {
   const client = new LLMClient();
@@ -175,6 +181,89 @@ test('provider calls use the configured action timeout signal', async () => {
     assert.equal(capturedSignal.aborted, false);
   } finally {
     global.fetch = originalFetch;
+  }
+});
+
+test('requestLLMAction falls back from legion vLLM through cloud guardrail to OpenRouter', async () => {
+  const originalFetch = global.fetch;
+  const savedRegistryPath = process.env.FINETUNE_REGISTRY_PATH;
+  const savedLegionFallback = process.env.LEGION_FALLBACK_MODEL;
+  const savedOpenRouterKey = process.env.OPENROUTER_API_KEY;
+  const savedGuardrailSession = process.env.OLLAMA_GUARDRAIL_SESSION;
+  const savedGuardrailState = process.env.OLLAMA_GUARDRAIL_STATE;
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'legion-fallback-test-'));
+  const registryPath = path.join(tempDir, 'finetune-models.json');
+  const calls = [];
+
+  fs.writeFileSync(registryPath, JSON.stringify({
+    models: [{
+      id: 'legion-test',
+      name: 'Legion Test',
+      provider: 'legion-vllm',
+      baseModel: 'unsloth/gemma-3-4b-it',
+      gameId: 0,
+      gameName: 'aliens'
+    }]
+  }));
+
+  process.env.FINETUNE_REGISTRY_PATH = registryPath;
+  process.env.LEGION_FALLBACK_MODEL = 'gemma3:27b';
+  process.env.OPENROUTER_API_KEY = 'fallback-key';
+  process.env.OLLAMA_GUARDRAIL_SESSION = '1';
+  process.env.OLLAMA_GUARDRAIL_STATE = path.join(tempDir, 'guardrail.json');
+  models.invalidateFinetunedCache();
+  guardrail.resetForTest();
+
+  const client = new LLMClient({ actionTimeoutMs: 1000 });
+  client.model = 'legion-test';
+  client.gameId = 0;
+  client.levelCount = 0;
+  client.promptConfig = { gameName: 'aliens' };
+  client.ollamaCloudCallCount = 1;
+
+  global.fetch = async (url, options) => {
+    calls.push({ url, options, body: JSON.parse(options.body) });
+    if (calls.length === 1) {
+      throw new Error('connect ECONNREFUSED');
+    }
+    return {
+      ok: true,
+      async json() {
+        return { choices: [{ message: { content: 'ACTION_RIGHT' } }] };
+      }
+    };
+  };
+
+  try {
+    const result = await client.requestLLMAction(JSON.stringify({
+      gameTick: 1,
+      gameScore: 0,
+      availableActions: ['ACTION_LEFT', 'ACTION_RIGHT']
+    }));
+
+    assert.equal(result.action, 'ACTION_RIGHT');
+    assert.equal(result.provider, 'openrouter');
+    assert.equal(result.modelUsed, 'google/gemma-3-27b-it');
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].body.model, 'legion-test');
+    assert.equal(calls[1].body.model, 'google/gemma-3-27b-it');
+    assert.match(calls[1].url, /openrouter\.ai/);
+    assert.equal(calls[1].options.headers.Authorization, 'Bearer fallback-key');
+  } finally {
+    global.fetch = originalFetch;
+    if (savedRegistryPath === undefined) delete process.env.FINETUNE_REGISTRY_PATH;
+    else process.env.FINETUNE_REGISTRY_PATH = savedRegistryPath;
+    if (savedLegionFallback === undefined) delete process.env.LEGION_FALLBACK_MODEL;
+    else process.env.LEGION_FALLBACK_MODEL = savedLegionFallback;
+    if (savedOpenRouterKey === undefined) delete process.env.OPENROUTER_API_KEY;
+    else process.env.OPENROUTER_API_KEY = savedOpenRouterKey;
+    if (savedGuardrailSession === undefined) delete process.env.OLLAMA_GUARDRAIL_SESSION;
+    else process.env.OLLAMA_GUARDRAIL_SESSION = savedGuardrailSession;
+    if (savedGuardrailState === undefined) delete process.env.OLLAMA_GUARDRAIL_STATE;
+    else process.env.OLLAMA_GUARDRAIL_STATE = savedGuardrailState;
+    models.invalidateFinetunedCache();
+    guardrail.resetForTest();
+    fs.rmSync(tempDir, { recursive: true, force: true });
   }
 });
 

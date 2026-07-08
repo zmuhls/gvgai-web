@@ -90,20 +90,44 @@ const SINGLE_PLAYER_CABINET_COUNT = 122;
 
 const PREVIEW_MODELS = [
   {
-    id: 'gemma4:31b',
-    name: 'Gemma 4 31B',
+    id: 'gemma3:27b',
+    name: 'Gemma 3 27B',
     description: 'Open-weight model',
     featured: true
   },
   {
-    id: 'gemma4:e4b',
-    name: 'Gemma 4 E4B',
-    description: 'Open-weight model · local',
+    id: 'gemma3:12b',
+    name: 'Gemma 3 12B',
+    description: 'Open-weight model',
     featured: true
   },
   {
-    id: 'gemma3:27b',
-    name: 'Gemma 3 27B',
+    id: 'qwen3-coder-next',
+    name: 'Qwen3 Coder Next',
+    description: 'Open-weight model',
+    featured: false
+  },
+  {
+    id: 'ministral-3:14b',
+    name: 'Ministral 3 14B',
+    description: 'Open-weight model',
+    featured: false
+  },
+  {
+    id: 'ministral-3:8b',
+    name: 'Ministral 3 8B',
+    description: 'Open-weight model',
+    featured: false
+  },
+  {
+    id: 'ministral-3:3b',
+    name: 'Ministral 3 3B',
+    description: 'Open-weight model',
+    featured: false
+  },
+  {
+    id: 'devstral-small-2:24b',
+    name: 'Devstral Small 2 24B',
     description: 'Open-weight model',
     featured: false
   }
