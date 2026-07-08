@@ -12,6 +12,7 @@
   <script src="socket.io/socket.io.js"></script>
 </head>
 <body>
+  <h1 class="visually-hidden">Inference Arcade</h1>
   <div id="boot-screen" class="boot-screen" hidden aria-hidden="true">
     <div class="boot-inner">
       <div class="boot-logo">◆ INFERENCE ARCADE</div>
@@ -31,10 +32,10 @@
       <span class="titlebar-title">gvgai-web</span>
       <span class="titlebar-sub">LLM Game Cabinets</span>
     </a>
-    <nav id="main-nav">
-      <button class="nav-link active" data-target="play-section">Java Arcade</button>
-      <button class="nav-link" data-target="prompt-dashboard">Operator Desk</button>
-      <button class="nav-link" data-target="telemetry-dashboard">Telemetry</button>
+    <nav id="main-nav" aria-label="Primary sections">
+      <button class="nav-link active" type="button" data-target="play-section" aria-controls="play-section" aria-current="page">Java Arcade</button>
+      <button class="nav-link" type="button" data-target="prompt-dashboard" aria-controls="prompt-dashboard">Operator Desk</button>
+      <button class="nav-link" type="button" data-target="telemetry-dashboard" aria-controls="telemetry-dashboard">Telemetry</button>
     </nav>
     <div class="titlebar-status">
       <span id="conn-lamp" class="lamp" data-state="off"><span class="lamp-dot"></span><span id="conn-lamp-label">Socket offline</span></span>
@@ -47,7 +48,7 @@
   <div id="app">
 
     <!-- Play Section (existing 3-step flow) -->
-    <div id="play-section" class="section active">
+    <div id="play-section" class="section active" aria-label="Java arcade flow">
 
     <!-- Step 1: Game Selection -->
     <div id="game-selector" class="step active">
@@ -56,50 +57,50 @@
       <p class="step-note">Prompt open-weight language models to play your favorite arcade games.</p>
       <div class="games-toolbar">
         <span id="games-mode-label" class="games-mode-label">featured cabinets</span>
-        <button id="toggle-browse-all" class="btn-secondary btn-toggle">Browse all 122 →</button>
+        <button id="toggle-browse-all" class="btn-secondary btn-toggle" type="button">Browse all 122 →</button>
       </div>
       <input type="text" id="game-search" placeholder="Search all games..." class="hidden" />
       <div id="games-grid">
-        <div class="game-card featured" data-game-id="0">
+        <button type="button" class="game-card featured" data-game-id="0">
           <div class="game-card-meta">
             <span>000</span>
             <span>gridphysics</span>
           </div>
           <h3>aliens</h3>
           <p class="levels">5 levels</p>
-        </div>
-        <div class="game-card featured" data-game-id="32">
+        </button>
+        <button type="button" class="game-card featured" data-game-id="32">
           <div class="game-card-meta">
             <span>032</span>
             <span>gridphysics</span>
           </div>
           <h3>doorkoban</h3>
           <p class="levels">5 levels</p>
-        </div>
-        <div class="game-card featured" data-game-id="4">
+        </button>
+        <button type="button" class="game-card featured" data-game-id="4">
           <div class="game-card-meta">
             <span>004</span>
             <span>gridphysics</span>
           </div>
           <h3>bait</h3>
           <p class="levels">5 levels</p>
-        </div>
-        <div class="game-card featured" data-game-id="11">
+        </button>
+        <button type="button" class="game-card featured" data-game-id="11">
           <div class="game-card-meta">
             <span>011</span>
             <span>gridphysics</span>
           </div>
           <h3>boulderdash</h3>
           <p class="levels">5 levels</p>
-        </div>
-        <div class="game-card featured" data-game-id="18">
+        </button>
+        <button type="button" class="game-card featured" data-game-id="18">
           <div class="game-card-meta">
             <span>018</span>
             <span>gridphysics</span>
           </div>
           <h3>chase</h3>
           <p class="levels">5 levels</p>
-        </div>
+        </button>
       </div>
 
       <section class="companion-games" aria-labelledby="companion-games-title">
@@ -134,7 +135,7 @@
     <div id="model-selector" class="step">
       <p class="step-label">2 / instruction</p>
       <h2>Give It a Tactic</h2>
-      <button id="back-to-games" class="btn-secondary">← Back to Games</button>
+      <button id="back-to-games" class="btn-secondary" type="button">← Back to Games</button>
 
       <div class="selected-game-info">
         <h3>Cabinet: <span id="selected-game-name"></span></h3>
@@ -143,8 +144,8 @@
       <div class="player-type-toggle">
         <label>Who plays?</label>
         <div class="toggle-group">
-          <button id="player-type-llm" class="toggle-btn active" data-player-type="llm">Model plays</button>
-          <button id="player-type-human" class="toggle-btn" data-player-type="human">I'll play</button>
+          <button id="player-type-llm" class="toggle-btn active" type="button" data-player-type="llm" aria-pressed="true">Model plays</button>
+          <button id="player-type-human" class="toggle-btn" type="button" data-player-type="human" aria-pressed="false">I'll play</button>
         </div>
       </div>
 
@@ -180,7 +181,7 @@
         <p class="control-note">Press keys during the game. The game runs at full speed — your reflexes matter.</p>
       </div>
 
-      <button id="start-game" class="btn-primary btn-start">Run the Cabinet</button>
+      <button id="start-game" class="btn-primary btn-start" type="button">Run the Cabinet</button>
     </div>
 
     <!-- Step 3: Game Viewer -->
@@ -188,7 +189,7 @@
       <p class="step-label">3 / trace</p>
       <div class="viewer-toolbar">
         <h2>Run: <span id="current-game-name"></span></h2>
-        <button id="stop-game" class="btn-danger">Stop Game</button>
+        <button id="stop-game" class="btn-danger" type="button">Stop Game</button>
       </div>
 
       <div class="game-container">
@@ -226,25 +227,25 @@
         <div id="summary-strategy" class="summary-strategy hidden"></div>
         <div id="summary-adherence" class="summary-adherence hidden"></div>
         <div id="summary-highlights" class="summary-highlights hidden"></div>
-        <button id="play-again" class="btn-primary">Play Again</button>
+        <button id="play-again" class="btn-primary" type="button">Play Again</button>
       </div>
     </div>
 
     </div><!-- /play-section -->
 
     <!-- Prompt Dashboard Section -->
-    <div id="prompt-dashboard" class="section">
+    <div id="prompt-dashboard" class="section" aria-labelledby="prompt-dashboard-title" hidden>
       <div class="dashboard-heading">
         <p class="step-label">operator desk</p>
-        <h2>Operator Desk</h2>
+        <h2 id="prompt-dashboard-title">Operator Desk</h2>
         <p>Edit system prompts, game rule digests, progression hints, action aliases, and model defaults for each GVGAI cartridge, then preview the exact prompt sent to the model.</p>
       </div>
       <div class="dashboard-layout">
         <!-- Left sidebar: game/template lists -->
         <div class="dashboard-sidebar">
           <div class="sidebar-tabs">
-            <button class="sidebar-tab active" data-tab="dashboard-games-tab">Game Prompts</button>
-            <button class="sidebar-tab" data-tab="dashboard-templates-tab">Templates</button>
+            <button class="sidebar-tab active" type="button" data-tab="dashboard-games-tab" aria-controls="dashboard-games-tab" aria-selected="true">Game Prompts</button>
+            <button class="sidebar-tab" type="button" data-tab="dashboard-templates-tab" aria-controls="dashboard-templates-tab" aria-selected="false">Templates</button>
           </div>
 
           <div id="dashboard-games-tab" class="sidebar-panel active">
@@ -253,7 +254,7 @@
           </div>
 
           <div id="dashboard-templates-tab" class="sidebar-panel">
-            <button id="new-template-btn" class="btn-primary btn-sm">+ New Template</button>
+            <button id="new-template-btn" class="btn-primary btn-sm" type="button">+ New Template</button>
             <div id="dashboard-templates-list" class="sidebar-list"></div>
           </div>
         </div>
@@ -302,8 +303,8 @@
             </div>
 
             <div class="editor-actions">
-              <button id="preview-prompt-btn" class="btn-secondary">Preview Prompt</button>
-              <button id="save-game-config-btn" class="btn-primary">Save Config</button>
+              <button id="preview-prompt-btn" class="btn-secondary" type="button">Preview Prompt</button>
+              <button id="save-game-config-btn" class="btn-primary" type="button">Save Config</button>
             </div>
 
             <div id="prompt-preview" class="prompt-preview hidden"></div>
@@ -344,8 +345,8 @@
             </div>
 
             <div class="editor-actions">
-              <button id="delete-template-btn" class="btn-danger">Delete</button>
-              <button id="save-template-btn" class="btn-primary">Save Template</button>
+              <button id="delete-template-btn" class="btn-danger" type="button">Delete</button>
+              <button id="save-template-btn" class="btn-primary" type="button">Save Template</button>
             </div>
           </div>
         </div>
@@ -353,10 +354,10 @@
     </div><!-- /prompt-dashboard -->
 
     <!-- Telemetry Dashboard Section -->
-    <div id="telemetry-dashboard" class="section telemetry-section">
+    <div id="telemetry-dashboard" class="section telemetry-section" aria-labelledby="telemetry-dashboard-title" hidden>
       <div class="dashboard-heading telemetry-heading electric-panel">
         <p class="step-label">live data</p>
-        <h2>Telemetry Stream</h2>
+        <h2 id="telemetry-dashboard-title">Telemetry Stream</h2>
         <p>Evaluation runs, user actions, model latency, and trace volume.</p>
       </div>
 
@@ -432,8 +433,8 @@
           <span id="telemetry-marble-total">0 cases</span>
         </div>
         <div class="marble-controls">
-          <button id="marble-start-btn" class="btn-small">Start</button>
-          <button id="marble-stop-btn" class="btn-small btn-danger">Stop</button>
+          <button id="marble-start-btn" class="btn-small" type="button">Start</button>
+          <button id="marble-stop-btn" class="btn-small btn-danger" type="button">Stop</button>
         </div>
         <div class="leaderboard-grid">
           <div class="leaderboard-column">

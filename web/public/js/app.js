@@ -210,8 +210,11 @@ function applySessionParams() {
   // Human-play links restore the "I'll play" toggle state
   if (params.get('player') === 'human') {
     playerType = 'human';
-    document.querySelectorAll('.toggle-btn').forEach(b =>
-      b.classList.toggle('active', b.dataset.playerType === 'human'));
+    document.querySelectorAll('.toggle-btn').forEach(b => {
+      const isActive = b.dataset.playerType === 'human';
+      b.classList.toggle('active', isActive);
+      b.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
     updatePlayerTypeUI();
   }
 }
@@ -498,14 +501,14 @@ async function loadModels() {
 // Render games grid
 function renderGames(games) {
   gamesGrid.innerHTML = games.map(game => `
-    <div class="game-card${game.featured ? ' featured' : ''}" data-game-id="${game.id}">
+    <button type="button" class="game-card${game.featured ? ' featured' : ''}" data-game-id="${game.id}">
       <div class="game-card-meta">
         <span>${String(game.id).padStart(3, '0')}</span>
         <span>${escapeHtml(game.archetype || game.category)}</span>
       </div>
       <h3>${escapeHtml(game.name)}</h3>
       <p class="levels">${game.levels.length} levels</p>
-    </div>
+    </button>
   `).join('');
 
   // Add click handlers
@@ -900,11 +903,19 @@ function showSection(sectionId) {
   if (!section) return;
 
   topLevelSections.forEach(item => {
-    item.classList.toggle('active', item.id === sectionId);
+    const isActive = item.id === sectionId;
+    item.classList.toggle('active', isActive);
+    item.hidden = !isActive;
   });
 
   navLinks.forEach(link => {
-    link.classList.toggle('active', link.dataset.target === sectionId);
+    const isActive = link.dataset.target === sectionId;
+    link.classList.toggle('active', isActive);
+    if (isActive) {
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.removeAttribute('aria-current');
+    }
   });
 }
 
@@ -957,8 +968,12 @@ function setupEventListeners() {
       const type = btn.dataset.playerType;
       if (!type || type === playerType) return;
       playerType = type;
-      document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.toggle-btn').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-pressed', 'false');
+      });
       btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
       updatePlayerTypeUI();
     });
   });
