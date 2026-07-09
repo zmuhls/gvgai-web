@@ -161,3 +161,15 @@ test('roguelike uses compact resource guidance with enemy avoidance', () => {
   assert.deepEqual(config.codeProtocol.dangerSources, ['npc']);
   assert.equal(config.codeProtocol.dangerRadius, 1);
 });
+
+test('labyrinthdual uses compact coat resource guidance', () => {
+  const config = resolveGamePromptConfig(59, 1);
+
+  assert.equal(config.gameName, 'labyrinthdual');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['resource']);
+  assert.equal(config.codeProtocol.targetEntityCode, 'c');
+  assert.deepEqual(config.codeProtocol.wallSources, ['immovable']);
+});
