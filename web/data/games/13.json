@@ -12,7 +12,7 @@
     "temperature": 0.1
   },
   "codeProtocol": {
-    "enabled": false,
+    "enabled": true,
     "id": "GV1",
     "policyId": "grid-target",
     "authoritative": false,

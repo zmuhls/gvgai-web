@@ -16,7 +16,6 @@ test('aliens prompt config has code protocol disabled for natural-language promp
 test('selected arcade games have code protocols disabled for natural-language prompting', () => {
   const expectations = [
     [4, 'bait', 'bait-level0'],
-    [13, 'butterflies', 'grid-target'],
     [15, 'camelRace', 'fixed-code'],
     [18, 'chase', 'grid-target']
   ];
@@ -40,4 +39,15 @@ test('boulderchase uses compact diamond-target guidance', () => {
   assert.equal(config.codeProtocol.authoritative, false);
   assert.deepEqual(config.codeProtocol.targetSources, ['resource']);
   assert.deepEqual(config.codeProtocol.wallItypes, [0]);
+});
+
+test('butterflies uses compact butterfly-target guidance', () => {
+  const config = resolveGamePromptConfig(13, 1);
+
+  assert.equal(config.gameName, 'butterflies');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['npc']);
+  assert.deepEqual(config.codeProtocol.targetItypes, [5]);
 });
