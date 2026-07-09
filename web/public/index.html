@@ -8,7 +8,7 @@
   <link rel="preload" href="fonts/silkscreen-latin-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fonts/ibm-plex-mono-latin-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/theme.css">
-  <link rel="stylesheet" href="css/styles.css?v=uxmin-20260708">
+  <link rel="stylesheet" href="css/styles.css?v=modelnative-20260708">
   <script src="socket.io/socket.io.js"></script>
 </head>
 <body>
@@ -34,6 +34,7 @@
     </a>
     <nav id="main-nav" aria-label="Primary sections">
       <button class="nav-link active" type="button" data-target="play-section" aria-controls="play-section" aria-current="page">Java Arcade</button>
+      <button class="nav-link" type="button" data-target="model-native-roadmap" aria-controls="model-native-roadmap">Model-Native</button>
       <button class="nav-link" type="button" data-target="prompt-dashboard" aria-controls="prompt-dashboard">Operator Desk</button>
       <button class="nav-link" type="button" data-target="telemetry-dashboard" aria-controls="telemetry-dashboard">Telemetry</button>
     </nav>
@@ -131,57 +132,82 @@
       </section>
     </div>
 
-    <!-- Step 2: Strategy + Agent -->
+    <!-- Step 2: Launch + Prompt Setup -->
     <div id="model-selector" class="step">
-      <p class="step-label">2 / instruction</p>
-      <h2>Give It a Tactic</h2>
-      <button id="back-to-games" class="btn-secondary" type="button">← Back to Games</button>
-
-      <div class="selected-game-info">
-        <h3>Cabinet: <span id="selected-game-name"></span></h3>
+      <div class="setup-heading">
+        <div>
+          <p class="step-label">2 / run</p>
+          <h2>Ready the Game</h2>
+        </div>
+        <button id="back-to-games" class="btn-secondary" type="button">← Back to Games</button>
       </div>
 
-      <div class="player-type-toggle">
-        <label>Who plays?</label>
-        <div class="toggle-group">
-          <button id="player-type-llm" class="toggle-btn active" type="button" data-player-type="llm" aria-pressed="true">Model plays</button>
-          <button id="player-type-human" class="toggle-btn" type="button" data-player-type="human" aria-pressed="false">I'll play</button>
+      <section class="launch-panel" aria-labelledby="selected-game-heading">
+        <div class="launch-panel-main">
+          <div class="selected-game-info">
+            <span class="selected-game-kicker">Cabinet</span>
+            <h3 id="selected-game-heading"><span id="selected-game-name"></span></h3>
+          </div>
+
+          <div class="launch-controls">
+            <div class="player-type-toggle">
+              <label>Who plays?</label>
+              <div class="toggle-group">
+                <button id="player-type-llm" class="toggle-btn active" type="button" data-player-type="llm" aria-pressed="true">Model plays</button>
+                <button id="player-type-human" class="toggle-btn" type="button" data-player-type="human" aria-pressed="false">I'll play</button>
+              </div>
+            </div>
+
+            <div class="form-group level-group">
+              <label for="level-select">Level:</label>
+              <select id="level-select"></select>
+            </div>
+          </div>
+        </div>
+
+        <button id="start-game" class="btn-primary btn-start" type="button">Run the Game</button>
+      </section>
+
+      <div id="setup-game-preview" class="setup-game-stack" aria-label="Selected game">
+        <div class="cabinet-frame setup-cabinet-frame">
+          <div class="setup-game-display">
+            <span>Selected game</span>
+            <strong id="selected-game-stage-name"></strong>
+          </div>
         </div>
       </div>
 
-      <div id="strategy-form-group" class="form-group">
-        <label>Choose a tactic, then rewrite it:</label>
-        <div id="strategy-cards" class="strategy-cards"></div>
-        <textarea id="strategy-text" class="strategy-text" rows="3" maxlength="240"
-          placeholder="e.g. Play defensively — dodge enemies and only shoot when one is directly in front of you."></textarea>
-        <small>Treat the model's explanation as a claim you can compare with the move.</small>
-        <div id="strategy-warn" class="strategy-warn hidden" role="status" aria-live="polite"></div>
-        <details id="unfold-rules" class="unfold-rules">
-          <summary>Unfold the game's rules ▸</summary>
-          <p class="unfold-note">Tap a rule to add it to your tactic — these come straight from the game's definition.</p>
-          <div id="unfold-chips" class="unfold-chips"></div>
-        </details>
-      </div>
+      <section class="prompting-panel" aria-label="Run setup">
+        <div id="model-run-setup" class="model-run-setup">
+          <div id="strategy-form-group" class="form-group">
+            <label for="strategy-preset-select">Choose a sample tactic, then rewrite it:</label>
+            <select id="strategy-preset-select" class="strategy-preset-select" aria-label="Sample tactic presets">
+              <option value="" selected>Choose a sample tactic…</option>
+            </select>
+            <textarea id="strategy-text" class="strategy-text" rows="3" maxlength="240"
+              placeholder="e.g. Play defensively — dodge enemies and only shoot when one is directly in front of you."></textarea>
+            <small>Treat the model's explanation as a claim you can compare with the move.</small>
+            <div id="strategy-warn" class="strategy-warn hidden" role="status" aria-live="polite"></div>
+            <details id="unfold-rules" class="unfold-rules">
+              <summary>Unfold the game's rules ▸</summary>
+              <p class="unfold-note">Tap a rule to add it to your tactic — these come straight from the game's definition.</p>
+              <div id="unfold-chips" class="unfold-chips"></div>
+            </details>
+          </div>
 
-      <div class="settings-row">
-        <div id="model-form-group" class="form-group">
-          <label for="model-select">Model:</label>
-          <div id="model-chips" class="chip-rack"></div>
-          <select id="model-select"></select>
+          <div id="model-form-group" class="form-group">
+            <label for="model-select">Model:</label>
+            <div id="model-chips" class="chip-rack"></div>
+            <select id="model-select"></select>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="level-select">Level:</label>
-          <select id="level-select"></select>
+
+        <div id="human-controls-ref" class="human-controls-ref hidden">
+          <h4>Controls</h4>
+          <div id="control-keys" class="control-keys"></div>
+          <p class="control-note">Press keys during the game. The game runs at full speed — your reflexes matter.</p>
         </div>
-      </div>
-
-      <div id="human-controls-ref" class="human-controls-ref hidden">
-        <h4>Controls</h4>
-        <div id="control-keys" class="control-keys"></div>
-        <p class="control-note">Press keys during the game. The game runs at full speed — your reflexes matter.</p>
-      </div>
-
-      <button id="start-game" class="btn-primary btn-start" type="button">Run the Game</button>
+      </section>
     </div>
 
     <!-- Step 3: Game Viewer -->
@@ -232,6 +258,72 @@
     </div>
 
     </div><!-- /play-section -->
+
+    <!-- Model-Native Roadmap Section -->
+    <div id="model-native-roadmap" class="section roadmap-section" aria-labelledby="model-native-title" hidden>
+      <div class="dashboard-heading roadmap-heading electric-panel">
+        <p class="step-label">model-native path</p>
+        <h2 id="model-native-title">Model-Native Arcade</h2>
+        <p id="model-native-summary">Loading roadmap...</p>
+      </div>
+
+      <div class="roadmap-status-strip electric-panel">
+        <div>
+          <span>Runtime target</span>
+          <strong>No-Java subset</strong>
+        </div>
+        <div>
+          <span>Serving path</span>
+          <strong>Legion vLLM LoRA</strong>
+        </div>
+        <div>
+          <span>Starter set</span>
+          <strong>10 games</strong>
+        </div>
+      </div>
+
+      <section class="roadmap-panel electric-panel" aria-labelledby="model-native-lifecycle-title">
+        <div class="telemetry-panel-heading">
+          <div>
+            <p class="step-label">lifecycle</p>
+            <h3 id="model-native-lifecycle-title">Build Path</h3>
+          </div>
+        </div>
+        <div id="model-native-lifecycle" class="roadmap-lifecycle"></div>
+      </section>
+
+      <section class="roadmap-panel electric-panel" aria-labelledby="model-native-games-title">
+        <div class="telemetry-panel-heading">
+          <div>
+            <p class="step-label">featured set</p>
+            <h3 id="model-native-games-title">Starter Games</h3>
+          </div>
+        </div>
+        <div id="model-native-games" class="roadmap-games"></div>
+      </section>
+
+      <div class="roadmap-grid">
+        <section class="roadmap-panel electric-panel" aria-labelledby="model-native-phases-title">
+          <div class="telemetry-panel-heading">
+            <div>
+              <p class="step-label">roadmap</p>
+              <h3 id="model-native-phases-title">Phases</h3>
+            </div>
+          </div>
+          <div id="model-native-phases" class="roadmap-phases"></div>
+        </section>
+
+        <section class="roadmap-panel electric-panel" aria-labelledby="model-native-sources-title">
+          <div class="telemetry-panel-heading">
+            <div>
+              <p class="step-label">reuse</p>
+              <h3 id="model-native-sources-title">Reference Sources</h3>
+            </div>
+          </div>
+          <ul id="model-native-sources" class="roadmap-sources"></ul>
+        </section>
+      </div>
+    </div><!-- /model-native-roadmap -->
 
     <!-- Prompt Dashboard Section -->
     <div id="prompt-dashboard" class="section" aria-labelledby="prompt-dashboard-title" hidden>

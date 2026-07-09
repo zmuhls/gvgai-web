@@ -17,6 +17,7 @@ const state = {
   traceLog: [],
   traceStartedAt: null,
   featuredShowcase: null,
+  roadmap: null,
   liveGameState: { tick: 0, score: 0, health: 0 }
 };
 
@@ -55,7 +56,15 @@ const STRATEGY_PRESETS = [
   { label: 'Survive first', text: 'Play defensively. Keep distance from enemies, avoid danger, and prioritize staying alive over scoring.', archetypes: ['survivor', 'reflex-pilot', 'navigator'] },
   { label: 'Score test', text: 'Pursue points. Collect resources and take measured risks when a clear scoring route appears.', archetypes: ['collector', 'shooter-lane'] },
   { label: 'Threat test', text: 'Seek out enemies when the path is clear. Attack threats and retreat when health or position gets worse.', archetypes: ['shooter-roaming', 'shooter-lane', 'chaser'] },
-  { label: 'Goal test', text: 'Move deliberately and plan ahead. Work toward the exit or goal step by step without wasting moves.', archetypes: ['pusher-puzzle', 'chaser', 'navigator', 'collector'] }
+  { label: 'Goal test', text: 'Move deliberately and plan ahead. Work toward the exit or goal step by step without wasting moves.', archetypes: ['pusher-puzzle', 'chaser', 'navigator', 'collector'] },
+  { label: 'Aggressive rush', text: 'Attack relentlessly. Close in on the nearest threat and fire or strike at every opening instead of waiting.', archetypes: ['shooter-lane', 'shooter-roaming', 'chaser'] },
+  { label: 'Cautious explorer', text: 'Scout before committing. Read the layout, move one safe step at a time, and only advance when the path ahead is clear.', archetypes: ['navigator', 'pusher-puzzle', 'collector'] },
+  { label: 'Resource hoarder', text: 'Grab every collectible you safely can. Route around fights and let enemies pass rather than trading hits for points.', archetypes: ['collector', 'navigator'] },
+  { label: 'Lane defender', text: 'Hold your lane. Line up shots on enemies as they approach and only reposition when a threat slips past your column.', archetypes: ['shooter-lane', 'reflex-pilot'] },
+  { label: 'Hit and run', text: 'Strike, then retreat. Land one hit on a threat and immediately fall back to a safe square before the counterattack lands.', archetypes: ['shooter-roaming', 'chaser', 'reflex-pilot'] },
+  { label: 'Corner camper', text: 'Stay defensive in a safe pocket. Minimize movement, watch the enemies, and act only when one gets dangerously close.', archetypes: ['survivor', 'reflex-pilot'] },
+  { label: 'Path clearer', text: 'Solve the level methodically. Plan pushes and unlocks a few moves ahead so blocks and keys open the route to the goal.', archetypes: ['pusher-puzzle', 'navigator'] },
+  { label: 'Bait and dodge', text: 'Lure enemies out of position, then slip past. Use their movement against them and dodge into the gap they leave open.', archetypes: ['chaser', 'navigator', 'survivor'] }
 ];
 
 // Advice clause for each VGDL strategy tag (the controlled vocab from vgdl-digest).
@@ -77,15 +86,25 @@ const TAG_ADVICE = {
 const GENERIC_TACTIC_WORDS = new Set(['avoid', 'dodge', 'defend', 'defensive', 'defensively', 'attack', 'attacking', 'survive', 'survival', 'score', 'scoring', 'points', 'safe', 'safely', 'aggressive', 'careful', 'carefully', 'plan', 'retreat', 'collect', 'explore', 'goal', 'enemy', 'enemies', 'threat', 'threats', 'distance', 'risk', 'risks', 'shoot', 'move', 'wait', 'push']);
 
 const PREVIEW_GAMES = [
-  { id: 0, name: 'aliens', category: 'gridphysics', archetype: 'shooter-lane', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
-  { id: 10, name: 'boulderchase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
-  { id: 14, name: 'cakybaky', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
-  { id: 18, name: 'chase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true },
-  { id: 13, name: 'butterflies', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true }
+  { id: 0, name: 'aliens', category: 'gridphysics', archetype: 'shooter-lane', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 1 },
+  { id: 10, name: 'boulderchase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 2 },
+  { id: 14, name: 'cakybaky', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 3 },
+  { id: 18, name: 'chase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 4 },
+  { id: 13, name: 'butterflies', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 5 },
+  { id: 19, name: 'chipschallenge', category: 'gridphysics', archetype: 'pusher-puzzle', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 6 },
+  { id: 20, name: 'chopper', category: 'gridphysics', archetype: 'shooter-roaming', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 7 },
+  { id: 22, name: 'clusters', category: 'gridphysics', archetype: 'pusher-puzzle', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 8 },
+  { id: 30, name: 'digdug', category: 'gridphysics', archetype: 'navigator', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 9 },
+  { id: 68, name: 'pacman', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 10 },
+  { id: 44, name: 'frogs', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 11 },
+  { id: 50, name: 'hungrybirds', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 12 },
+  { id: 15, name: 'camelRace', category: 'gridphysics', archetype: 'collector', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 13 },
+  { id: 26, name: 'crossfire', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 14 },
+  { id: 63, name: 'link', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 15 }
 ];
 
 const FEATURED_CABINET_COUNT = 15;
-const FEATURED_FIRST_ROW_IDS = [0, 10, 14, 18, 13];
+const FEATURED_ORDER_IDS = [0, 10, 14, 18, 13, 19, 20, 22, 30, 68, 44, 50, 15, 26, 63];
 const SINGLE_PLAYER_CABINET_COUNT = 122;
 
 const PREVIEW_MODELS = [
@@ -151,7 +170,7 @@ const gameEndMessage = document.getElementById('game-end-message');
 const frameStatus = document.getElementById('frame-status');
 
 // Arcade-specific elements
-const strategyCards = document.getElementById('strategy-cards');
+const strategyPresetSelect = document.getElementById('strategy-preset-select');
 const strategyText = document.getElementById('strategy-text');
 const strategyFormGroup = document.getElementById('strategy-form-group');
 const modelFormGroup = document.getElementById('model-form-group');
@@ -165,6 +184,12 @@ const summaryHighlights = document.getElementById('summary-highlights');
 const strategyWarn = document.getElementById('strategy-warn');
 const unfoldRules = document.getElementById('unfold-rules');
 const unfoldChips = document.getElementById('unfold-chips');
+const roadmapSummary = document.getElementById('model-native-summary');
+const roadmapLifecycle = document.getElementById('model-native-lifecycle');
+const roadmapGames = document.getElementById('model-native-games');
+const roadmapPhases = document.getElementById('model-native-phases');
+const roadmapSources = document.getElementById('model-native-sources');
+const selectedGameStageName = document.getElementById('selected-game-stage-name');
 const setupGamePreview = document.getElementById('setup-game-preview');
 
 // Player-type toggle + human controls reference
@@ -202,6 +227,7 @@ async function init() {
   console.log('[App] Initializing...');
   await loadGames();
   await loadModels();
+  await loadRoadmap();
   renderStrategyCards();
   setupEventListeners();
   setupWebSocket();
@@ -339,53 +365,70 @@ function getFeaturedShowcase() {
   if (state.featuredShowcase) return state.featuredShowcase;
 
   const byId = new Map(state.games.map(game => [game.id, game]));
-  const pinned = FEATURED_FIRST_ROW_IDS
+  const orderedFeatured = state.games
+    .filter(game => game.featured)
+    .sort(compareFeaturedGames);
+  const orderedIds = new Set(orderedFeatured.map(game => game.id));
+  const fallbackFeatured = FEATURED_ORDER_IDS
     .map(id => byId.get(id))
-    .filter(Boolean);
-  const pinnedIds = new Set(pinned.map(game => game.id));
-  const candidates = state.games.filter(game => !pinnedIds.has(game.id));
-  const explicitFeatured = candidates.filter(game => game.featured);
-  const generalPool = candidates.filter(game => !game.featured);
-  const randomRows = shuffleGames(explicitFeatured.concat(generalPool))
-    .slice(0, Math.max(0, FEATURED_CABINET_COUNT - pinned.length));
+    .filter(game => game && !orderedIds.has(game.id));
+  const fill = state.games.filter(game => !orderedIds.has(game.id) &&
+    !fallbackFeatured.some(item => item.id === game.id));
 
-  state.featuredShowcase = pinned.concat(randomRows)
+  state.featuredShowcase = orderedFeatured.concat(fallbackFeatured, fill)
     .slice(0, FEATURED_CABINET_COUNT)
     .map(game => ({ ...game, featured: true }));
   return state.featuredShowcase;
 }
 
-function shuffleGames(games) {
-  const copy = games.slice();
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
+function compareFeaturedGames(a, b) {
+  const aRank = Number.isInteger(a.featuredRank) ? a.featuredRank : FEATURED_ORDER_IDS.indexOf(a.id) + 1;
+  const bRank = Number.isInteger(b.featuredRank) ? b.featuredRank : FEATURED_ORDER_IDS.indexOf(b.id) + 1;
+  const aSort = aRank > 0 ? aRank : Number.MAX_SAFE_INTEGER;
+  const bSort = bRank > 0 ? bRank : Number.MAX_SAFE_INTEGER;
+  return aSort - bSort || a.id - b.id;
 }
 
-// Render the preset strategy cards, affine-to-archetype presets first
+// Populate the preset-tactic dropdown, grouping presets that suit this game's
+// archetype under "Suggested for this game" so affine tactics surface first
+// (none are ever hidden). Selecting an option pre-fills the editable tactic box,
+// which is the single source of truth startGame() reads and sends to the model.
 function renderStrategyCards(archetype) {
-  if (!strategyCards) return;
-  const ranked = STRATEGY_PRESETS
-    .map((preset, originalIdx) => ({ preset, originalIdx }))
-    .sort((a, b) => {
-      const aAffine = archetype && (a.preset.archetypes || []).includes(archetype) ? 0 : 1;
-      const bAffine = archetype && (b.preset.archetypes || []).includes(archetype) ? 0 : 1;
-      return aAffine - bAffine || a.originalIdx - b.originalIdx;
-    });
-  strategyCards.innerHTML = ranked.map(({ preset, originalIdx }) => `
-    <button type="button" class="strategy-card" data-strategy-idx="${originalIdx}">${escapeHtml(preset.label)}</button>
-  `).join('');
-  strategyCards.querySelectorAll('.strategy-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const preset = STRATEGY_PRESETS[parseInt(card.dataset.strategyIdx)];
-      strategyText.value = preset.text;
-      strategyCards.querySelectorAll('.strategy-card').forEach(c => c.classList.remove('selected'));
-      card.classList.add('selected');
-      trackUx('strategy_selected', { label: preset.label }, {}, { eventFamily: 'clickthrough' });
-    });
+  if (!strategyPresetSelect) return;
+
+  const optionHtml = idx =>
+    `<option value="${idx}">${escapeHtml(STRATEGY_PRESETS[idx].label)}</option>`;
+
+  const suggested = [];
+  const rest = [];
+  STRATEGY_PRESETS.forEach((preset, idx) => {
+    const affine = archetype && (preset.archetypes || []).includes(archetype);
+    (affine ? suggested : rest).push(idx);
   });
+
+  const placeholder = '<option value="" selected>Choose a sample tactic…</option>';
+  let body;
+  if (suggested.length) {
+    body =
+      `<optgroup label="Suggested for this game">${suggested.map(optionHtml).join('')}</optgroup>` +
+      `<optgroup label="More tactics">${rest.map(optionHtml).join('')}</optgroup>`;
+  } else {
+    body = STRATEGY_PRESETS.map((_, idx) => optionHtml(idx)).join('');
+  }
+  strategyPresetSelect.innerHTML = placeholder + body;
+  strategyPresetSelect.value = '';
+}
+
+// Selecting a preset fills the editable tactic box. Wired once at init; the
+// options are re-rendered per game but the listener stays on the stable <select>.
+function handleStrategyPresetChange() {
+  if (!strategyPresetSelect || !strategyText) return;
+  const idx = parseInt(strategyPresetSelect.value, 10);
+  if (!Number.isInteger(idx) || !STRATEGY_PRESETS[idx]) return;
+  const preset = STRATEGY_PRESETS[idx];
+  strategyText.value = preset.text;
+  updateStrategyWarn();
+  trackUx('strategy_selected', { label: preset.label }, {}, { eventFamily: 'clickthrough' });
 }
 
 // Fetch the selected game's rules (derived from VGDL) and render the unfold chips.
@@ -526,6 +569,84 @@ async function loadModels() {
   }
 }
 
+async function loadRoadmap() {
+  if (!roadmapLifecycle && !roadmapGames && !roadmapPhases) return;
+  try {
+    const response = await fetch('/api/roadmap/model-native');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    state.roadmap = await response.json();
+    renderRoadmap(state.roadmap);
+  } catch (error) {
+    console.warn('[App] Could not load model-native roadmap:', error.message);
+    trackUx('roadmap_load_failed', { message: error.message });
+  }
+}
+
+function renderRoadmap(roadmap) {
+  if (!roadmap || typeof roadmap !== 'object') return;
+  if (roadmapSummary) {
+    roadmapSummary.textContent = roadmap.summary || '';
+  }
+  if (roadmapLifecycle) {
+    const steps = Array.isArray(roadmap.lifecycle) ? roadmap.lifecycle : [];
+    roadmapLifecycle.innerHTML = steps.map((step, index) => `
+      <div class="roadmap-step">
+        <span>${String(index + 1).padStart(2, '0')}</span>
+        <strong>${escapeHtml(step)}</strong>
+      </div>
+    `).join('');
+  }
+  if (roadmapGames) {
+    const games = Array.isArray(roadmap.games) ? roadmap.games : [];
+    roadmapGames.innerHTML = games.map(game => `
+      <article class="roadmap-game">
+        <div class="roadmap-game-meta">
+          <span>${String(game.id).padStart(3, '0')}</span>
+          <span>${escapeHtml(game.adapterId || '')}</span>
+        </div>
+        <h3>${escapeHtml(game.name || `game-${game.id}`)}</h3>
+        <p>${escapeHtml(game.featuredCopy || '')}</p>
+        <dl>
+          <div><dt>Logic</dt><dd>${escapeHtml(game.logicShape || '')}</dd></div>
+          <div><dt>Contract</dt><dd>${escapeHtml(game.contract || '')}</dd></div>
+          <div><dt>Data</dt><dd>${escapeHtml(game.finetuneData || '')}</dd></div>
+        </dl>
+      </article>
+    `).join('');
+  }
+  if (roadmapPhases) {
+    const phases = Array.isArray(roadmap.phases) ? roadmap.phases : [];
+    roadmapPhases.innerHTML = phases.map(phase => `
+      <article class="roadmap-phase">
+        <p class="roadmap-phase-horizon">${escapeHtml(phase.horizon || '')}</p>
+        <h3>${escapeHtml(phase.title || '')}</h3>
+        <p>${escapeHtml(phase.description || '')}</p>
+      </article>
+    `).join('');
+  }
+  if (roadmapSources) {
+    const sources = Array.isArray(roadmap.sourceReferences) ? roadmap.sourceReferences : [];
+    roadmapSources.innerHTML = sources.map(source => {
+      const label = source.licenseReviewRequired ? 'license review' : 'local source';
+      const name = escapeHtml(source.name || '');
+      const link = source.url
+        ? `<a href="${escapeHtml(source.url)}" target="_blank" rel="noopener noreferrer">${name}</a>`
+        : `<strong>${name}</strong>`;
+      return `
+        <li>
+          ${link}
+          <span>${escapeHtml(label)}</span>
+          <p>${escapeHtml(source.role || '')}</p>
+        </li>
+      `;
+    }).join('');
+  }
+  trackUx('roadmap_loaded', {
+    gameCount: Array.isArray(roadmap.games) ? roadmap.games.length : 0,
+    phaseCount: Array.isArray(roadmap.phases) ? roadmap.phases.length : 0
+  });
+}
+
 // Render games grid
 function renderGames(games) {
   gamesGrid.innerHTML = games.map(game => `
@@ -589,7 +710,8 @@ function renderModels(models) {
 const PROVIDER_LABELS = {
   'ollama-cloud': 'Cloud',
   'openrouter': 'OpenRouter',
-  'ollama-local': 'Local'
+  'ollama-local': 'Local',
+  'legion-vllm': 'Legion vLLM'
 };
 
 function renderModelChips(models) {
@@ -628,9 +750,7 @@ function syncModelChips() {
   });
   const model = state.models.find(m => m.id === modelSelect.value);
   if (backendLabel && model) {
-    backendLabel.textContent = PROVIDER_LABELS[model.provider] === 'Local'
-      ? 'Local Ollama'
-      : (model.provider === 'openrouter' ? 'OpenRouter' : 'Ollama Cloud');
+    backendLabel.textContent = PROVIDER_LABELS[model.provider] || model.provider || 'Model backend';
   }
 }
 
@@ -654,6 +774,7 @@ function selectGame(gameId) {
 
   // Update UI
   document.getElementById('selected-game-name').textContent = state.selectedGame.name;
+  if (selectedGameStageName) selectedGameStageName.textContent = state.selectedGame.name;
 
   // Populate level selector - display as 1-5 but values are 0-4
   const levels = state.selectedGame.levels && state.selectedGame.levels.length > 0
@@ -689,7 +810,7 @@ function updatePlayerTypeUI() {
       strategyFormGroup.classList.toggle('hidden', isHuman);
     } else {
       if (strategyText) strategyText.classList.toggle('hidden', isHuman);
-      if (strategyCards) strategyCards.classList.toggle('hidden', isHuman);
+      if (strategyPresetSelect) strategyPresetSelect.classList.toggle('hidden', isHuman);
       if (unfoldRules) unfoldRules.classList.toggle('hidden', isHuman);
     }
   }
@@ -992,6 +1113,9 @@ function setupEventListeners() {
 
   startGameBtn.addEventListener('click', startGame);
   stopGameBtn.addEventListener('click', stopGame);
+
+  // Preset-tactic dropdown fills the editable tactic box (listener stays put; options re-render per game)
+  if (strategyPresetSelect) strategyPresetSelect.addEventListener('change', handleStrategyPresetChange);
 
   // Player-type toggle: "Model plays" vs "I'll play"
   document.querySelectorAll('.toggle-btn').forEach(btn => {

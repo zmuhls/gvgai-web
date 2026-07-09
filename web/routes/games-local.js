@@ -26,13 +26,20 @@ function resolveGameFile(gameId) {
   return null;
 }
 
-function loadFeaturedSet() {
+function loadFeaturedRanks() {
   try {
     const featuredPath = path.join(__dirname, '../data/featured.json');
     const { featured } = JSON.parse(fs.readFileSync(featuredPath, 'utf-8'));
-    return new Set(Array.isArray(featured) ? featured : []);
+    const ranks = new Map();
+    if (Array.isArray(featured)) {
+      featured.forEach((gameId, index) => {
+        const id = Number(gameId);
+        if (Number.isInteger(id) && !ranks.has(id)) ranks.set(id, index + 1);
+      });
+    }
+    return ranks;
   } catch {
-    return new Set();
+    return new Map();
   }
 }
 
@@ -40,7 +47,7 @@ router.get('/', (req, res) => {
   try {
     const csvPath = path.join(PROJECT_ROOT, 'examples/all_games_sp.csv');
     const csvContent = fs.readFileSync(csvPath, 'utf-8');
-    const featuredSet = loadFeaturedSet();
+    const featuredRanks = loadFeaturedRanks();
 
     const games = csvContent.trim().split('\n').map(line => {
       const trimmedLine = line.trim();
@@ -69,7 +76,8 @@ router.get('/', (req, res) => {
         pace: classification?.pace || null,
         levels,
         levelCount: levels.length,
-        featured: featuredSet.has(gameId)
+        featured: featuredRanks.has(gameId),
+        featuredRank: featuredRanks.get(gameId) || null
       };
     });
 
@@ -129,3 +137,4 @@ router.get('/:id/digest', (req, res) => {
 });
 
 module.exports = router;
+module.exports.loadFeaturedRanks = loadFeaturedRanks;
