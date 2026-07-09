@@ -89,6 +89,29 @@ function createFrogsState({ avatar = [8, 9], tick = 0, score = 0 } = {}) {
   };
 }
 
+function createPacmanState({ avatar = [13, 28], ghosts = [], tick = 0, score = 0 } = {}) {
+  return {
+    blockSize: 20,
+    worldDimension: [560, 620],
+    observationGridNum: 28,
+    observationGridMaxRow: 31,
+    avatarPosition: { x: avatar[0] * 20, y: avatar[1] * 20 },
+    avatarHealthPoints: 0,
+    gameScore: score,
+    gameTick: tick,
+    availableActions: ['ACTION_UP', 'ACTION_DOWN', 'ACTION_LEFT', 'ACTION_RIGHT'],
+    NPCPositionsNum: ghosts.length > 0 ? 1 : 0,
+    NPCPositions: ghosts.length > 0
+      ? [ghosts.map(([x, y], index) => ({
+        position: { x: x * 20, y: y * 20 },
+        itype: 12 + index,
+        category: 3,
+        obsID: 500 + index
+      }))]
+      : []
+  };
+}
+
 function createGridTargetState({
   avatar = [3, 2],
   targets = [[1, 2, 6]],
@@ -215,6 +238,31 @@ function frogsPromptFor(state) {
       stagingRightX: 8
     }
   });
+}
+
+function pacmanPromptFor(state, stateTracker = null) {
+  return buildPrompt(state, {
+    gameName: 'pacman',
+    codeProtocol: {
+      enabled: true,
+      id: 'GV1',
+      policyId: 'pacman-level1',
+      authoritative: true,
+      actionCodes: {
+        U: 'ACTION_UP',
+        D: 'ACTION_DOWN',
+        L: 'ACTION_LEFT',
+        R: 'ACTION_RIGHT'
+      },
+      objectiveCodes: ['COLLECT_POWER_AND_FOOD', 'AVOID_GHOSTS'],
+      ruleCodes: ['SWEEP_BOTTOM_PELLETS', 'REVERSE_AT_BOTTOM_WALLS', 'AVOID_NEAR_GHOSTS'],
+      dangerSources: ['npc'],
+      patrolRowY: 28,
+      patrolLeftX: 8,
+      patrolRightX: 19,
+      ghostAvoidDistance: 3
+    }
+  }, stateTracker);
 }
 
 test('spatial context uses observation grid dimensions when worldDimension is mixed with blockSize', () => {
@@ -788,6 +836,61 @@ test('frogs level 1 policy recovers back to the safe bank', () => {
   assert.equal(prompt.fallbackAction, 'ACTION_DOWN');
   assert.equal(prompt.policyReason, 'return to safe start bank');
   assert.match(prompt.userMessage, /B:D/);
+});
+
+test('pacman level 1 policy opens along the bottom pellet corridor', () => {
+  const prompt = pacmanPromptFor(createPacmanState({
+    avatar: [13, 28]
+  }));
+
+  assert.equal(prompt.responseMode, 'code');
+  assert.equal(prompt.policyAuthoritative, true);
+  assert.equal(prompt.fallbackActionCode, 'R');
+  assert.equal(prompt.fallbackAction, 'ACTION_RIGHT');
+  assert.equal(prompt.policyReason, 'open bottom pellet sweep');
+  assert.match(prompt.userMessage, /B:R/);
+});
+
+test('pacman level 1 policy continues and reverses the bottom pellet sweep', () => {
+  const continueRight = pacmanPromptFor(createPacmanState({
+    avatar: [15, 28]
+  }), {
+    sentActions: [{ tick: 1, action: 'ACTION_RIGHT' }]
+  });
+  const reverseLeft = pacmanPromptFor(createPacmanState({
+    avatar: [19, 28]
+  }), {
+    sentActions: [{ tick: 7, action: 'ACTION_RIGHT' }]
+  });
+  const reverseRight = pacmanPromptFor(createPacmanState({
+    avatar: [8, 28]
+  }), {
+    sentActions: [{ tick: 15, action: 'ACTION_LEFT' }]
+  });
+
+  assert.equal(continueRight.fallbackActionCode, 'R');
+  assert.equal(continueRight.fallbackAction, 'ACTION_RIGHT');
+  assert.equal(continueRight.policyReason, 'sweep bottom pellet corridor right');
+  assert.equal(reverseLeft.fallbackActionCode, 'L');
+  assert.equal(reverseLeft.fallbackAction, 'ACTION_LEFT');
+  assert.equal(reverseLeft.policyReason, 'reverse at right pellet wall');
+  assert.equal(reverseRight.fallbackActionCode, 'R');
+  assert.equal(reverseRight.fallbackAction, 'ACTION_RIGHT');
+  assert.equal(reverseRight.policyReason, 'reverse at left pellet wall');
+});
+
+test('pacman level 1 policy reverses away from nearby corridor ghosts', () => {
+  const prompt = pacmanPromptFor(createPacmanState({
+    avatar: [15, 28],
+    ghosts: [[17, 28]]
+  }), {
+    sentActions: [{ tick: 4, action: 'ACTION_RIGHT' }]
+  });
+
+  assert.equal(prompt.fallbackActionCode, 'L');
+  assert.equal(prompt.fallbackAction, 'ACTION_LEFT');
+  assert.equal(prompt.policyReason, 'reverse away from nearby ghost');
+  assert.match(prompt.userMessage, /B:L/);
 });
 
 test('macro-enabled game with a strategy asks for a PLAN closing contract', () => {

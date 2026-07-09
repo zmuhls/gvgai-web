@@ -21,8 +21,8 @@
   "codeProtocol": {
     "enabled": true,
     "id": "GV1",
-    "policyId": "grid-target",
-    "authoritative": false,
+    "policyId": "pacman-level1",
+    "authoritative": true,
     "actionCodes": {
       "U": "ACTION_UP",
       "D": "ACTION_DOWN",
@@ -39,9 +39,14 @@
       "AVOID_GHOSTS"
     ],
     "ruleCodes": [
-      "PATH_TO_POWER_WHEN_VISIBLE",
-      "AVOID_ACTIVE_GHOSTS"
+      "SWEEP_BOTTOM_PELLETS",
+      "REVERSE_AT_BOTTOM_WALLS",
+      "AVOID_NEAR_GHOSTS"
     ],
+    "patrolRowY": 28,
+    "patrolLeftX": 8,
+    "patrolRightX": 19,
+    "ghostAvoidDistance": 3,
     "targetSources": [
       "resource"
     ],
@@ -58,7 +63,7 @@
     "dangerRadius": 1,
     "policyEntityLimit": 256
   },
-  "updatedAt": "2026-07-02T01:39:27.630Z",
+  "updatedAt": "2026-07-09T08:59:00.000Z",
   "classification": {
     "classifierVersion": 1,
     "archetype": "chaser",

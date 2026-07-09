@@ -128,11 +128,19 @@ test('pacman uses compact power guidance with ghost avoidance', () => {
 
   assert.equal(config.gameName, 'pacman');
   assert.equal(config.codeProtocol.enabled, true);
-  assert.equal(config.codeProtocol.policyId, 'grid-target');
-  assert.equal(config.codeProtocol.authoritative, false);
+  assert.equal(config.codeProtocol.policyId, 'pacman-level1');
+  assert.equal(config.codeProtocol.authoritative, true);
   assert.deepEqual(config.codeProtocol.targetSources, ['resource']);
   assert.deepEqual(config.codeProtocol.dangerSources, ['npc']);
-  assert.equal(config.codeProtocol.dangerRadius, 1);
+  assert.equal(config.codeProtocol.patrolRowY, 28);
+  assert.equal(config.codeProtocol.patrolLeftX, 8);
+  assert.equal(config.codeProtocol.patrolRightX, 19);
+  assert.equal(config.codeProtocol.ghostAvoidDistance, 3);
+  assert.deepEqual(config.codeProtocol.ruleCodes, [
+    'SWEEP_BOTTOM_PELLETS',
+    'REVERSE_AT_BOTTOM_WALLS',
+    'AVOID_NEAR_GHOSTS'
+  ]);
 });
 
 test('frogs uses compact goal guidance with traffic avoidance', () => {

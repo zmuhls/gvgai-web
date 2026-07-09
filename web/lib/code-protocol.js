@@ -533,6 +533,59 @@ function chooseFrogsLevel1Code(sso, protocol, playerPos, codes) {
   return actionResult('ACTION_LEFT', 'patrol safe bank while waiting for traffic');
 }
 
+function choosePacmanLevel1Code(sso, protocol, playerPos, codes, stateTracker) {
+  if (!playerPos) return null;
+
+  const availableActions = sso.availableActions || [];
+  const codeFor = (action) => (
+    availableActions.includes(action) ? actionCodeForAction(codes, action) : null
+  );
+  const actionResult = (action, reason) => {
+    const code = codeFor(action);
+    return code ? { code, reason } : null;
+  };
+
+  const [x, y] = playerPos;
+  const patrolRowY = Number.isInteger(protocol.patrolRowY) ? protocol.patrolRowY : 28;
+  const patrolLeftX = Number.isInteger(protocol.patrolLeftX) ? protocol.patrolLeftX : 8;
+  const patrolRightX = Number.isInteger(protocol.patrolRightX) ? protocol.patrolRightX : 19;
+  const ghostAvoidDistance = Number.isInteger(protocol.ghostAvoidDistance)
+    ? protocol.ghostAvoidDistance
+    : 3;
+
+  if (y < patrolRowY) return actionResult('ACTION_DOWN', 'return to bottom pellet corridor');
+  if (y > patrolRowY) return actionResult('ACTION_UP', 'return to bottom pellet corridor');
+
+  const blockSize = sso.blockSize || 1;
+  const ghosts = collectSourcePositions(
+    sso,
+    protocol.dangerSources || ['npc'],
+    blockSize,
+    playerPos,
+    protocol.dangerEntityCode || 'g',
+    protocol.policyEntityLimit || 32
+  );
+  const closeGhost = ghosts
+    .filter(ghost => Math.abs(ghost.y - y) <= 1 && Math.abs(ghost.x - x) <= ghostAvoidDistance)
+    .sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))[0];
+  if (closeGhost?.x >= x && x > patrolLeftX) {
+    return actionResult('ACTION_LEFT', 'reverse away from nearby ghost');
+  }
+  if (closeGhost?.x <= x && x < patrolRightX) {
+    return actionResult('ACTION_RIGHT', 'reverse away from nearby ghost');
+  }
+
+  if (x <= patrolLeftX) return actionResult('ACTION_RIGHT', 'reverse at left pellet wall');
+  if (x >= patrolRightX) return actionResult('ACTION_LEFT', 'reverse at right pellet wall');
+
+  const lastSent = Array.isArray(stateTracker?.sentActions) && stateTracker.sentActions.length > 0
+    ? stateTracker.sentActions[stateTracker.sentActions.length - 1].action
+    : null;
+  if (lastSent === 'ACTION_LEFT') return actionResult('ACTION_LEFT', 'sweep bottom pellet corridor left');
+  if (lastSent === 'ACTION_RIGHT') return actionResult('ACTION_RIGHT', 'sweep bottom pellet corridor right');
+  return actionResult('ACTION_RIGHT', 'open bottom pellet sweep');
+}
+
 function chooseFixedCode(sso, protocol, codes) {
   const availableActions = sso.availableActions || [];
   const fixedCode = protocol.fixedActionCode || protocol.repeatedActionCode;
@@ -698,6 +751,8 @@ function choosePolicyActionCode(sso, protocol, playerPos, codes, stateTracker) {
       return chooseChipsChallengeLevel1Code(sso, protocol, playerPos, codes);
     case 'frogs-level1':
       return chooseFrogsLevel1Code(sso, protocol, playerPos, codes);
+    case 'pacman-level1':
+      return choosePacmanLevel1Code(sso, protocol, playerPos, codes, stateTracker);
     case 'fixed-code':
       return chooseFixedCode(sso, protocol, codes);
     case 'grid-target':
