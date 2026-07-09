@@ -153,6 +153,9 @@ const frameStatus = document.getElementById('frame-status');
 // Arcade-specific elements
 const strategyCards = document.getElementById('strategy-cards');
 const strategyText = document.getElementById('strategy-text');
+const strategyFormGroup = document.getElementById('strategy-form-group');
+const modelFormGroup = document.getElementById('model-form-group');
+const modelRunSetup = document.getElementById('model-run-setup');
 const toggleBrowseAllBtn = document.getElementById('toggle-browse-all');
 const gamesModeLabel = document.getElementById('games-mode-label');
 const strategyActive = document.getElementById('strategy-active');
@@ -162,6 +165,7 @@ const summaryHighlights = document.getElementById('summary-highlights');
 const strategyWarn = document.getElementById('strategy-warn');
 const unfoldRules = document.getElementById('unfold-rules');
 const unfoldChips = document.getElementById('unfold-chips');
+const setupGamePreview = document.getElementById('setup-game-preview');
 
 // Player-type toggle + human controls reference
 const humanControlsRef = document.getElementById('human-controls-ref');
@@ -665,36 +669,38 @@ function selectGame(gameId) {
   // Load the game's rules for the unfold scaffold + reset any prior soft-warn.
   loadGameDigest(gameId);
   updateStrategyWarn();
+  updatePlayerTypeUI();
 
   // Show model selector
   showStep(modelSelector);
 }
 
 // Show/hide UI elements based on the current player type.
-// In human mode the model selector, strategy textarea, strategy cards,
-// unfold-rules, and human controls ref are all adjusted.
+// Human mode should stay focused on the keyboard controls and play button;
+// model prompting, rule unfolding, and model selection are only for LLM runs.
 function updatePlayerTypeUI() {
   const isHuman = playerType === 'human';
 
-  // Toggle the model selector dropdown
-  const modelFormGroup = modelSelect?.closest('.form-group');
-  if (modelFormGroup) modelFormGroup.classList.toggle('hidden', isHuman);
-
-  // Toggle strategy textarea
-  if (strategyText) strategyText.classList.toggle('hidden', isHuman);
-
-  // Toggle strategy cards
-  if (strategyCards) strategyCards.classList.toggle('hidden', isHuman);
-
-  // Toggle unfold-rules
-  if (unfoldRules) unfoldRules.classList.toggle('hidden', isHuman);
+  if (modelRunSetup) {
+    modelRunSetup.classList.toggle('hidden', isHuman);
+  } else {
+    if (modelFormGroup) modelFormGroup.classList.toggle('hidden', isHuman);
+    if (strategyFormGroup) {
+      strategyFormGroup.classList.toggle('hidden', isHuman);
+    } else {
+      if (strategyText) strategyText.classList.toggle('hidden', isHuman);
+      if (strategyCards) strategyCards.classList.toggle('hidden', isHuman);
+      if (unfoldRules) unfoldRules.classList.toggle('hidden', isHuman);
+    }
+  }
 
   // Toggle human controls reference
   if (humanControlsRef) humanControlsRef.classList.toggle('hidden', !isHuman);
+  if (setupGamePreview) setupGamePreview.classList.toggle('hidden', isHuman);
 
   // Update start button text
   if (startGameBtn) {
-    startGameBtn.textContent = isHuman ? 'Play the Cabinet' : 'Run the Cabinet';
+    startGameBtn.textContent = isHuman ? 'Play the Game' : 'Run the Game';
   }
 
   // Populate the key reference when switching to human mode
@@ -764,9 +770,10 @@ async function startGame() {
     return;
   }
 
-  const model = modelSelect.value;
+  const isHuman = playerType === 'human';
+  const model = isHuman ? null : modelSelect.value;
   const level = parseInt(levelSelect.value);
-  const strategy = (strategyText?.value || '').trim();
+  const strategy = isHuman ? '' : (strategyText?.value || '').trim();
   trackUx('game_start_clicked', {
     gameId: state.selectedGame.id,
     gameName: state.selectedGame.name,
@@ -781,7 +788,7 @@ async function startGame() {
 
   console.log('[App] Starting game:', {
     game: state.selectedGame.name,
-    model,
+    model: model || '(human)',
     level,
     strategy: strategy || '(none)'
   });
@@ -867,7 +874,7 @@ async function startGame() {
     alert('Failed to start game: ' + error.message);
   } finally {
     startGameBtn.disabled = false;
-    startGameBtn.textContent = playerType === 'human' ? 'Play the Cabinet' : 'Run the Cabinet';
+    startGameBtn.textContent = playerType === 'human' ? 'Play the Game' : 'Run the Game';
   }
 }
 
@@ -1043,7 +1050,7 @@ function setupEventListeners() {
         level: parseInt(levelSelect.value, 10) || 0,
         model: playerType === 'human' ? null : (modelSelect.value || null),
         playerType,
-        strategy: (strategyText?.value || '').trim() || null,
+        strategy: playerType === 'human' ? null : ((strategyText?.value || '').trim() || null),
         summary: state.lastSummary || null,
         decisions: state.traceLog
       };
