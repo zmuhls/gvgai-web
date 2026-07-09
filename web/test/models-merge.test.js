@@ -101,6 +101,30 @@ test('resolveModel routes registry ids to ollama-local, not inferred ollama-clou
   }
 });
 
+test('registry entries can route to legion vLLM adapters', () => {
+  const legionEntry = {
+    ...ENTRY,
+    id: 'gvgai-aliens',
+    name: 'Gemma 3 4B FT · aliens',
+    provider: 'legion-vllm',
+    modelPath: '/srv/adapters/gvgai-aliens/lora',
+    ggufPath: null,
+    fallback: 'gemma3:27b',
+    fallbackProvider: 'ollama-cloud'
+  };
+
+  withRegistry({ models: [legionEntry] });
+  try {
+    const merged = models.getAllModels().find(model => model.id === 'gvgai-aliens');
+    assert.equal(merged.provider, 'legion-vllm');
+    assert.equal(merged.fallback, 'gemma3:27b');
+    assert.equal(merged.fallbackProvider, 'ollama-cloud');
+    assert.equal(models.resolveModel('gvgai-aliens').provider, 'legion-vllm');
+  } finally {
+    restore();
+  }
+});
+
 test('a corrupt registry degrades to the built-in catalog', () => {
   withRegistry('{not json');
   try {

@@ -51,6 +51,35 @@ lines (`train_step` carries step/loss). Outputs:
 Knobs: `--epochs 2` (default), `--max-steps N` overrides epochs,
 `--base-model unsloth/gemma-3-4b-it`, `--quant q4_k_m`.
 
+### Legion vLLM adapter path
+
+For the model-native arcade path, train a stable adapter name and skip GGUF
+export. vLLM serves the PEFT `lora/` directory directly:
+
+```bash
+python3 finetune.py \
+  --data game-0-train.jsonl \
+  --game-id 0 --game-name aliens \
+  --run-id legion-$(date +%s) \
+  --trained-on-plays <human play count from step 1 stats> \
+  --registry finetune-models.json \
+  --output-dir /srv/adapters \
+  --provider legion-vllm \
+  --model-id gvgai-aliens \
+  --no-gguf
+```
+
+The server-side trigger uses the same shape when configured with:
+
+```bash
+FINETUNE_PROVIDER=legion-vllm
+FINETUNE_OUTPUT_DIR=/srv/adapters
+LEGION_MODEL_ID_PREFIX=gvgai
+```
+
+That keeps the adapter id equal to the vLLM request model, for example
+`gvgai-aliens`.
+
 ## 4. Bring the model back to the arcade machine
 
 ```bash

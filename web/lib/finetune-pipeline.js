@@ -31,6 +31,13 @@ function intFromEnv(name, fallback) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function slugifyModelPart(value) {
+  return String(value || 'game')
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'game';
+}
+
 class FinetunePipeline {
   constructor() {
     this.configured = false;
@@ -61,7 +68,9 @@ class FinetunePipeline {
     this.registryPath = deps.registryPath || process.env.FINETUNE_REGISTRY_PATH ||
       path.join(WEB_ROOT, 'data', 'finetune-models.json');
     this.jsonlDir = deps.jsonlDir || path.join(WEB_ROOT, 'data', 'finetune');
-    this.modelsDir = deps.modelsDir || path.join(WEB_ROOT, 'models');
+    this.modelsDir = deps.modelsDir || process.env.FINETUNE_OUTPUT_DIR || path.join(WEB_ROOT, 'models');
+    this.trainingProvider = deps.trainingProvider || process.env.FINETUNE_PROVIDER || 'ollama-local';
+    this.legionModelIdPrefix = deps.legionModelIdPrefix || process.env.LEGION_MODEL_ID_PREFIX || 'gvgai';
     this.forceDryRun = deps.forceDryRun ?? process.env.FINETUNE_DRY_RUN === '1';
     this.timeoutMs = deps.timeoutMs ?? intFromEnv('FINETUNE_TIMEOUT_MS', 6 * 60 * 60 * 1000);
     this.autoIntervalMs = deps.autoIntervalMs ?? intFromEnv('FINETUNE_AUTO_INTERVAL_MS', 600000);
@@ -167,8 +176,13 @@ class FinetunePipeline {
         '--run-id', run.runId,
         '--registry', this.registryPath,
         '--output-dir', this.modelsDir,
+        '--provider', this.trainingProvider,
         '--trained-on-plays', String(stats.traceCount)
       ];
+      if (this.trainingProvider === 'legion-vllm') {
+        args.push('--model-id', `${this.legionModelIdPrefix}-${slugifyModelPart(run.gameName)}`);
+        args.push('--no-gguf');
+      }
       if (run.dryRun) args.push('--dry-run');
 
       let child;
@@ -412,6 +426,11 @@ class FinetunePipeline {
       registry: {
         count: this.configured ? this.models.loadFinetunedModels().length : 0,
         path: this.registryPath || null
+      },
+      training: {
+        provider: this.trainingProvider,
+        outputDir: this.modelsDir,
+        legionModelIdPrefix: this.legionModelIdPrefix
       }
     };
   }

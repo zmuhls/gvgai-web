@@ -304,18 +304,22 @@ class LLMClient {
       }
 
       if (isACT) {
+        // The maxActions cap counts LLM decisions (runLog entries), not engine
+        // ticks, and must run in BOTH modes: in async mode nothing else ends a
+        // case before natural game end / the per-case timeout, and an uncapped
+        // async case burns 60-150 provider calls instead of ~40.
+        if (this.maxActions && this.runLog.length >= this.maxActions) {
+          console.log(`[LLMClient] Max actions reached (${this.maxActions}); ending Java eval case`);
+          this.sendMessageWithId(msgId, `ABORT#${this.actResponseType}`);
+          // Java doesn't reliably close the socket after ABORT, so emit the
+          // run-summary now — otherwise the eval/marble case hangs until the
+          // per-case timeout. The summaryEmitted guard makes this idempotent
+          // if the socket does later close. (Only reached in eval/marble mode;
+          // the walk-up path never sets maxActions.)
+          this.emitCloseSummary();
+          return;
+        }
         if (this.synchronousActions) {
-          if (this.maxActions && this.runLog.length >= this.maxActions) {
-            console.log(`[LLMClient] Max actions reached (${this.maxActions}); ending Java eval case`);
-            this.sendMessageWithId(msgId, `ABORT#${this.actResponseType}`);
-            // Java doesn't reliably close the socket after ABORT, so emit the
-            // run-summary now — otherwise the eval/marble case hangs until the
-            // per-case timeout. The summaryEmitted guard makes this idempotent
-            // if the socket does later close. (Only reached in eval/marble mode;
-            // the walk-up path never sets maxActions.)
-            this.emitCloseSummary();
-            return;
-          }
           const directPolicy = this.resolveAuthoritativePolicy(jsonPayload);
           if (directPolicy) {
             const sso = this.recordActState(jsonPayload, directPolicy.action);

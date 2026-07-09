@@ -3052,10 +3052,9 @@ label {
 }
 
 .marble-popout-chrome {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  /* in flow above the frame — an absolute overlay occluded the top of the
+     board once the embed stopped cover-cropping */
+  position: relative;
   z-index: 3;
   display: flex;
   align-items: center;
@@ -3075,10 +3074,6 @@ label {
 .marble-popout.is-expanded .marble-popout-chrome {
   opacity: 1;
   transform: translateY(0);
-}
-
-.marble-popout.is-expanded .marble-popout-chrome {
-  position: relative;
 }
 
 .marble-popout-title {
@@ -3150,7 +3145,11 @@ label {
 
 .marble-popout-frame {
   position: relative;
-  aspect-ratio: 16 / 9;
+  /* follow the streamed game's real ratio (set by marble-popout.js from the
+     iframe's marble-frame-size messages); 4/3 fits the attract canvas and
+     most GVGAI boards until the first frame lands */
+  aspect-ratio: var(--marble-popout-aspect, 4 / 3);
+  padding: 6px;
   background: #000;
 }
 

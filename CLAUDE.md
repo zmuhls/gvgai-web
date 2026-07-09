@@ -8,6 +8,8 @@ GVGAI (General Video Game AI) framework with a web-based LLM agent integration l
 
 **Provenance.** This is a fork of [GAIGResearch/GVGAI](https://github.com/GAIGResearch/GVGAI). The Java engine, VGDL definitions, and `examples/` are **upstream code** (treat as a stable dependency, not "our code" to refactor). The local addition is everything under `web/` — the Node server, dashboard, and LLM connectivity. The Learning-track code lives in a separate repo (GVGAI_GYM), not here.
 
+**Companion repo (`gvgai-llm-rt/`).** A sibling project, [`zmuhls/gvgai-llm-rt`](https://github.com/zmuhls/gvgai-llm-rt), may be present as a **nested working copy** at `gvgai-llm-rt/` — its own git and remote, gitignored here via `/gvgai-llm-rt/` so it never commits into gvgai-web or enters the Railway image (the Dockerfile's targeted `COPY`s exclude it anyway). It is the GVGAI **real-time planning-track** counterpart to this repo's arcade: an async Java `Agent` reaches a Python vLLM sidecar *off* the 40 ms `act()` loop, drains macro-actions across ticks, and applies a 1-ply forward-model reflex veto. The tie between the two is conceptual plus an adapter handoff — **this repo captures human traces and trains LoRA adapters; `gvgai-llm-rt` serves them** under a real-time budget. It carries its own `CLAUDE.md`; treat it as a separate codebase and don't refactor across the boundary.
+
 **`web/README.md` is partly stale** — it predates the current work and describes OpenRouter-only routing, browser-side API-key entry, and a "35ms timeout with fallback" that no longer match the code. For LLM routing, the prompt pipeline, and the frontend flow, **this file and `web/lib/` are authoritative**; the README's game-id pointers and prerequisites are still fine.
 
 ## Git Workflow

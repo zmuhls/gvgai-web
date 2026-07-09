@@ -169,6 +169,19 @@
 
   bindSocket(0);
 
+  // The embedded marquee reports each new frame's true pixel size so the
+  // collapsed popout can match the game's aspect instead of guessing.
+  window.addEventListener('message', function (event) {
+    if (event.origin !== window.location.origin) return;
+    if (!iframe || event.source !== iframe.contentWindow) return;
+    var data = event.data;
+    if (!data || data.type !== 'marble-frame-size') return;
+    var w = Number(data.width);
+    var h = Number(data.height);
+    if (!(w > 0) || !(h > 0)) return;
+    popout.style.setProperty('--marble-popout-aspect', w + ' / ' + h);
+  });
+
   fetch('/api/marble/state')
     .then(function (response) { return response.ok ? response.json() : null; })
     .then(function (snapshot) {

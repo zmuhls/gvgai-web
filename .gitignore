@@ -94,6 +94,9 @@ telemetry.png
 # Local node_modules backup (not a dependency)
 web/node_modules.dataless-backup/
 
+# Companion repo cloned as a nested working copy (own git/remote; never commit into gvgai-web)
+/gvgai-llm-rt/
+
 # Supabase CLI link artifact (real migrations live in web/supabase/migrations/)
 /supabase/
 .hermes/

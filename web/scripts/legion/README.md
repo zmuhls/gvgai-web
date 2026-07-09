@@ -9,6 +9,13 @@ the training half is in `../FINETUNE.md`.
 `model` == arcade registry `id` (e.g. `gvgai`, `cloze-reader`, `jeopardy-lm`, `haggle`,
 `exquisite-corpse`).
 
+For model-native GVGAI cabinets, use stable adapter ids in the form
+`gvgai-<game-name>` so the featured game, registry row, and vLLM request all
+name the same adapter. The first starter set is `gvgai-aliens`,
+`gvgai-boulderchase`, `gvgai-cakybaky`, `gvgai-chase`, `gvgai-butterflies`,
+`gvgai-chipschallenge`, `gvgai-chopper`, `gvgai-clusters`, `gvgai-digdug`,
+and `gvgai-pacman`.
+
 ## Day 0 — bring-up
 
 ```bash

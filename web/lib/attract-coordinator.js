@@ -249,6 +249,9 @@ class AttractCoordinator {
             io: this.io,
             timeoutMs: this.caseOptions.timeoutMs,
             maxActions: this.caseOptions.maxActions,
+            // Marble run defaults async: the engine ticks at full speed off the
+            // plan queue instead of blocking on a provider round-trip per move.
+            synchronousActions: this.caseOptions.synchronousActions === true,
             initResponseType: this.caseOptions.initResponseType || 'BOTH',
             actResponseType: this.caseOptions.actResponseType || 'BOTH',
             onCaseStart: (handle) => {

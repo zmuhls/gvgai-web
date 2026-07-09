@@ -1,0 +1,201 @@
+{
+  "title": "Model-Native Arcade",
+  "summary": "A staged redesign path for keeping GVGAI/VGDL as the source of game truth while moving selected games toward a lightweight non-Java runtime and game-specific LoRA adapters served by Legion vLLM.",
+  "lifecycle": [
+    "VGDL harvest",
+    "No-Java runtime subset",
+    "Trace capture",
+    "Fine-tune JSONL",
+    "QLoRA LoRA",
+    "vLLM adapter",
+    "Model registry",
+    "Eval",
+    "Featured promotion"
+  ],
+  "games": [
+    {
+      "id": 0,
+      "name": "aliens",
+      "featuredRank": 1,
+      "adapterId": "gvgai-aliens",
+      "archetype": "shooter-lane",
+      "pace": "reactive",
+      "logicShape": "Lane shooter with enemy descent, missile collision, and clear-all termination.",
+      "contract": "Grid snapshot, avatar lane, alien rows, missile state, score, tick, and ACTION_LEFT/ACTION_RIGHT/ACTION_USE/ACTION_NIL.",
+      "finetuneData": "Human and scripted traces that show lane alignment, dodge timing, and fire cadence.",
+      "featuredCopy": "Hold the firing lane while a tuned model learns when to shoot and when to dodge."
+    },
+    {
+      "id": 10,
+      "name": "boulderchase",
+      "featuredRank": 2,
+      "adapterId": "gvgai-boulderchase",
+      "archetype": "collector",
+      "pace": "reactive",
+      "logicShape": "Collector loop with moving threats, resource pickup, and obstacle-aware pathing.",
+      "contract": "Grid snapshot, avatar position, resource cells, chaser cells, blocked cells, score, tick, and movement actions.",
+      "finetuneData": "Runs that trade off safe collection routes against enemy distance and score pressure.",
+      "featuredCopy": "Collect under pressure while the adapter learns safe greed."
+    },
+    {
+      "id": 14,
+      "name": "cakybaky",
+      "featuredRank": 3,
+      "adapterId": "gvgai-cakybaky",
+      "archetype": "collector",
+      "pace": "reactive",
+      "logicShape": "Timed collection game with hazards, resource count, and compact grid navigation.",
+      "contract": "Grid snapshot, target count, hazard offsets, timeout pressure, score, tick, and movement actions.",
+      "finetuneData": "Short traces that cover fast collection, hazard avoidance, and timeout recovery.",
+      "featuredCopy": "A small timed board for measuring whether fine-tuning improves urgency."
+    },
+    {
+      "id": 18,
+      "name": "chase",
+      "featuredRank": 4,
+      "adapterId": "gvgai-chase",
+      "archetype": "collector",
+      "pace": "reactive",
+      "logicShape": "Reactive collection with state changes and enemy pressure.",
+      "contract": "Grid snapshot, avatar position, collectible positions, enemy positions, transformed states, score, tick, and movement actions.",
+      "finetuneData": "Contrasting defensive and scoring traces that expose when state changes matter.",
+      "featuredCopy": "Route through a changing board while the model balances score and survival."
+    },
+    {
+      "id": 13,
+      "name": "butterflies",
+      "featuredRank": 5,
+      "adapterId": "gvgai-butterflies",
+      "archetype": "chaser",
+      "pace": "deliberate",
+      "logicShape": "Deliberate chase game with target pursuit and clear-all objectives.",
+      "contract": "Grid snapshot, avatar position, target positions, blocked cells, score, tick, and movement actions.",
+      "finetuneData": "Target-order traces that demonstrate pursuit planning instead of random wandering.",
+      "featuredCopy": "A clean chase cabinet for testing whether the adapter can plan a target order."
+    },
+    {
+      "id": 19,
+      "name": "chipschallenge",
+      "featuredRank": 6,
+      "adapterId": "gvgai-chipschallenge",
+      "archetype": "pusher-puzzle",
+      "pace": "deliberate",
+      "logicShape": "Puzzle navigation with resource gates, movable blockers, and goal progress.",
+      "contract": "Grid snapshot, inventory/resource state, blockers, gates, avatar position, score, tick, and movement actions.",
+      "finetuneData": "Solved-path traces with intermediate inventory states and wrong-turn recovery.",
+      "featuredCopy": "A deliberate puzzle board for testing memory over visible rules."
+    },
+    {
+      "id": 20,
+      "name": "chopper",
+      "featuredRank": 7,
+      "adapterId": "gvgai-chopper",
+      "archetype": "shooter-roaming",
+      "pace": "reactive",
+      "logicShape": "Roaming shooter with hazards, attack timing, and navigation around threat lanes.",
+      "contract": "Grid snapshot, avatar position, enemy positions, projectile or use-action availability, score, tick, and movement/use actions.",
+      "finetuneData": "Traces that pair pursuit, retreat, and use-action timing under threat.",
+      "featuredCopy": "Roam, line up, and fire without losing the board state."
+    },
+    {
+      "id": 22,
+      "name": "clusters",
+      "featuredRank": 8,
+      "adapterId": "gvgai-clusters",
+      "archetype": "pusher-puzzle",
+      "pace": "reactive",
+      "logicShape": "Reactive pusher puzzle with clustered objects and timeout pressure.",
+      "contract": "Grid snapshot, object clusters, avatar position, blocked cells, timeout state, score, tick, and movement actions.",
+      "finetuneData": "Traces that show object approach order, cluster separation, and timeout-aware moves.",
+      "featuredCopy": "A pressure puzzle for measuring whether the model can keep object goals straight."
+    },
+    {
+      "id": 30,
+      "name": "digdug",
+      "featuredRank": 9,
+      "adapterId": "gvgai-digdug",
+      "archetype": "navigator",
+      "pace": "reactive",
+      "logicShape": "Digging and navigation game with enemy avoidance and attack opportunities.",
+      "contract": "Grid snapshot, diggable cells, avatar position, enemy offsets, use-action label, score, tick, and movement/use actions.",
+      "finetuneData": "Traces that distinguish digging routes, safe tunnels, and attack timing.",
+      "featuredCopy": "A digger cabinet for exposing spatial planning in the prompt contract."
+    },
+    {
+      "id": 68,
+      "name": "pacman",
+      "featuredRank": 10,
+      "adapterId": "gvgai-pacman",
+      "archetype": "chaser",
+      "pace": "reactive",
+      "logicShape": "Maze pursuit with pellets, threats, transformation windows, and route choice.",
+      "contract": "Grid snapshot, avatar position, pellet/resource cells, enemy positions, power state, score, tick, and movement actions.",
+      "finetuneData": "Traces that cover pellet routing, ghost distance, and power-state reversals.",
+      "featuredCopy": "Classic maze pressure for comparing base prompts against a tuned game adapter."
+    }
+  ],
+  "phases": [
+    {
+      "id": "inventory",
+      "title": "Inventory the portable rules",
+      "horizon": "Phase 1",
+      "description": "Parse the selected VGDL and level files into a compact manifest: sprites, interactions, terminations, controls, level maps, and known unsupported ontology calls."
+    },
+    {
+      "id": "runtime-subset",
+      "title": "Build the no-Java subset",
+      "horizon": "Phase 2",
+      "description": "Implement only the gridphysics ontology needed by the ten starter games, then keep Java as the oracle until JS state transitions match sampled ticks."
+    },
+    {
+      "id": "model-contract",
+      "title": "Stabilize model I/O",
+      "horizon": "Phase 3",
+      "description": "Make each game expose a deterministic observation summary and canonical ACTION_* output contract that works for base models and tuned adapters."
+    },
+    {
+      "id": "finetune-serving",
+      "title": "Train and serve adapters",
+      "horizon": "Phase 4",
+      "description": "Convert traces into chat JSONL, train QLoRA adapters with stable IDs, serve them through Legion vLLM, and register them beside baseline models."
+    },
+    {
+      "id": "promotion",
+      "title": "Promote by evidence",
+      "horizon": "Phase 5",
+      "description": "Use eval survival, score, action diversity, and prompt sensitivity to decide when a migrated game becomes a featured model-native cabinet."
+    }
+  ],
+  "sourceReferences": [
+    {
+      "name": "Local GVGAI VGDL files",
+      "url": null,
+      "role": "Canonical source for the ten starter games and their levels.",
+      "licenseReviewRequired": false
+    },
+    {
+      "name": "PyVGDL",
+      "url": "https://github.com/schaul/py-vgdl",
+      "role": "Reference implementation for VGDL parsing and ontology separation.",
+      "licenseReviewRequired": true
+    },
+    {
+      "name": "UnityVGDL",
+      "url": "https://github.com/pyjamads/UnityVGDL",
+      "role": "Reference for translating VGDL ontology concepts into a non-Java engine.",
+      "licenseReviewRequired": true
+    },
+    {
+      "name": "GVGAI_GYM",
+      "url": "https://github.com/rubenrtorrado/GVGAI_GYM",
+      "role": "Reference for treating GVGAI games as agent-facing environments.",
+      "licenseReviewRequired": true
+    },
+    {
+      "name": "AI Safety Gridworlds",
+      "url": "https://github.com/google-deepmind/ai-safety-gridworlds",
+      "role": "Reference for small gridworld environment structure and evaluation discipline.",
+      "licenseReviewRequired": true
+    }
+  ]
+}

@@ -10,6 +10,7 @@ A web-based interface for watching AI language models play GVGAI games in real-t
 - See LLM reasoning and decision-making process
 - View game statistics and performance metrics
 - Stream telemetry to Supabase with a local dashboard and JSONL fallback
+- View the Model-Native Arcade roadmap for the ten-game no-Java migration path
 
 ## Prerequisites
 
@@ -130,11 +131,16 @@ The AI will play until the game ends (win, lose, or timeout).
    - Parses LLM response to game action
    - Sends action back to game
 
-3. **State Converter** (`lib/state-converter.js`)
+3. **Model-Native Roadmap** (`routes/roadmap.js`, `data/model-native-roadmap.json`)
+   - Lists the ten starter games for the no-Java runtime path
+   - Documents the lifecycle from VGDL harvest to vLLM adapter promotion
+   - Keeps external reuse references behind license review
+
+4. **State Converter** (`lib/state-converter.js`)
    - Transforms `SerializableStateObservation` to natural language
    - Multiple prompt strategies available
 
-4. **Response Parser** (`lib/response-parser.js`)
+5. **Response Parser** (`lib/response-parser.js`)
    - Extracts valid GVGAI actions from LLM text
    - Fallback to `ACTION_NIL` on parse failure
 
@@ -216,10 +222,31 @@ This allows the game to run smoothly while still benefiting from LLM decision-ma
 - `GET /api/telemetry/summary` - Read dashboard rollups and recent telemetry
 - `POST /api/telemetry/events` - Log browser UX and clickthrough events through the server
 - `POST /api/telemetry/flush` - Flush pending telemetry writes
+- `GET /api/roadmap/model-native` - Read the Model-Native Arcade lifecycle, starter games, and reuse references
 
 Supabase setup is documented in [`SUPABASE_TELEMETRY.md`](./SUPABASE_TELEMETRY.md).
 Use `npm run telemetry:check` after adding Supabase credentials to verify the cloud insert path and rollup view.
 Use `npm run telemetry:backfill` to upload local JSONL fallback events captured before credentials were available.
+
+## Model-Native Arcade Path
+
+The first no-Java migration set is configured in `data/featured.json` and
+`data/model-native-roadmap.json`: aliens, boulderchase, cakybaky, chase,
+butterflies, chipschallenge, chopper, clusters, digdug, and pacman. The current
+Java runtime remains the oracle for v1 while a smaller non-Java gridphysics
+subset is built and checked against sampled Java ticks.
+
+For Legion vLLM adapter runs, configure:
+
+```bash
+FINETUNE_PROVIDER=legion-vllm
+FINETUNE_OUTPUT_DIR=/srv/adapters
+LEGION_MODEL_ID_PREFIX=gvgai
+```
+
+The generated adapter id is stable, for example `gvgai-aliens`, and the model
+registry keeps `provider: "legion-vllm"` so the existing model router can call
+the vLLM endpoint with that adapter name.
 
 ## WebSocket Events
 

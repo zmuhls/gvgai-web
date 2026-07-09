@@ -17,12 +17,21 @@
 
   // mode: latest marble-run mode from marble-run-state.
   // hasLiveFrame: whether a real game-frame has been drawn for the current case.
-  function shouldShowAttract(mode, hasLiveFrame) {
-    if (!PLAYING_MODES[mode]) return true;   // idle / yielding / walk-up → attract
-    return !hasLiveFrame;                     // active case, still loading → attract
+  // betweenCases: a case boundary in an ongoing run (case-started/-completed
+  // seen this session) — show the quiet interstitial card over the held frame
+  // instead of the full attract template, which read as a flash.
+  function resolveScreen(mode, hasLiveFrame, betweenCases) {
+    if (!PLAYING_MODES[mode]) return 'attract';       // idle / yielding / walk-up
+    if (hasLiveFrame) return 'live';
+    if (betweenCases) return 'interstitial';           // next case loading mid-run
+    return 'attract';                                  // first-ever load
   }
 
-  var api = { shouldShowAttract: shouldShowAttract };
+  function shouldShowAttract(mode, hasLiveFrame) {
+    return resolveScreen(mode, hasLiveFrame, false) === 'attract';
+  }
+
+  var api = { shouldShowAttract: shouldShowAttract, resolveScreen: resolveScreen };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (global) global.MarqueeScreen = api;
 })(typeof window !== 'undefined' ? window : null);

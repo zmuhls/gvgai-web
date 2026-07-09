@@ -44,6 +44,7 @@ function makePipeline(overrides = {}) {
   const io = { events: [], emit(event, payload) { this.events.push({ event, payload }); } };
   const telemetry = { events: [], track(e) { this.events.push(e); } };
   const children = [];
+  const spawned = [];
   const marbleQueue = [];
 
   const pipeline = new FinetunePipeline().configure({
@@ -61,9 +62,10 @@ function makePipeline(overrides = {}) {
     },
     traceStore: { getTracesForGame: () => [] },
     models: { invalidateFinetunedCache() {}, loadFinetunedModels() { return []; } },
-    spawnFn: () => {
+    spawnFn: (bin, args, opts) => {
       const child = new FakeChild();
       children.push(child);
+      spawned.push({ bin, args, opts });
       return child;
     },
     readGameRegistry: () => new Map([[0, { id: 0, name: 'aliens' }]]),
@@ -75,7 +77,7 @@ function makePipeline(overrides = {}) {
     forceDryRun: false,
     ...overrides
   });
-  return { pipeline, io, telemetry, children, tempDir, marbleQueue };
+  return { pipeline, io, telemetry, children, spawned, tempDir, marbleQueue };
 }
 
 function emitLines(child, objects) {
@@ -167,6 +169,31 @@ test('a real (non-dry) run loads the model into ollama', async () => {
     description: 'Fine-tuned on 3 aliens play(s)'
   }]);
   assert.ok(telemetry.events.some(e => e.payload?.stage === 'marble_eval_queued'));
+});
+
+test('legion vLLM runs use stable adapter ids and skip GGUF export', async () => {
+  const { pipeline, children, spawned } = makePipeline({
+    trainingProvider: 'legion-vllm',
+    modelsDir: '/srv/adapters'
+  });
+
+  pipeline.trigger({ gameId: 0 });
+  await until(() => children.length === 1);
+
+  assert.ok(spawned[0].args.includes('--provider'));
+  assert.equal(spawned[0].args[spawned[0].args.indexOf('--provider') + 1], 'legion-vllm');
+  assert.ok(spawned[0].args.includes('--model-id'));
+  assert.equal(spawned[0].args[spawned[0].args.indexOf('--model-id') + 1], 'gvgai-aliens');
+  assert.ok(spawned[0].args.includes('--no-gguf'));
+  assert.equal(spawned[0].args[spawned[0].args.indexOf('--output-dir') + 1], '/srv/adapters');
+
+  emitLines(children[0], [
+    { stage: 'done', modelId: 'gvgai-aliens', modelPath: '/srv/adapters/gvgai-aliens/lora', ggufPath: null }
+  ]);
+  children[0].emit('close', 0);
+  await until(() => pipeline.getStatus().run.state === 'complete');
+  assert.equal(pipeline.getStatus().run.loadedToOllama, false);
+  assert.equal(pipeline.getStatus().training.provider, 'legion-vllm');
 });
 
 test('missing python fails the run with PYTHON_MISSING', async () => {

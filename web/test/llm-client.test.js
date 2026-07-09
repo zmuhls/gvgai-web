@@ -159,6 +159,32 @@ test('socket close emits a partial run summary from init state before first acti
   assert.deepEqual(summaryEvent.payload.actions, []);
 });
 
+test('async mode enforces maxActions with an ABORT and a run summary', async () => {
+  const client = new LLMClient({ maxActions: 2 }); // async by default, like marble-run cases
+  const sent = [];
+  const events = [];
+  client.sendMessageWithId = (msgId, message) => sent.push({ msgId, message });
+  client.io = { emit: (event, payload) => events.push({ event, payload }) };
+  client.model = 'gemma3:12b';
+  client.lastSso = { gameScore: 1, gameWinner: 'NO_WINNER', gameTick: 9 };
+
+  client.recordActionDecision('ACTION_LEFT', 3, 'probe left');
+  client.recordActionDecision('ACTION_RIGHT', 6, 'probe right');
+
+  await client.processMessage(`9#${JSON.stringify({
+    phase: 'ACT',
+    gameTick: 9,
+    gameScore: 1,
+    gameWinner: 'NO_WINNER',
+    availableActions: ['ACTION_NIL', 'ACTION_LEFT', 'ACTION_RIGHT']
+  })}`);
+
+  assert.deepEqual(sent, [{ msgId: '9', message: 'ABORT#BOTH' }]);
+  const summaryEvent = events.find(entry => entry.event === 'run-summary');
+  assert.ok(summaryEvent, 'run summary is emitted so the eval case resolves without waiting for a timeout');
+  assert.deepEqual(summaryEvent.payload.actions, ['ACTION_LEFT', 'ACTION_RIGHT']);
+});
+
 test('provider calls use the configured action timeout signal', async () => {
   const originalFetch = global.fetch;
   const client = new LLMClient({ actionTimeoutMs: 1234 });

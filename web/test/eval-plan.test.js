@@ -39,6 +39,16 @@ test('arcade eval plan can include more games without changing model coverage', 
   assert.equal(plan.cases.length, plan.modelIds.length * plan.gameIds.length * plan.strategies.length);
 });
 
+test('arcade eval plan can cover the full model-native starter set', () => {
+  const { buildArcadeEvalPlan } = loadEvalPlan();
+  const plan = buildArcadeEvalPlan({ gameCount: 10 });
+
+  assert.deepEqual(plan.gameIds, [0, 10, 14, 18, 13, 19, 20, 22, 30, 68]);
+  assert.equal(plan.games[5].name, 'chipschallenge');
+  assert.equal(plan.games[9].name, 'pacman');
+  assert.equal(plan.cases.length, plan.modelIds.length * plan.gameIds.length * plan.strategies.length);
+});
+
 test('normalized eval result keeps comparable performance fields', () => {
   const { buildArcadeEvalPlan, normalizeEvalResult } = loadEvalPlan();
   const [evalCase] = buildArcadeEvalPlan({ gameCount: 3 }).cases;

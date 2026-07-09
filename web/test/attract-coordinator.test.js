@@ -96,6 +96,7 @@ test('start(): plays the playlist, advances the cursor, records telemetry', asyn
   assert.ok(completed.some(c => c.endedBy === 'summary'), 'a case should complete normally');
   assert.equal(runner.calls[0].options.initResponseType, 'BOTH');
   assert.equal(runner.calls[0].options.actResponseType, 'BOTH');
+  assert.equal(runner.calls[0].options.synchronousActions, false, 'marble run cases default to the async plan-queue path');
   assert.ok(telemetry.tracked.some(e => e.eventType === 'marble_case_completed'), 'completed cases record telemetry');
   assert.ok(coord.loopCount >= 1 || runner.calls.length >= 2, 'cursor should advance through the playlist');
   assert.equal(coord.mode, 'IDLE');

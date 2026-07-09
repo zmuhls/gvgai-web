@@ -221,9 +221,8 @@
       border: 0;
       border-radius: 0;
     }
-    html.marquee-embed canvas {
-      object-fit: cover;
-    }
+    /* canvas keeps the base object-fit: contain — never crop the board; the
+       letterbox merges into the black bezel */
     html.marquee-embed .nowplaying {
       position: static;
       grid-row: 2;

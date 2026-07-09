@@ -16,39 +16,82 @@
   };
 
   // --- game screen ---------------------------------------------------------
-  let lastImage = null;
+  // Frame pipeline mirrors the walk-up viewer (app.js): queue the newest frame,
+  // decode it fully off-screen, then clear+draw in one synchronous rAF turn.
+  // At async-mode frame rates (~30fps) the old onload path could interleave
+  // with attract paints and tear; this one can't, and stale frames are dropped.
+  const frameState = { pending: null, rafId: null, decoding: false, hasLiveFrame: false };
+  let betweenCases = false;
+  const interCard = { last: null, next: null };
   let attractOffset = 0;
   let attractRaf = null;
-  const img = new Image();
-  img.onload = () => {
-    if (img.naturalWidth && (canvas.width !== img.naturalWidth || canvas.height !== img.naturalHeight)) {
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-    }
-    marqueeState.screen = 'live-frame';
-    ctx.drawImage(img, 0, 0);
-  };
-  // On decode failure: clear lastImage so shouldShowAttract() can flip back
-  // to the attract template instead of silently freezing on a bad frame.
-  img.onerror = () => {
-    lastImage = null;
-    marqueeState.screen = 'attract';
-  };
-  function drawFrame(dataUrl) {
-    if (!dataUrl || dataUrl === lastImage) return;
-    lastImage = dataUrl;
-    img.src = dataUrl;
+
+  function queueGameFrame(dataUrl) {
+    if (!dataUrl) return;
+    frameState.pending = dataUrl; // newest wins; server already dedupes by digest
+    if (frameState.rafId || frameState.decoding) return;
+    frameState.rafId = requestAnimationFrame(drawQueuedFrame);
   }
+
+  async function drawQueuedFrame() {
+    frameState.rafId = null;
+    const dataUrl = frameState.pending;
+    frameState.pending = null;
+    if (!dataUrl || dataUrl.length < 80) return;
+    frameState.decoding = true;
+    const img = new Image();
+    img.decoding = 'async';
+    try {
+      img.src = dataUrl;
+      if (img.decode) {
+        await img.decode();
+      } else {
+        await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+      }
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      if (w && (canvas.width !== w || canvas.height !== h)) {
+        canvas.width = w;
+        canvas.height = h;
+        publishFrameSize(w, h);
+      }
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      frameState.hasLiveFrame = true;
+      betweenCases = false;
+      marqueeState.screen = 'live';
+    } catch (err) {
+      // Bad frame: drop it and keep whatever is on screen; the next good
+      // frame (or the gate) recovers the display.
+    } finally {
+      frameState.decoding = false;
+      if (frameState.pending && !frameState.rafId) {
+        frameState.rafId = requestAnimationFrame(drawQueuedFrame);
+      }
+    }
+  }
+
+  // Tell the host page (marble popout) the real frame aspect so the embed can
+  // stop guessing 16:9 and letterbox correctly. Same-origin iframe only.
+  function publishFrameSize(width, height) {
+    if (window.parent === window) return;
+    try {
+      window.parent.postMessage({ type: 'marble-frame-size', width, height }, window.location.origin);
+    } catch (err) { /* sandboxed or detached parent — cosmetic only */ }
+  }
+
   // Delegates to the unit-tested pure gate (marquee-screen.js). No time-based
-  // staleness: once a live frame exists for an active case, HOLD it between the
-  // multi-second gaps of LLM moves instead of flashing the attract template.
-  function shouldShowAttract() {
-    const gate = (typeof MarqueeScreen !== 'undefined' && MarqueeScreen.shouldShowAttract) || null;
-    if (gate) return gate(marqueeState.mode, Boolean(lastImage));
-    // Fallback if the gate script failed to load: attract only when not in an
-    // active case, or before the first frame arrives.
+  // staleness: once a live frame exists for an active case, HOLD it between
+  // moves; at case boundaries show the interstitial card, never the full
+  // attract template (that alternation read as flashing).
+  function resolveScreen() {
+    const gate = (typeof MarqueeScreen !== 'undefined' && MarqueeScreen.resolveScreen) || null;
+    if (gate) return gate(marqueeState.mode, frameState.hasLiveFrame, betweenCases);
     const playing = marqueeState.mode === 'MARBLE_PLAYING' || marqueeState.mode === 'MARBLE_STARTING';
-    return !playing || !lastImage;
+    if (!playing) return 'attract';
+    if (frameState.hasLiveFrame) return 'live';
+    return betweenCases ? 'interstitial' : 'attract';
   }
   function ensureAttractCanvas() {
     if (canvas.width !== 320 || canvas.height !== 240) {
@@ -140,24 +183,42 @@
     drawPixelText('STREAM READY', 213, 18, '#e0b25a', 10);
     drawPixelText(`TICK ${String(Math.floor(t * 12) % 9999).padStart(4, '0')}`, 226, 34, '#e4fbf0', 10);
   }
+  // Quiet case-boundary card: a translucent wash over whatever is on the
+  // canvas (usually the last held frame) with the last result and what loads
+  // next. Deliberately no clearRect and no canvas resize — no layout jump.
+  function drawInterstitialFrame(rawNow) {
+    const t = (rawNow + attractOffset) / 1000;
+    marqueeState.screen = 'interstitial';
+    ctx.fillStyle = 'rgba(2, 6, 5, 0.66)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const midY = Math.round(canvas.height / 2);
+    const pulse = 0.6 + Math.sin(t * 3) * 0.25;
+    if (interCard.last) drawPixelText(interCard.last, 14, midY - 26, '#e4fbf0', 12);
+    if (interCard.next) drawPixelText(interCard.next, 14, midY - 4, `rgba(123, 239, 195, ${pulse})`, 12);
+    drawPixelText('MARBLE RUN', 14, midY + 20, '#e0b25a', 9);
+  }
   function startAttractLoop() {
     if (attractRaf) return;
     const step = now => {
-      if (shouldShowAttract()) drawAttractFrame(now);
+      const screen = resolveScreen();
+      if (screen === 'attract') drawAttractFrame(now);
+      else if (screen === 'interstitial') drawInterstitialFrame(now);
+      // 'live': paint nothing — the frame pipeline owns the canvas.
       attractRaf = requestAnimationFrame(step);
     };
     attractRaf = requestAnimationFrame(step);
   }
-  function resetScreen() {
-    lastImage = null;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Case boundary: reset the HUD and frame state but do NOT clear the canvas
+  // or paint the attract template — the interstitial covers the held frame.
+  function softResetForCase() {
+    frameState.hasLiveFrame = false;
+    frameState.pending = null;
     el('score').textContent = '0';
     el('health').textContent = '—';
     el('tick').textContent = '0';
     marqueeState.score = 0;
     marqueeState.health = null;
     marqueeState.tick = 0;
-    drawAttractFrame(performance.now());
   }
 
   // --- chrome --------------------------------------------------------------
@@ -204,6 +265,9 @@
     if (!s) return;
     marqueeState.mode = s.mode || 'IDLE';
     const playing = s.mode === 'MARBLE_PLAYING' || s.mode === 'MARBLE_STARTING';
+    // Leaving the run entirely (idle / walk-up / yield) ends the boundary
+    // state, so the full attract template legitimately returns.
+    if (!playing) betweenCases = false;
     setLive(playing, prettyMode(s.mode));
     el('loop').textContent = `Loop ${s.loopCount || 0}`;
     el('playlist-pos').textContent = s.total ? `Case ${(s.cursor || 0) + 1} / ${s.total}` : '—';
@@ -272,31 +336,42 @@
   socket.on('disconnect', () => setLive(false, 'disconnected'));
   socket.on('marble-run-state', renderState);
   socket.on('case-started', (c) => {
-    resetScreen();
+    softResetForCase();
+    betweenCases = true;
     el('narration').replaceChildren();
     latestPlanTape = null;
     el('ticker').textContent = '—';
     if (c && c.model && c.game) {
+      const model = c.model.name || c.model.id || 'model';
+      const game = c.game.name || `game ${c.game.id}`;
+      interCard.next = `NEXT: ${model} × ${game}`.toUpperCase();
       setNowPlaying({
         modelName: c.model.name, modelId: c.model.id,
         gameName: c.game.name, gameId: c.game.id,
         strategyLabel: c.strategy && c.strategy.label
       });
+    } else {
+      interCard.next = 'NEXT CASE LOADING';
     }
   });
   socket.on('case-completed', (c) => {
     if (!c) return;
+    betweenCases = true;
+    frameState.hasLiveFrame = false;
     const box = el('ticker');
     box.replaceChildren();
     if (c.result) {
+      const outcome = c.result.won ? 'WIN' : (c.result.winner || 'done');
+      interCard.last = `LAST: ${outcome} · SCORE ${c.result.finalScore}`.toUpperCase();
       const b = document.createElement('b');
-      b.textContent = `${c.result.won ? 'WIN' : (c.result.winner || 'done')} · score ${c.result.finalScore}`;
+      b.textContent = `${outcome} · score ${c.result.finalScore}`;
       box.append(b, document.createTextNode(` (${c.endedBy})`));
     } else {
+      interCard.last = `LAST: ENDED (${c.endedBy})`.toUpperCase();
       box.textContent = `ended: ${c.endedBy}`;
     }
   });
-  socket.on('game-frame', (data) => drawFrame(data && data.image));
+  socket.on('game-frame', (data) => queueGameFrame(data && data.image));
   socket.on('game-state', (s) => {
     if (!s) return;
     if (s.score != null) {
@@ -319,18 +394,20 @@
     return JSON.stringify({
       coordinateSystem: 'canvas origin is top-left; x increases right, y increases down',
       mode: marqueeState.mode,
-      screen: marqueeState.screen,
+      screen: resolveScreen(),
       score: marqueeState.score,
       health: marqueeState.health,
       tick: marqueeState.tick,
-      hasLiveFrame: Boolean(lastImage),
+      hasLiveFrame: frameState.hasLiveFrame,
     });
   }
 
   window.render_game_to_text = renderGameToText;
   window.advanceTime = ms => {
     attractOffset += Math.max(0, Number(ms) || 0);
-    drawAttractFrame(performance.now());
+    const screen = resolveScreen();
+    if (screen === 'attract') drawAttractFrame(performance.now());
+    else if (screen === 'interstitial') drawInterstitialFrame(performance.now());
     return renderGameToText();
   };
 
