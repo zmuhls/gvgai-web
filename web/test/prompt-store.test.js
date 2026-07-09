@@ -185,3 +185,15 @@ test('link uses compact resource guidance', () => {
   assert.equal(config.codeProtocol.targetEntityCode, 'r');
   assert.deepEqual(config.codeProtocol.wallSources, ['immovable']);
 });
+
+test('superman uses compact portal guidance', () => {
+  const config = resolveGamePromptConfig(89, 1);
+
+  assert.equal(config.gameName, 'superman');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['portal']);
+  assert.equal(config.codeProtocol.targetEntityCode, 'g');
+  assert.deepEqual(config.codeProtocol.wallSources, ['immovable']);
+});

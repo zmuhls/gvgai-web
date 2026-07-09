@@ -11,6 +11,38 @@
     "maxTokens": 100,
     "temperature": 0.5
   },
+  "codeProtocol": {
+    "enabled": true,
+    "id": "GV1",
+    "policyId": "grid-target",
+    "authoritative": false,
+    "actionCodes": {
+      "N": "ACTION_NIL",
+      "U": "ACTION_UP",
+      "D": "ACTION_DOWN",
+      "L": "ACTION_LEFT",
+      "R": "ACTION_RIGHT"
+    },
+    "entityCodes": {
+      "portal": "g",
+      "static": "x"
+    },
+    "objectiveCodes": [
+      "REACH_RESCUE_POINT",
+      "SAVE_CIVILIANS"
+    ],
+    "ruleCodes": [
+      "PATH_TO_PORTAL"
+    ],
+    "targetSources": [
+      "portal"
+    ],
+    "targetEntityCode": "g",
+    "wallSources": [
+      "immovable"
+    ],
+    "policyEntityLimit": 256
+  },
   "updatedAt": "2026-07-02T01:39:27.634Z",
   "classification": {
     "classifierVersion": 1,
