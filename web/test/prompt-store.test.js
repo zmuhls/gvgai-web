@@ -78,10 +78,14 @@ test('chipschallenge uses compact resource guidance', () => {
 
   assert.equal(config.gameName, 'chipschallenge');
   assert.equal(config.codeProtocol.enabled, true);
-  assert.equal(config.codeProtocol.policyId, 'grid-target');
-  assert.equal(config.codeProtocol.authoritative, false);
-  assert.deepEqual(config.codeProtocol.targetSources, ['resource']);
-  assert.equal(config.codeProtocol.targetEntityCode, 'r');
+  assert.equal(config.codeProtocol.policyId, 'chipschallenge-level1');
+  assert.equal(config.codeProtocol.authoritative, true);
+  assert.equal(config.codeProtocol.chipItype, 22);
+  assert.deepEqual(config.codeProtocol.ruleCodes, [
+    'PUSH_LEFT_CRATE_TO_WATER',
+    'SWEEP_LOWER_CHIPS',
+    'PATROL_SAFE_CORRIDOR'
+  ]);
 });
 
 test('chopper uses compact tank and base guidance', () => {

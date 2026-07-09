@@ -21,8 +21,8 @@
   "codeProtocol": {
     "enabled": true,
     "id": "GV1",
-    "policyId": "grid-target",
-    "authoritative": false,
+    "policyId": "chipschallenge-level1",
+    "authoritative": true,
     "actionCodes": {
       "U": "ACTION_UP",
       "D": "ACTION_DOWN",
@@ -39,9 +39,11 @@
       "REACH_EXIT"
     ],
     "ruleCodes": [
-      "PATH_TO_VISIBLE_RESOURCE",
-      "PUSH_CRATE_ONLY_WHEN_NEEDED"
+      "PUSH_LEFT_CRATE_TO_WATER",
+      "SWEEP_LOWER_CHIPS",
+      "PATROL_SAFE_CORRIDOR"
     ],
+    "chipItype": 22,
     "targetSources": [
       "resource"
     ],

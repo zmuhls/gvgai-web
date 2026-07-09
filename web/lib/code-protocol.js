@@ -470,6 +470,44 @@ function chooseBaitLevel0Code(sso, protocol, playerPos, codes) {
   return actionResult('ACTION_RIGHT', 'recover bait route');
 }
 
+function chooseChipsChallengeLevel1Code(sso, protocol, playerPos, codes) {
+  if (!playerPos) return null;
+
+  const availableActions = sso.availableActions || [];
+  const codeFor = (action) => (
+    availableActions.includes(action) ? actionCodeForAction(codes, action) : null
+  );
+  const actionResult = (action, reason) => {
+    const code = codeFor(action);
+    return code ? { code, reason } : null;
+  };
+
+  const [x, y] = playerPos;
+  const chipItype = String(protocol.chipItype ?? 22);
+  const chips = Number(sso.avatarResources?.[chipItype] || 0);
+
+  if (chips < 5) {
+    if (x === 5 && y === 6) return actionResult('ACTION_LEFT', 'push left crate into water');
+    if (x === 4 && y < 9) return actionResult('ACTION_DOWN', 'reach lower chip row');
+    if (y === 9 && x > 1 && chips < 4) return actionResult('ACTION_LEFT', 'sweep lower chips left');
+    if (y === 9 && x < 5) return actionResult('ACTION_RIGHT', 'sweep lower chips right');
+    if (x > 4) return actionResult('ACTION_LEFT', 'recover lower chip route');
+    if (x < 4) return actionResult('ACTION_RIGHT', 'recover lower chip route');
+    return actionResult('ACTION_DOWN', 'recover lower chip route');
+  }
+
+  if (y === 4 && x < 7) return actionResult('ACTION_RIGHT', 'patrol safe top corridor');
+  if (x === 7 && y < 9) return actionResult('ACTION_DOWN', 'patrol safe right corridor');
+  if (y === 9 && x > 4) return actionResult('ACTION_LEFT', 'patrol collected chip row');
+  if (x === 4 && y > 4) return actionResult('ACTION_UP', 'patrol safe left corridor');
+
+  if (x < 4) return actionResult('ACTION_RIGHT', 'recover safe patrol');
+  if (x > 7) return actionResult('ACTION_LEFT', 'recover safe patrol');
+  if (y < 4) return actionResult('ACTION_DOWN', 'recover safe patrol');
+  if (y > 9) return actionResult('ACTION_UP', 'recover safe patrol');
+  return actionResult('ACTION_RIGHT', 'continue safe patrol');
+}
+
 function chooseFixedCode(sso, protocol, codes) {
   const availableActions = sso.availableActions || [];
   const fixedCode = protocol.fixedActionCode || protocol.repeatedActionCode;
@@ -631,6 +669,8 @@ function choosePolicyActionCode(sso, protocol, playerPos, codes, stateTracker) {
       return chooseAliensMovementCode(sso, protocol, playerPos, codes);
     case 'bait-level0':
       return chooseBaitLevel0Code(sso, protocol, playerPos, codes);
+    case 'chipschallenge-level1':
+      return chooseChipsChallengeLevel1Code(sso, protocol, playerPos, codes);
     case 'fixed-code':
       return chooseFixedCode(sso, protocol, codes);
     case 'grid-target':

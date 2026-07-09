@@ -60,6 +60,21 @@ function createBaitState({
   };
 }
 
+function createChipsChallengeState({ avatar = [5, 6], chips = 0, score = 0 } = {}) {
+  return {
+    blockSize: 10,
+    worldDimension: [120, 110],
+    observationGridNum: 12,
+    observationGridMaxRow: 11,
+    avatarPosition: gridPosition(avatar),
+    avatarHealthPoints: 0,
+    avatarResources: chips > 0 ? { 22: chips } : {},
+    gameScore: score,
+    gameTick: 0,
+    availableActions: ['ACTION_UP', 'ACTION_DOWN', 'ACTION_LEFT', 'ACTION_RIGHT']
+  };
+}
+
 function createGridTargetState({
   avatar = [3, 2],
   targets = [[1, 2, 6]],
@@ -142,6 +157,27 @@ function gridTargetPromptFor(state, protocolOverrides = {}, stateTracker = null)
       ...protocolOverrides
     }
   }, stateTracker);
+}
+
+function chipsChallengePromptFor(state) {
+  return buildPrompt(state, {
+    gameName: 'chipschallenge',
+    codeProtocol: {
+      enabled: true,
+      id: 'GV1',
+      policyId: 'chipschallenge-level1',
+      authoritative: true,
+      actionCodes: {
+        U: 'ACTION_UP',
+        D: 'ACTION_DOWN',
+        L: 'ACTION_LEFT',
+        R: 'ACTION_RIGHT'
+      },
+      chipItype: 22,
+      objectiveCodes: ['COLLECT_CHIPS_KEYS_BOOTS', 'REACH_EXIT'],
+      ruleCodes: ['PUSH_LEFT_CRATE_TO_WATER', 'SWEEP_LOWER_CHIPS', 'PATROL_SAFE_CORRIDOR']
+    }
+  });
 }
 
 test('spatial context uses observation grid dimensions when worldDimension is mixed with blockSize', () => {
@@ -633,6 +669,48 @@ test('grid target flee policy can break repeated flee direction', () => {
   assert.equal(prompt.fallbackActionCode, 'R');
   assert.equal(prompt.fallbackAction, 'ACTION_RIGHT');
   assert.match(prompt.userMessage, /B:R/);
+});
+
+test('chipschallenge level 1 policy opens with a crate push into water', () => {
+  const prompt = chipsChallengePromptFor(createChipsChallengeState({
+    avatar: [5, 6],
+    chips: 0
+  }));
+
+  assert.equal(prompt.fallbackActionCode, 'L');
+  assert.equal(prompt.fallbackAction, 'ACTION_LEFT');
+  assert.equal(prompt.policyReason, 'push left crate into water');
+  assert.match(prompt.userMessage, /B:L/);
+});
+
+test('chipschallenge level 1 policy sweeps the lower chip row', () => {
+  const leftSweep = chipsChallengePromptFor(createChipsChallengeState({
+    avatar: [4, 9],
+    chips: 1
+  }));
+  const rightSweep = chipsChallengePromptFor(createChipsChallengeState({
+    avatar: [2, 9],
+    chips: 4
+  }));
+
+  assert.equal(leftSweep.fallbackActionCode, 'L');
+  assert.equal(leftSweep.fallbackAction, 'ACTION_LEFT');
+  assert.equal(leftSweep.policyReason, 'sweep lower chips left');
+  assert.equal(rightSweep.fallbackActionCode, 'R');
+  assert.equal(rightSweep.fallbackAction, 'ACTION_RIGHT');
+  assert.equal(rightSweep.policyReason, 'sweep lower chips right');
+});
+
+test('chipschallenge level 1 policy patrols safe corridors after lower chips', () => {
+  const prompt = chipsChallengePromptFor(createChipsChallengeState({
+    avatar: [5, 9],
+    chips: 5
+  }));
+
+  assert.equal(prompt.fallbackActionCode, 'L');
+  assert.equal(prompt.fallbackAction, 'ACTION_LEFT');
+  assert.equal(prompt.policyReason, 'patrol collected chip row');
+  assert.match(prompt.userMessage, /B:L/);
 });
 
 test('macro-enabled game with a strategy asks for a PLAN closing contract', () => {
