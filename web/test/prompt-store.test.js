@@ -173,3 +173,15 @@ test('labyrinthdual uses compact coat resource guidance', () => {
   assert.equal(config.codeProtocol.targetEntityCode, 'c');
   assert.deepEqual(config.codeProtocol.wallSources, ['immovable']);
 });
+
+test('link uses compact resource guidance', () => {
+  const config = resolveGamePromptConfig(63, 1);
+
+  assert.equal(config.gameName, 'link');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['resource']);
+  assert.equal(config.codeProtocol.targetEntityCode, 'r');
+  assert.deepEqual(config.codeProtocol.wallSources, ['immovable']);
+});
