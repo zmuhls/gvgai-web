@@ -56,6 +56,42 @@ const MODELS = [
     provider: 'ollama-cloud', fallback: null,
     description: 'Open-weight · coder-flavored small model, non-reasoning',
     speed: 'fast', cost: 'low', featured: false
+  },
+  // --- Frontier (reasoning-era flagships on Ollama Cloud) ---
+  // Unlike the roster above, these think by default. llm-client routes
+  // reasoning:true cloud entries through Ollama's native /api/chat with
+  // think:false so the game receives answer tokens inside its token budget.
+  // Tags verified against the account's /api/tags on 2026-07-09; OpenRouter
+  // fallback slugs verified against /api/v1/models the same day.
+  {
+    id: 'glm-5.2', name: 'GLM 5.2',
+    provider: 'ollama-cloud', fallback: 'z-ai/glm-5.2', reasoning: true,
+    description: 'Frontier · Z.ai flagship MoE, reasoning',
+    speed: 'slow', cost: 'high', featured: false
+  },
+  {
+    id: 'kimi-k2.7-code', name: 'Kimi K2.7 Code',
+    provider: 'ollama-cloud', fallback: 'moonshotai/kimi-k2.7-code', reasoning: true,
+    description: 'Frontier · Moonshot coding-agentic model, reasoning',
+    speed: 'slow', cost: 'high', featured: false
+  },
+  {
+    id: 'minimax-m3', name: 'MiniMax M3',
+    provider: 'ollama-cloud', fallback: 'minimax/minimax-m3', reasoning: true,
+    description: 'Frontier · newest MiniMax line, thinking model',
+    speed: 'slow', cost: 'high', featured: false
+  },
+  {
+    id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash',
+    provider: 'ollama-cloud', fallback: 'deepseek/deepseek-v4-flash', reasoning: true,
+    description: 'Frontier · efficient MoE (284B total / 13B active), reasoning',
+    speed: 'slow', cost: 'high', featured: false
+  },
+  {
+    id: 'qwen3.5:397b', name: 'Qwen 3.5 397B',
+    provider: 'ollama-cloud', fallback: 'qwen/qwen3.5-397b-a17b', reasoning: true,
+    description: 'Frontier · largest hosted Qwen 3.5, reasoning',
+    speed: 'slow', cost: 'high', featured: false
   }
 ];
 

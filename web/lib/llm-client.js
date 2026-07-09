@@ -792,6 +792,13 @@ class LLMClient {
       this.ollamaCloudCallCount = (this.ollamaCloudCallCount || 0) + 1;
       apiUrl = config.ollamaCloud.apiUrl;
       if (this.ollamaApiKey) headers['Authorization'] = `Bearer ${this.ollamaApiKey}`;
+      // Frontier reasoning models (catalog reasoning:true) think by default and
+      // burn the OpenAI-compat token budget before emitting content. Route them
+      // through the cloud's native /api/chat with think:false — same guardrail
+      // accounting as above, since it already ran.
+      if (resolveModel(modelId).reasoning) {
+        return this._callOllamaNative(apiUrl, modelId, messages, settings, headers, 'ollama-cloud');
+      }
     } else if (provider === 'ollama-local') {
       apiUrl = config.ollama.apiUrl;
     } else if (provider === 'legion-vllm') {
@@ -849,7 +856,15 @@ class LLMClient {
   // Call the native Ollama /api/chat endpoint (not OpenAI-compatible) with
   // think:false to suppress reasoning tokens. Returns the message content.
   async _callLocalOllamaNative(modelId, messages, settings) {
-    const baseUrl = config.ollama.apiUrl.replace(/\/v1\/chat\/completions$/, '');
+    return this._callOllamaNative(config.ollama.apiUrl, modelId, messages, settings,
+      { 'Content-Type': 'application/json' }, 'ollama-local');
+  }
+
+  // Shared native-endpoint caller for local and cloud Ollama. `openAiUrl` is
+  // the provider's OpenAI-compat URL; the native /api/chat lives on the same
+  // host. Headers carry cloud auth when present.
+  async _callOllamaNative(openAiUrl, modelId, messages, settings, headers, providerLabel) {
+    const baseUrl = openAiUrl.replace(/\/v1\/chat\/completions$/, '');
     const apiUrl = `${baseUrl}/api/chat`;
     const body = {
       model: modelId,
@@ -868,13 +883,13 @@ class LLMClient {
     try {
       response = await fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body),
         signal: controller.signal
       });
     } catch (error) {
       if (error.name === 'AbortError') {
-        throw new Error(`ollama-local timed out after ${this.actionTimeoutMs}ms`);
+        throw new Error(`${providerLabel} timed out after ${this.actionTimeoutMs}ms`);
       }
       throw error;
     } finally {
@@ -883,7 +898,7 @@ class LLMClient {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`ollama-local ${response.status}: ${errorText}`);
+      throw new Error(`${providerLabel} ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();

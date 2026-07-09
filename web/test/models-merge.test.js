@@ -16,10 +16,15 @@ test('built-in catalog exposes every stated Ollama Cloud model', () => {
     'ministral-3:14b',
     'ministral-3:8b',
     'ministral-3:3b',
-    'devstral-small-2:24b'
+    'devstral-small-2:24b',
+    'glm-5.2',
+    'kimi-k2.7-code',
+    'minimax-m3',
+    'deepseek-v4-flash',
+    'qwen3.5:397b'
   ]);
 
-  assert.deepEqual(models.MODELS.map(model => model.provider), Array(7).fill('ollama-cloud'));
+  assert.deepEqual(models.MODELS.map(model => model.provider), Array(12).fill('ollama-cloud'));
   assert.deepEqual(models.MODELS.filter(model => model.featured).map(model => model.id), [
     'gemma3:27b',
     'gemma3:12b'
@@ -27,6 +32,15 @@ test('built-in catalog exposes every stated Ollama Cloud model', () => {
   assert.equal(models.resolveModel('gemma3:27b').fallback, 'google/gemma-3-27b-it');
   assert.equal(models.resolveModel('ministral-3:14b').fallback, 'mistralai/ministral-14b-2512');
   assert.equal(models.resolveModel('devstral-small-2:24b').fallback, null);
+
+  // Frontier reasoning entries: think:false routing flag + verified fallbacks;
+  // none featured, so none enter the marble-run rotation.
+  const frontier = models.MODELS.filter(model => model.reasoning);
+  assert.deepEqual(frontier.map(model => model.id),
+    ['glm-5.2', 'kimi-k2.7-code', 'minimax-m3', 'deepseek-v4-flash', 'qwen3.5:397b']);
+  assert.ok(frontier.every(model => !model.featured));
+  assert.equal(models.resolveModel('glm-5.2').fallback, 'z-ai/glm-5.2');
+  assert.equal(models.resolveModel('deepseek-v4-flash').fallback, 'deepseek/deepseek-v4-flash');
 });
 
 function withRegistry(content) {
