@@ -31,6 +31,19 @@ const DEFAULT_TICKS_PER_STEP = 4;  // ticks each plan step is held for
 // LLM call gets a different view of the map.
 const STAGNATION_BREAK_INTERVAL = 8; // ticks between forced direction changes
 
+const DIRECTION_ACTIONS = Object.freeze({
+  left: 'ACTION_LEFT',
+  right: 'ACTION_RIGHT',
+  up: 'ACTION_UP',
+  down: 'ACTION_DOWN'
+});
+const MOVEMENT_ACTIONS = Object.freeze(['ACTION_LEFT', 'ACTION_UP', 'ACTION_DOWN', 'ACTION_RIGHT']);
+const STEERING_ACTION_ORDER = Object.freeze([...MOVEMENT_ACTIONS, 'ACTION_USE', 'ACTION_NIL']);
+const DIRECTION_VERB = '(?:go|going|move|moving|turn|turning|head|heading|steer|steering|press|pressing)';
+const NEGATED_DIRECTION_RE = new RegExp(`\\b(?:do\\s+not|don't|dont|never|avoid|without|no|not|stop)\\s+(?:${DIRECTION_VERB}\\s+)?(?:to\\s+the\\s+)?(left|right|up|down)\\b`, 'i');
+const POSITIVE_DIRECTION_RE = /\b(?:go|move|turn|head|steer|press|keep|continue)\s+(?:going\s+)?(?:to\s+the\s+)?(left|right|up|down)\b/i;
+const EXACT_DIRECTION_RE = /^\s*(left|right|up|down)\s*[.!?]*\s*$/i;
+
 class LLMClient {
   constructor(options = {}) {
     this.socket = null;
@@ -80,6 +93,10 @@ class LLMClient {
     this.lastPolicyDecisionActionLogged = null;
     this.lastPolicyDecisionScoreLogged = null;
     this.lastLoopBreakTick = -STAGNATION_BREAK_INTERVAL; // so the breaker can fire early if needed
+    this.strategyRevision = 0;
+    this.lastSteeringDecisionTickLogged = null;
+    this.lastSteeringDecisionActionLogged = null;
+    this.steeringAlternativeCursor = 0;
   }
 
   // Validate API key with OpenRouter (skipped for local Ollama)
@@ -336,8 +353,18 @@ class LLMClient {
           const sso = this.recordActState(jsonPayload, null);
           try {
             const decision = await this.requestLLMAction(jsonPayload);
-            this.stateTracker.recordSentAction(decision.action, sso ? sso.gameTick : 0);
-            this.sendMessageWithId(msgId, `${decision.action}#${this.actResponseType}`);
+            let action = decision.action;
+            if (decision.stale || !action) {
+              const steering = this.resolveSteeringAction(sso);
+              if (steering) {
+                action = steering.action;
+                this.maybeEmitSteeringDecision(steering, sso);
+              } else {
+                action = 'ACTION_NIL';
+              }
+            }
+            this.stateTracker.recordSentAction(action, sso ? sso.gameTick : 0);
+            this.sendMessageWithId(msgId, `${action}#${this.actResponseType}`);
           } catch (error) {
             console.error('[LLMClient] Error in synchronous LLM action:', error.message);
             this.recordActionDecision('ACTION_NIL', sso ? sso.gameTick : 0, error.message, sso);
@@ -364,13 +391,19 @@ class LLMClient {
         // CRITICAL: Respond IMMEDIATELY with the specific message ID.
         // dequeuePlanAction is O(1) with no JSON parsing; with an empty plan
         // queue it degrades to the classic pendingLLMAction || ACTION_NIL.
-        const actionToSend = this.dequeuePlanAction();
+        const immediateSteering = this.resolveImmediateSteeringAction(jsonPayload);
+        const queuedAction = immediateSteering ? immediateSteering.action : this.dequeuePlanAction();
+        const steeredCandidate = immediateSteering
+          ? { action: queuedAction, steering: immediateSteering }
+          : this.applySteeringToCandidate(queuedAction, jsonPayload);
+        const actionToSend = steeredCandidate.action;
         this.sendMessageWithId(msgId, `${actionToSend}#${this.actResponseType}`);
 
         // Async processing after response sent (don't block)
         setImmediate(() => {
           const sso = this.recordActState(jsonPayload, actionToSend);
           if (sso) {
+            this.maybeEmitSteeringDecision(steeredCandidate.steering, sso);
             this.stateTracker.recordSentAction(actionToSend, sso.gameTick || 0);
             this.maybeInvalidatePlan(sso);
           }
@@ -518,6 +551,9 @@ class LLMClient {
     }
     const fallback = this.pendingLLMAction || 'ACTION_NIL';
     const breaker = this.resolveLoopBreaker(fallback);
+    if (breaker !== fallback) {
+      this.pendingLLMAction = breaker;
+    }
     return breaker;
   }
 
@@ -545,13 +581,232 @@ class LLMClient {
       return fallbackAction;
     }
 
+    const directive = this.parseDirectionalStrategy();
+    if (
+      directive?.mode === 'avoid' &&
+      (fallbackAction === directive.action || fallbackAction === 'ACTION_NIL' || MOVEMENT_ACTIONS.includes(fallbackAction))
+    ) {
+      return fallbackAction;
+    }
+
     const available = this.lastSso.availableActions || [];
-    const alt = this.stateTracker.suggestAlternativeDirection(available);
-    if (!alt) return fallbackAction;
+    const forbidden = directive?.mode === 'avoid' ? [directive.action] : [];
+    let alt = this.stateTracker.suggestAlternativeDirection(available);
+    if (!alt || alt === fallbackAction || forbidden.includes(alt)) {
+      alt = this.chooseSteeringAlternative(available, null, {
+        forbiddenActions: forbidden,
+        softAvoidActions: [fallbackAction],
+        movementOnly: true,
+        rotate: true
+      });
+    }
+    if (!alt || alt === fallbackAction) return fallbackAction;
 
     this.lastLoopBreakTick = tick;
     console.log(`[LLMClient] Loop breaker: overriding ${fallbackAction} → ${alt} (stagnation detected at tick ${tick})`);
     return alt;
+  }
+
+  parseDirectionalStrategy() {
+    const strategy = (this.sessionStrategy || '').trim();
+    if (!strategy) return null;
+
+    const negative = strategy.match(NEGATED_DIRECTION_RE);
+    if (negative) {
+      return { mode: 'avoid', direction: negative[1].toLowerCase(), action: DIRECTION_ACTIONS[negative[1].toLowerCase()] };
+    }
+
+    const positive = strategy.match(POSITIVE_DIRECTION_RE) || strategy.match(EXACT_DIRECTION_RE);
+    if (positive) {
+      return { mode: 'prefer', direction: positive[1].toLowerCase(), action: DIRECTION_ACTIONS[positive[1].toLowerCase()] };
+    }
+
+    return null;
+  }
+
+  parseSsoForSteering(jsonPayload) {
+    try {
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      console.error('[LLMClient] Error parsing game state for steering:', error.message);
+      return null;
+    }
+  }
+
+  chooseSteeringAlternative(availableActions, forbiddenAction, options = {}) {
+    const available = Array.isArray(availableActions) ? availableActions : [];
+    const hardAvoid = new Set([
+      forbiddenAction,
+      ...(Array.isArray(options.forbiddenActions) ? options.forbiddenActions : [])
+    ].filter(Boolean));
+    const softAvoid = new Set((Array.isArray(options.softAvoidActions) ? options.softAvoidActions : []).filter(Boolean));
+    const order = options.movementOnly ? MOVEMENT_ACTIONS : STEERING_ACTION_ORDER;
+    const pick = (respectSoftAvoid) => {
+      const candidates = order.filter(action =>
+        available.includes(action) &&
+        !hardAvoid.has(action) &&
+        (!respectSoftAvoid || !softAvoid.has(action))
+      );
+      if (candidates.length === 0) return null;
+      if (!options.rotate) return candidates[0];
+      const chosen = candidates[this.steeringAlternativeCursor % candidates.length];
+      this.steeringAlternativeCursor += 1;
+      return chosen;
+    };
+    return pick(true) || pick(false);
+  }
+
+  steeringReason(directive, action, adjusted = false) {
+    const label = action.replace(/^ACTION_/, '');
+    if (directive.mode === 'avoid') {
+      const forbidden = directive.action.replace(/^ACTION_/, '');
+      return adjusted
+        ? `Steering directive "${this.sessionStrategy}" forbids ${forbidden}; choosing ${label}.`
+        : `Steering directive "${this.sessionStrategy}" allows ${label}.`;
+    }
+    return `Steering directive "${this.sessionStrategy}" selects ${label}.`;
+  }
+
+  resolveSteeringAction(sso, candidateAction = null) {
+    const directive = this.parseDirectionalStrategy();
+    if (!directive || !sso) return null;
+
+    const available = Array.isArray(sso.availableActions) ? sso.availableActions : [];
+    if (directive.mode === 'prefer') {
+      if (!available.includes(directive.action)) return null;
+      return {
+        action: directive.action,
+        directive,
+        adjusted: candidateAction && candidateAction !== directive.action,
+        reason: this.steeringReason(directive, directive.action, candidateAction && candidateAction !== directive.action)
+      };
+    }
+
+    const stagnation = this.stateTracker ? this.stateTracker.detectStagnation() : '';
+    const candidateIsForbidden = candidateAction === directive.action;
+    const candidateIsIdle = !candidateAction || candidateAction === 'ACTION_NIL';
+    const candidateIsStagnantMovement = Boolean(
+      stagnation &&
+      candidateAction &&
+      MOVEMENT_ACTIONS.includes(candidateAction)
+    );
+    if (!candidateIsForbidden && !candidateIsIdle && !candidateIsStagnantMovement) return null;
+    const softAvoidActions = [];
+    if (candidateIsIdle) softAvoidActions.push('ACTION_NIL');
+    if (candidateIsStagnantMovement) softAvoidActions.push(candidateAction, 'ACTION_NIL');
+    const alternative = this.chooseSteeringAlternative(available, directive.action, {
+      softAvoidActions,
+      rotate: true
+    });
+    if (!alternative) return null;
+    return {
+      action: alternative,
+      directive,
+      adjusted: true,
+      reason: this.steeringReason(directive, alternative, true)
+    };
+  }
+
+  resolveImmediateSteeringAction(jsonPayload) {
+    const directive = this.parseDirectionalStrategy();
+    if (!directive || directive.mode !== 'prefer') return null;
+    const sso = this.parseSsoForSteering(jsonPayload);
+    return this.resolveSteeringAction(sso);
+  }
+
+  applySteeringToCandidate(candidateAction, jsonPayload) {
+    const directive = this.parseDirectionalStrategy();
+    if (!directive) return { action: candidateAction, steering: null };
+
+    const sso = this.parseSsoForSteering(jsonPayload);
+    const steering = this.resolveSteeringAction(sso, candidateAction);
+    if (!steering) return { action: candidateAction, steering: null };
+    return { action: steering.action, steering };
+  }
+
+  applySteeringToPlan(action, planActions, sso) {
+    const directive = this.parseDirectionalStrategy();
+    if (!directive) {
+      return { action, planActions, reason: null, decisionSource: null, steering: null };
+    }
+
+    const steering = this.resolveSteeringAction(sso, action);
+    if (!steering) {
+      if (directive.mode !== 'avoid') return { action, planActions, reason: null, decisionSource: null, steering: null };
+      const filtered = planActions.filter(step => step !== directive.action);
+      return {
+        action,
+        planActions: filtered.length > 0 ? filtered : planActions,
+        reason: null,
+        decisionSource: null,
+        steering: null
+      };
+    }
+
+    let nextPlan;
+    if (directive.mode === 'prefer') {
+      const targetLength = this.macroEnabled()
+        ? Math.max(1, Math.min(planActions.length || 1, MAX_PLAN_STEPS))
+        : 1;
+      nextPlan = Array(targetLength).fill(steering.action);
+    } else {
+      const filtered = planActions.filter(step => step !== directive.action);
+      nextPlan = [steering.action, ...filtered.filter(step => step !== steering.action)];
+    }
+
+    return {
+      action: steering.action,
+      planActions: nextPlan,
+      reason: steering.reason,
+      decisionSource: 'steering-direct',
+      steering
+    };
+  }
+
+  maybeEmitSteeringDecision(steering, sso) {
+    if (!steering || !sso) return;
+    const tick = Number.isInteger(sso.gameTick) ? sso.gameTick : 0;
+    const shouldEmit =
+      this.lastSteeringDecisionTickLogged === null ||
+      this.lastSteeringDecisionActionLogged !== steering.action ||
+      tick - this.lastSteeringDecisionTickLogged >= 10;
+
+    this.pendingLLMAction = steering.action;
+    if (!shouldEmit) return;
+
+    this.lastSteeringDecisionTickLogged = tick;
+    this.lastSteeringDecisionActionLogged = steering.action;
+    this.lastProvider = 'steering-direct';
+    this.lastModelUsed = this.model;
+    this.recordActionDecision(steering.action, tick, steering.reason, sso);
+
+    if (this.io) {
+      this.io.emit('llm-reasoning', {
+        runId: this.runId,
+        prompt: '',
+        systemPrompt: null,
+        promptLayers: null,
+        response: '',
+        reason: steering.reason,
+        decisionSource: 'steering-direct',
+        parsedAction: steering.action,
+        policyAuthoritative: true,
+        fallbackAction: steering.action,
+        fallbackActionCode: null,
+        strategy: this.sessionStrategy,
+        action: steering.action,
+        plan: [steering.action],
+        planLength: 1,
+        elapsed: 0,
+        provider: 'steering-direct',
+        modelUsed: this.model,
+        gameState: {
+          score: sso.gameScore,
+          health: sso.avatarHealthPoints,
+          tick: sso.gameTick
+        }
+      });
+    }
   }
 
   setPlan(plan, sso) {
@@ -921,6 +1176,8 @@ class LLMClient {
       policyAuthoritative
     } = buildPrompt(sso, this.promptConfig, this.stateTracker, this.sessionStrategy);
     const prompt = userMessage;
+    const strategyRevisionAtStart = this.strategyRevision;
+    const strategyAtStart = this.sessionStrategy;
 
     // Cross-run learning: tell the model how its last run went so it can adjust.
     // This is the within-session reward signal — the model sees its own outcome
@@ -1002,6 +1259,19 @@ class LLMClient {
     }
 
     const elapsed = Date.now() - startTime;
+    if (strategyRevisionAtStart !== this.strategyRevision || strategyAtStart !== this.sessionStrategy) {
+      console.log('[LLMClient] Ignoring stale LLM response after steering update');
+      return {
+        action: null,
+        reason: '',
+        decisionSource: 'stale-strategy',
+        elapsed,
+        provider: usedProvider,
+        modelUsed: usedModel,
+        stale: true
+      };
+    }
+
     const maxPlanSteps = this.promptConfig?.macroActions?.maxSteps || MAX_PLAN_STEPS;
     const parsed = parseStructured(llmResponse, sso.availableActions, actionCodeMap, { maxPlanSteps });
     let { action, reason } = parsed;
@@ -1031,16 +1301,24 @@ class LLMClient {
       reason = `encoded best action ${fallbackActionCode || ''}`.trim();
       decisionSource = 'policy-fallback';
     }
-    this.lastProvider = usedProvider;
-    this.lastModelUsed = usedModel;
-    this.pendingLLMAction = action;
-
     // Queue the multi-step plan for the tick executor. Code-protocol responses
     // never take this path (buildPrompt branches to buildCodePrompt first, and
     // the overrides above rewrite action anyway).
-    const planActions = (this.macroEnabled() && responseMode !== 'code' && Array.isArray(parsed.plan) && parsed.plan.length > 0)
+    let planActions = (this.macroEnabled() && responseMode !== 'code' && Array.isArray(parsed.plan) && parsed.plan.length > 0)
       ? parsed.plan
       : [action];
+    const steering = this.applySteeringToPlan(action, planActions, sso);
+    if (steering.steering) {
+      action = steering.action;
+      planActions = steering.planActions;
+      reason = steering.reason || reason;
+      decisionSource = steering.decisionSource || decisionSource;
+    }
+
+    this.lastProvider = steering.steering ? 'steering-direct' : usedProvider;
+    this.lastModelUsed = usedModel;
+    this.pendingLLMAction = action;
+
     if (this.macroEnabled() && responseMode !== 'code') {
       this.setPlan(planActions, sso);
     }
@@ -1060,7 +1338,7 @@ class LLMClient {
       gameId: this.gameId,
       levelId: this.levelCount,
       modelId: this.model,
-      provider: usedProvider,
+      provider: steering.steering ? 'steering-direct' : usedProvider,
       latencyMs: elapsed,
       payload: {
         action,
@@ -1109,7 +1387,7 @@ class LLMClient {
         plan: displayPlan,
         planLength: planActions.length,
         elapsed,
-        provider: usedProvider,
+        provider: steering.steering ? 'steering-direct' : usedProvider,
         modelUsed: usedModel,
         lastRunOutcome: this.lastRunOutcome || null,
         gameState: {
@@ -1120,7 +1398,7 @@ class LLMClient {
       });
     }
 
-    return { action, reason, decisionSource, elapsed, provider: usedProvider, modelUsed: usedModel };
+    return { action, reason, decisionSource, elapsed, provider: steering.steering ? 'steering-direct' : usedProvider, modelUsed: usedModel };
   }
 
   recordActionDecision(action, tick, reason = '', sso = null) {
@@ -1357,7 +1635,13 @@ class LLMClient {
   updateStrategy(rawStrategy) {
     const { text, warnings } = sanitizeStrategy(rawStrategy);
     this.sessionStrategy = text;
+    this.strategyRevision += 1;
     this.clearPlan();
+    this.pendingLLMAction = null;
+    this.lastLLMCallTime = 0;
+    this.lastSteeringDecisionTickLogged = null;
+    this.lastSteeringDecisionActionLogged = null;
+    this.steeringAlternativeCursor = 0;
     if (this.io) {
       this.io.emit('strategy-updated', {
         runId: this.runId,

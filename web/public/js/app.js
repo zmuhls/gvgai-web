@@ -91,18 +91,17 @@ const PREVIEW_GAMES = [
   { id: 13, name: 'butterflies', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 4 },
   { id: 19, name: 'chipschallenge', category: 'gridphysics', archetype: 'pusher-puzzle', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 5 },
   { id: 20, name: 'chopper', category: 'gridphysics', archetype: 'shooter-roaming', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 6 },
-  { id: 22, name: 'clusters', category: 'gridphysics', archetype: 'pusher-puzzle', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 7 },
-  { id: 30, name: 'digdug', category: 'gridphysics', archetype: 'navigator', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 8 },
-  { id: 68, name: 'pacman', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 9 },
-  { id: 44, name: 'frogs', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 10 },
-  { id: 50, name: 'hungrybirds', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 11 },
-  { id: 15, name: 'camelRace', category: 'gridphysics', archetype: 'collector', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 12 },
-  { id: 26, name: 'crossfire', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 13 },
-  { id: 63, name: 'link', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 14 }
+  { id: 30, name: 'digdug', category: 'gridphysics', archetype: 'navigator', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 7 },
+  { id: 68, name: 'pacman', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 8 },
+  { id: 44, name: 'frogs', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 9 },
+  { id: 50, name: 'hungrybirds', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 10 },
+  { id: 15, name: 'camelRace', category: 'gridphysics', archetype: 'collector', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 11 },
+  { id: 26, name: 'crossfire', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 12 },
+  { id: 63, name: 'link', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 13 }
 ];
 
-const FEATURED_CABINET_COUNT = 14;
-const FEATURED_ORDER_IDS = [0, 14, 18, 13, 19, 20, 22, 30, 68, 44, 50, 15, 26, 63];
+const FEATURED_CABINET_COUNT = 13;
+const FEATURED_ORDER_IDS = [0, 14, 18, 13, 19, 20, 30, 68, 44, 50, 15, 26, 63];
 const SINGLE_PLAYER_CABINET_COUNT = 122;
 
 const PREVIEW_MODELS = [
@@ -1246,7 +1245,7 @@ function setupWebSocket() {
     narrDiv.textContent = narration;
     entry.appendChild(narrDiv);
 
-    if (sharesStrategyKeyword(data.reason, data.strategy)) {
+    if (moveFollowsStrategy(data)) {
       const badge = document.createElement('span');
       badge.className = 'strategy-badge';
       badge.textContent = '↳ following your strategy';
@@ -1604,7 +1603,7 @@ function updateAdherenceRibbon(data) {
   if (!ribbon) return;
   if (!data.strategy) { ribbon.classList.add('hidden'); return; }
   state.adherenceTotal = (state.adherenceTotal || 0) + 1;
-  if (sharesStrategyKeyword(data.reason, data.strategy)) {
+  if (moveFollowsStrategy(data)) {
     state.adherenceMentioned = (state.adherenceMentioned || 0) + 1;
   }
   const m = state.adherenceMentioned || 0;
@@ -1630,6 +1629,27 @@ function sharesStrategyKeyword(reason, strategy) {
   const words = (strategy.toLowerCase().match(/[a-z]+/g) || [])
     .filter(w => w.length >= 4 && !BADGE_STOPWORDS.has(w));
   return words.some(w => r.includes(w));
+}
+
+function parseDirectionalStrategy(strategy) {
+  const text = (strategy || '').trim();
+  if (!text) return null;
+  const negative = text.match(/\b(?:do\s+not|don't|dont|never|avoid|without|no|not|stop)\s+(?:(?:go|going|move|moving|turn|turning|head|heading|steer|steering|press|pressing)\s+)?(?:to\s+the\s+)?(left|right|up|down)\b/i);
+  if (negative) return { mode: 'avoid', action: `ACTION_${negative[1].toUpperCase()}` };
+  const positive = text.match(/\b(?:go|move|turn|head|steer|press|keep|continue)\s+(?:going\s+)?(?:to\s+the\s+)?(left|right|up|down)\b/i) ||
+    text.match(/^\s*(left|right|up|down)\s*[.!?]*\s*$/i);
+  if (positive) return { mode: 'prefer', action: `ACTION_${positive[1].toUpperCase()}` };
+  return null;
+}
+
+function moveFollowsStrategy(data) {
+  const directive = parseDirectionalStrategy(data?.strategy);
+  if (directive && data?.action) {
+    return directive.mode === 'avoid'
+      ? data.action !== directive.action
+      : data.action === directive.action;
+  }
+  return sharesStrategyKeyword(data?.reason, data?.strategy);
 }
 
 // ─── Human play: keyboard capture ───────────────────────────────────────────

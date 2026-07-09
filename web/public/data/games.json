@@ -285,7 +285,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 12
+    "featuredRank": 11
   },
   {
     "id": 16,
@@ -410,8 +410,8 @@
       4
     ],
     "levelCount": 5,
-    "featured": true,
-    "featuredRank": 7
+    "featured": false,
+    "featuredRank": null
   },
   {
     "id": 23,
@@ -483,7 +483,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 13
+    "featuredRank": 12
   },
   {
     "id": 27,
@@ -555,7 +555,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 8
+    "featuredRank": 7
   },
   {
     "id": 31,
@@ -807,7 +807,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 10
+    "featuredRank": 9
   },
   {
     "id": 45,
@@ -915,7 +915,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 11
+    "featuredRank": 10
   },
   {
     "id": 51,
@@ -1149,7 +1149,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 14
+    "featuredRank": 13
   },
   {
     "id": 64,
@@ -1239,7 +1239,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 9
+    "featuredRank": 8
   },
   {
     "id": 69,

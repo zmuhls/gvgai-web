@@ -40,3 +40,12 @@ test('walk-up viewer scopes socket events to its active run', () => {
     assert.match(handler[1], /isCurrentRun/, `${event} handler filters by run`);
   }
 });
+
+test('trace adherence badge uses action-aware directional steering checks', () => {
+  const appSource = fs.readFileSync(path.join(WEB_ROOT, 'public', 'js', 'app.js'), 'utf-8');
+
+  assert.match(appSource, /function parseDirectionalStrategy\(strategy\)/);
+  assert.match(appSource, /function moveFollowsStrategy\(data\)/);
+  assert.match(appSource, /data\.action === directive\.action/);
+  assert.doesNotMatch(appSource, /if \(sharesStrategyKeyword\(data\.reason, data\.strategy\)\)/);
+});

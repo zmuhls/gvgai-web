@@ -43,9 +43,9 @@ test('arcade eval plan can cover the full model-native starter set', () => {
   const { buildArcadeEvalPlan } = loadEvalPlan();
   const plan = buildArcadeEvalPlan({ gameCount: 10 });
 
-  assert.deepEqual(plan.gameIds, [0, 14, 18, 13, 19, 20, 22, 30, 68, 44]);
+  assert.deepEqual(plan.gameIds, [0, 14, 18, 13, 19, 20, 30, 68, 44, 50]);
   assert.equal(plan.games[5].name, 'chopper');
-  assert.equal(plan.games[9].name, 'frogs');
+  assert.equal(plan.games[9].name, 'hungrybirds');
   assert.equal(plan.cases.length, plan.modelIds.length * plan.gameIds.length * plan.strategies.length);
 });
 

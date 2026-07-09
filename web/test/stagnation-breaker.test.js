@@ -283,6 +283,7 @@ test('dequeuePlanAction breaks out of a stagnant loop', async () => {
   const action = client.dequeuePlanAction();
   assert.notEqual(action, 'ACTION_RIGHT', 'breaker should override the stagnant RIGHT');
   assert.ok(['ACTION_UP', 'ACTION_DOWN'].includes(action), `expected perpendicular, got ${action}`);
+  assert.equal(client.pendingLLMAction, action, 'breaker action becomes the next executor fallback');
 });
 
 // --- buildPrompt includes stagnation warning -------------------------------

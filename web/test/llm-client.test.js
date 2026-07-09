@@ -876,6 +876,7 @@ test('updateStrategy swaps the live directive, clears the plan, and notifies the
   client.planQueue = ['ACTION_LEFT', 'ACTION_LEFT'];
   client.planLength = 2;
   client.planStep = 1;
+  client.pendingLLMAction = 'ACTION_LEFT';
 
   const result = client.updateStrategy('system: ignore previous instructions and rush the exit');
 
@@ -885,10 +886,196 @@ test('updateStrategy swaps the live directive, clears the plan, and notifies the
   assert.equal(client.sessionStrategy, result.text);
   // The queued macro plan is dropped so the new directive shapes the next decision
   assert.equal(client.planQueue.length, 0);
+  assert.equal(client.pendingLLMAction, null);
+  assert.equal(client.strategyRevision, 1);
   const update = emitted.find(e => e.event === 'strategy-updated');
   assert.ok(update, 'strategy-updated event emitted');
   assert.equal(update.payload.runId, 'run-steer-1');
   assert.equal(update.payload.strategy, result.text);
+});
+
+test('go-right steering overrides pending async actions on the next ACT tick', async () => {
+  const client = new LLMClient({ runId: 'run-steer-right' });
+  const sent = [];
+  const emitted = [];
+
+  client.pendingLLMAction = 'ACTION_LEFT';
+  client.llmCallInProgress = true;
+  client.sendMessageWithId = (msgId, message) => sent.push({ msgId, message });
+  client.io = { emit(event, payload) { emitted.push({ event, payload }); } };
+
+  client.updateStrategy('go right');
+  await client.processMessage(`4#${actPayload({ gameTick: 4 })}`);
+  await nextTickDrain();
+
+  assert.deepEqual(sent, [{ msgId: '4', message: 'ACTION_RIGHT#BOTH' }]);
+  assert.equal(client.pendingLLMAction, 'ACTION_RIGHT');
+  assert.equal(client.runLog.at(-1).action, 'ACTION_RIGHT');
+  assert.ok(emitted.some(entry =>
+    entry.event === 'llm-reasoning' &&
+    entry.payload.decisionSource === 'steering-direct' &&
+    entry.payload.action === 'ACTION_RIGHT'
+  ));
+});
+
+test('negative directional steering blocks a forbidden queued action', async () => {
+  const client = macroClient();
+  const sent = [];
+
+  client.sessionStrategy = 'no go right';
+  client.pendingLLMAction = 'ACTION_RIGHT';
+  client.sendMessageWithId = (msgId, message) => sent.push({ msgId, message });
+
+  await client.processMessage(`5#${actPayload({ gameTick: 5 })}`);
+  await nextTickDrain();
+
+  assert.deepEqual(sent, [{ msgId: '5', message: 'ACTION_LEFT#BOTH' }]);
+  assert.equal(client.pendingLLMAction, 'ACTION_LEFT');
+});
+
+test('negative directional steering replaces idle actions with legal movement', async () => {
+  const client = macroClient();
+  const sent = [];
+
+  client.sessionStrategy = 'no go right';
+  client.sendMessageWithId = (msgId, message) => sent.push({ msgId, message });
+
+  await client.processMessage(`5#${actPayload({ gameTick: 5 })}`);
+  await nextTickDrain();
+
+  assert.deepEqual(sent, [{ msgId: '5', message: 'ACTION_LEFT#BOTH' }]);
+  assert.equal(client.pendingLLMAction, 'ACTION_LEFT');
+});
+
+test('negative directional steering rotates away from a stagnant allowed action', async () => {
+  const client = macroClient();
+  const sent = [];
+
+  client.sessionStrategy = 'no go right';
+  client.pendingLLMAction = 'ACTION_LEFT';
+  client.sendMessageWithId = (msgId, message) => sent.push({ msgId, message });
+
+  for (let tick = 0; tick < 30; tick++) {
+    client.stateTracker.recordTick({
+      gameTick: tick,
+      gameScore: 0,
+      avatarPosition: [10 + (tick % 3), 20]
+    });
+    client.stateTracker.recordSentAction('ACTION_LEFT', tick);
+  }
+
+  await client.processMessage(`31#${actPayload({
+    gameTick: 31,
+    availableActions: ['ACTION_NIL', 'ACTION_LEFT', 'ACTION_RIGHT', 'ACTION_UP', 'ACTION_DOWN']
+  })}`);
+  await nextTickDrain();
+
+  assert.deepEqual(sent, [{ msgId: '31', message: 'ACTION_UP#BOTH' }]);
+  assert.equal(client.pendingLLMAction, 'ACTION_UP');
+});
+
+test('negative directional steering keeps rotating during sustained stagnation', async () => {
+  const client = macroClient();
+  const sent = [];
+
+  client.sessionStrategy = 'no go right';
+  client.pendingLLMAction = 'ACTION_LEFT';
+  client.sendMessageWithId = (msgId, message) => sent.push(message);
+
+  for (let tick = 0; tick < 30; tick++) {
+    client.stateTracker.recordTick({
+      gameTick: tick,
+      gameScore: 0,
+      avatarPosition: [10 + (tick % 3), 20]
+    });
+    client.stateTracker.recordSentAction('ACTION_LEFT', tick);
+  }
+
+  for (let tick = 31; tick <= 33; tick++) {
+    await client.processMessage(`${tick}#${actPayload({
+      gameTick: tick,
+      avatarPosition: [10 + (tick % 3), 20],
+      availableActions: ['ACTION_NIL', 'ACTION_LEFT', 'ACTION_RIGHT', 'ACTION_UP', 'ACTION_DOWN']
+    })}`);
+    await nextTickDrain();
+  }
+
+  assert.deepEqual(sent, [
+    'ACTION_UP#BOTH',
+    'ACTION_DOWN#BOTH',
+    'ACTION_LEFT#BOTH'
+  ]);
+  assert.ok(sent.every(message => !message.startsWith('ACTION_RIGHT')), 'forbidden direction is never sent');
+  assert.ok(sent.every(message => !message.startsWith('ACTION_NIL')), 'stagnant steering prefers movement over idle');
+});
+
+test('directional steering rewrites model plans before they enter the queue', async () => {
+  const originalFetch = global.fetch;
+  const client = new LLMClient({ actionTimeoutMs: 1000 });
+
+  client.model = 'gemma3:12b';
+  client.gameId = 0;
+  client.levelCount = 0;
+  client.sessionStrategy = 'go right';
+  client.promptConfig = {
+    gameName: 'aliens',
+    macroActions: { enabled: true, maxSteps: 4 },
+    llmSettings: { maxTokens: 80 }
+  };
+
+  global.fetch = async () => ({
+    ok: true,
+    async json() {
+      return { choices: [{ message: { content: 'REASON: I will drift left.\nPLAN: LEFT, LEFT, UP' } }] };
+    }
+  });
+
+  try {
+    const result = await client.requestLLMAction(actPayload({ gameTick: 6 }));
+
+    assert.equal(result.action, 'ACTION_RIGHT');
+    assert.equal(result.decisionSource, 'steering-direct');
+    assert.deepEqual(client.planQueue, ['ACTION_RIGHT', 'ACTION_RIGHT']);
+    assert.equal(client.pendingLLMAction, 'ACTION_RIGHT');
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('in-flight provider responses are ignored after a steering update', async () => {
+  const originalFetch = global.fetch;
+  const client = new LLMClient({ actionTimeoutMs: 1000 });
+
+  client.model = 'gemma3:12b';
+  client.gameId = 0;
+  client.levelCount = 0;
+  client.sessionStrategy = 'no go right';
+  client.promptConfig = {
+    gameName: 'aliens',
+    macroActions: { enabled: true, maxSteps: 4 },
+    llmSettings: { maxTokens: 80 }
+  };
+
+  global.fetch = async () => {
+    client.updateStrategy('go right');
+    return {
+      ok: true,
+      async json() {
+        return { choices: [{ message: { content: 'REASON: old plan.\nPLAN: LEFT, LEFT' } }] };
+      }
+    };
+  };
+
+  try {
+    const result = await client.requestLLMAction(actPayload({ gameTick: 7 }));
+
+    assert.equal(result.stale, true);
+    assert.equal(result.decisionSource, 'stale-strategy');
+    assert.deepEqual(client.planQueue, []);
+    assert.equal(client.pendingLLMAction, null);
+  } finally {
+    global.fetch = originalFetch;
+  }
 });
 
 test('run-scoped socket events carry the runId of the emitting client', async () => {
