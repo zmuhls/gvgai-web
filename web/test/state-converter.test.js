@@ -118,7 +118,7 @@ function baitPromptFor(state) {
   });
 }
 
-function gridTargetPromptFor(state, protocolOverrides = {}) {
+function gridTargetPromptFor(state, protocolOverrides = {}, stateTracker = null) {
   return buildPrompt(state, {
     gameName: 'grid-target-test',
     codeProtocol: {
@@ -141,7 +141,7 @@ function gridTargetPromptFor(state, protocolOverrides = {}) {
       dangerRadius: 0,
       ...protocolOverrides
     }
-  });
+  }, stateTracker);
 }
 
 test('spatial context uses observation grid dimensions when worldDimension is mixed with blockSize', () => {
@@ -555,6 +555,31 @@ test('grid target policy skips targets inside a danger radius when safer targets
     targets: [[1, 2, 6], [3, 4, 6]],
     dangers: [[1, 1, 5]]
   }), { dangerRadius: 1 });
+
+  assert.equal(prompt.fallbackActionCode, 'D');
+  assert.equal(prompt.fallbackAction, 'ACTION_DOWN');
+  assert.match(prompt.userMessage, /B:D/);
+});
+
+test('grid target policy can ignore persistent targets on the avatar tile', () => {
+  const prompt = gridTargetPromptFor(createGridTargetState({
+    avatar: [3, 2],
+    targets: [[3, 2, 6], [5, 2, 6]]
+  }), { ignoreCurrentTarget: true });
+
+  assert.equal(prompt.fallbackActionCode, 'R');
+  assert.equal(prompt.fallbackAction, 'ACTION_RIGHT');
+  assert.match(prompt.userMessage, /B:R/);
+});
+
+test('grid target fallback can avoid immediate reverse when target is unreachable', () => {
+  const prompt = gridTargetPromptFor(createGridTargetState({
+    avatar: [2, 1],
+    targets: [[4, 1, 6]],
+    walls: [[3, 0], [3, 1], [3, 2], [3, 3], [3, 4]]
+  }), { avoidFallbackReverse: true }, {
+    sentActions: [{ tick: 0, action: 'ACTION_DOWN' }]
+  });
 
   assert.equal(prompt.fallbackActionCode, 'D');
   assert.equal(prompt.fallbackAction, 'ACTION_DOWN');

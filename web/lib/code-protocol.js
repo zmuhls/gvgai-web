@@ -209,6 +209,15 @@ function directionAction(direction) {
   return direction === 'L' ? 'ACTION_LEFT' : 'ACTION_RIGHT';
 }
 
+function oppositeAction(action) {
+  return {
+    ACTION_UP: 'ACTION_DOWN',
+    ACTION_DOWN: 'ACTION_UP',
+    ACTION_LEFT: 'ACTION_RIGHT',
+    ACTION_RIGHT: 'ACTION_LEFT'
+  }[action] || null;
+}
+
 function isDirectionSafe(direction, playerPos, hazards, availableActions, lookaheadRows = DEFAULT_DODGE_LOOKAHEAD_ROWS) {
   if (!availableActions.includes(directionAction(direction))) return false;
   const nextX = playerPos[0] + (direction === 'L' ? -1 : 1);
@@ -484,10 +493,14 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes, stateTracker) {
   const targetCode = protocol.targetEntityCode || 't';
   const wallCode = protocol.wallEntityCode || 'w';
   const dangerCode = protocol.dangerEntityCode || 'd';
-  const targets = filterByItypes(
+  const start = { x: playerPos[0], y: playerPos[1] };
+  let targets = filterByItypes(
     collectSourcePositions(sso, protocol.targetSources || ['npc'], blockSize, playerPos, targetCode, entityLimit),
     protocol.targetItypes
   );
+  if (protocol.ignoreCurrentTarget === true) {
+    targets = targets.filter(target => target.x !== start.x || target.y !== start.y);
+  }
   if (targets.length === 0) return null;
 
   const walls = filterByItypes(
@@ -521,7 +534,6 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes, stateTracker) {
     : targets.filter(target => !dangerSet.has(gridKey(target.x, target.y)));
   const navigableTargets = pathTargets.length > 0 ? pathTargets : targets;
 
-  const start = { x: playerPos[0], y: playerPos[1] };
   const [gridW, gridH] = gridDimensions(sso, blockSize);
   const flee = chooseFleeDangerCode({
     moves,
@@ -579,6 +591,21 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes, stateTracker) {
     }
   }
 
+  const recentVisits = new Map();
+  if (protocol?.exploreOnUnreachable && Array.isArray(stateTracker?.stateHistory)) {
+    for (const state of stateTracker.stateHistory) {
+      if (!Array.isArray(state.position)) continue;
+      recentVisits.set(
+        gridKey(Math.round(state.position[0] / blockSize), Math.round(state.position[1] / blockSize)),
+        (recentVisits.get(gridKey(Math.round(state.position[0] / blockSize), Math.round(state.position[1] / blockSize))) || 0) + 1
+      );
+    }
+  }
+  const lastSent = Array.isArray(stateTracker?.sentActions) && stateTracker.sentActions.length > 0
+    ? stateTracker.sentActions[stateTracker.sentActions.length - 1].action
+    : null;
+  const reverseAction = protocol?.avoidFallbackReverse ? oppositeAction(lastSent) : null;
+
   const fallback = moves
     .map(move => ({
       ...move,
@@ -589,7 +616,9 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes, stateTracker) {
     .map(move => ({
       ...move,
       score: -Math.min(...targets.map(target => manhattan(move, target))) -
-        (dangerSet.has(gridKey(move.x, move.y)) ? 20 : 0)
+        (dangerSet.has(gridKey(move.x, move.y)) ? 20 : 0) -
+        (protocol?.exploreOnUnreachable ? (recentVisits.get(gridKey(move.x, move.y)) || 0) * 10 : 0) -
+        (reverseAction && move.action === reverseAction ? 5 : 0)
     }))
     .sort((a, b) => b.score - a.score)[0];
 

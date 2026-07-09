@@ -41,15 +41,38 @@
       "AVOID_ENEMY"
     ],
     "ruleCodes": [
-      "PATH_TO_RESOURCE"
+      "PATH_TO_PICKAXE_OR_GOAL",
+      "AVOID_TANKS"
     ],
     "targetSources": [
-      "resource"
+      "resource",
+      "portal"
+    ],
+    "targetItypes": [
+      4,
+      26
     ],
     "targetEntityCode": "r",
     "wallSources": [
       "immovable"
     ],
+    "wallItypes": [
+      29,
+      30
+    ],
+    "dangerSources": [
+      "movable"
+    ],
+    "dangerItypes": [
+      8,
+      9,
+      10,
+      11
+    ],
+    "dangerRadius": 1,
+    "ignoreCurrentTarget": true,
+    "exploreOnUnreachable": true,
+    "avoidFallbackReverse": true,
     "policyEntityLimit": 256
   },
   "updatedAt": "2026-07-02T01:39:27.629Z",

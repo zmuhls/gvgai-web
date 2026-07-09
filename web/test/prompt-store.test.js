@@ -273,9 +273,15 @@ test('link uses compact resource guidance', () => {
   assert.equal(config.codeProtocol.enabled, true);
   assert.equal(config.codeProtocol.policyId, 'grid-target');
   assert.equal(config.codeProtocol.authoritative, false);
-  assert.deepEqual(config.codeProtocol.targetSources, ['resource']);
+  assert.deepEqual(config.codeProtocol.targetSources, ['resource', 'portal']);
+  assert.deepEqual(config.codeProtocol.targetItypes, [4, 26]);
   assert.equal(config.codeProtocol.targetEntityCode, 'r');
   assert.deepEqual(config.codeProtocol.wallSources, ['immovable']);
+  assert.deepEqual(config.codeProtocol.wallItypes, [29, 30]);
+  assert.deepEqual(config.codeProtocol.dangerItypes, [8, 9, 10, 11]);
+  assert.equal(config.codeProtocol.ignoreCurrentTarget, true);
+  assert.equal(config.codeProtocol.exploreOnUnreachable, true);
+  assert.equal(config.codeProtocol.avoidFallbackReverse, true);
 });
 
 test('superman uses compact portal guidance', () => {
