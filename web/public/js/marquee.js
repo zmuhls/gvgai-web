@@ -3,6 +3,15 @@
 // / case-started / case-completed boundary events. No controls — embeddable via
 // <iframe> on inference-arcade.com as one "room" in the network.
 (function () {
+  const DEFAULT_ATTRACT_MODELS = [
+    'Gemma 3 27B',
+    'Gemma 3 12B',
+    'Qwen3 Coder Next',
+    'Ministral 3 14B',
+    'Ministral 3 8B',
+    'Ministral 3 3B',
+    'Devstral Small 2 24B'
+  ];
   const socket = io();
   const el = id => document.getElementById(id);
   const canvas = el('canvas');
@@ -13,6 +22,8 @@
     score: 0,
     health: null,
     tick: 0,
+    attractModels: DEFAULT_ATTRACT_MODELS,
+    attractModelIndex: -1
   };
 
   // --- game screen ---------------------------------------------------------
@@ -109,9 +120,27 @@
     ctx.fillText(text, x, y);
     ctx.restore();
   }
+  function attractModelForTime(t) {
+    const list = marqueeState.attractModels.length ? marqueeState.attractModels : DEFAULT_ATTRACT_MODELS;
+    const index = Math.floor(t / 2.4) % list.length;
+    return { index, name: list[index] };
+  }
+  function setAttractNowPlaying(modelInfo) {
+    if (!modelInfo || marqueeState.mode !== 'IDLE') return;
+    if (marqueeState.attractModelIndex === modelInfo.index) return;
+    marqueeState.attractModelIndex = modelInfo.index;
+    const np = el('nowplaying');
+    np.replaceChildren();
+    np.append(document.createTextNode('Marquee cycling '));
+    const model = document.createElement('strong');
+    model.textContent = modelInfo.name;
+    np.append(model, document.createTextNode(' through the arcade.'));
+  }
   function drawAttractFrame(rawNow) {
     const now = rawNow + attractOffset;
     const t = now / 1000;
+    const modelInfo = attractModelForTime(t);
+    setAttractNowPlaying(modelInfo);
     ensureAttractCanvas();
     marqueeState.screen = 'attract';
 
@@ -180,6 +209,8 @@
 
     drawPixelText('AI MARBLE RUN', 14, 15, '#e4fbf0', 15);
     drawPixelText('ATTRACT LOOP ACTIVE', 15, 37, '#7befc3', 10);
+    drawPixelText('MODEL', 15, 62, '#e0b25a', 9);
+    drawPixelText(modelInfo.name.toUpperCase(), 15, 76, '#e4fbf0', 11);
     drawPixelText('STREAM READY', 213, 18, '#e0b25a', 10);
     drawPixelText(`TICK ${String(Math.floor(t * 12) % 9999).padStart(4, '0')}`, 226, 34, '#e4fbf0', 10);
   }
@@ -248,6 +279,19 @@
     np.append(game);
     if (c.strategyLabel) np.append(document.createTextNode(` — “${c.strategyLabel}”`));
   }
+  function modelNameFrom(item) {
+    return item && (item.modelName || item.model?.name || item.modelId || item.model?.id || null);
+  }
+  function rememberAttractModels(current, upNext) {
+    const names = [];
+    const add = name => {
+      if (!name || names.includes(name)) return;
+      names.push(name);
+    };
+    add(modelNameFrom(current));
+    (upNext || []).forEach(item => add(modelNameFrom(item)));
+    marqueeState.attractModels = names.length ? names : DEFAULT_ATTRACT_MODELS;
+  }
   function renderUpNext(list) {
     const box = el('upnext');
     box.replaceChildren();
@@ -264,6 +308,7 @@
   function renderState(s) {
     if (!s) return;
     marqueeState.mode = s.mode || 'IDLE';
+    rememberAttractModels(s.current, s.upNext);
     const playing = s.mode === 'MARBLE_PLAYING' || s.mode === 'MARBLE_STARTING';
     // Leaving the run entirely (idle / walk-up / yield) ends the boundary
     // state, so the full attract template legitimately returns.
@@ -273,7 +318,10 @@
     el('playlist-pos').textContent = s.total ? `Case ${(s.cursor || 0) + 1} / ${s.total}` : '—';
     if (s.current) setNowPlaying(s.current);
     else if (s.walkupActive) el('nowplaying').textContent = 'A visitor is at the cabinet — marble run paused.';
-    else el('nowplaying').textContent = 'Attract loop running — waiting for the next marble.';
+    else {
+      marqueeState.attractModelIndex = -1;
+      setAttractNowPlaying(attractModelForTime((performance.now() + attractOffset) / 1000));
+    }
     renderUpNext(s.upNext);
   }
 
@@ -344,6 +392,7 @@
     if (c && c.model && c.game) {
       const model = c.model.name || c.model.id || 'model';
       const game = c.game.name || `game ${c.game.id}`;
+      rememberAttractModels({ modelName: model }, null);
       interCard.next = `NEXT: ${model} × ${game}`.toUpperCase();
       setNowPlaying({
         modelName: c.model.name, modelId: c.model.id,
@@ -395,6 +444,7 @@
       coordinateSystem: 'canvas origin is top-left; x increases right, y increases down',
       mode: marqueeState.mode,
       screen: resolveScreen(),
+      attractModel: attractModelForTime((performance.now() + attractOffset) / 1000).name,
       score: marqueeState.score,
       health: marqueeState.health,
       tick: marqueeState.tick,
