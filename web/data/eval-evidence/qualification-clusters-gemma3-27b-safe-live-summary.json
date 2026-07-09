@@ -1,0 +1,32 @@
+{
+  "evidenceType": "live-featured-level1-qualification-summary",
+  "sourceRawArtifact": "web/data/eval-runs/qualification-clusters-gemma3-27b-safe-live-budget.json",
+  "command": "node web/scripts/run-arcade-eval.js --env-file /Users/milwright/projects/dev/gvgai/.env --featured-qualification --game-id 22 --level-id 1 --model gemma3:27b --strategy-id safe --limit 1 --timeout-ms 240000 --ready-timeout-ms 60000 --action-timeout-ms 15000 --prefer-provider-fallback --out web/data/eval-runs/qualification-clusters-gemma3-27b-safe-live-budget.json",
+  "status": "completed",
+  "generatedAt": "2026-07-09T05:58:52.589Z",
+  "result": {
+    "runId": "arcade-g22-l1-gemma3-27b-s0",
+    "gameId": 22,
+    "gameName": "clusters",
+    "levelId": 1,
+    "modelId": "gemma3:27b",
+    "modelUsed": "google/gemma-3-27b-it",
+    "provider": "openrouter",
+    "strategyId": "safe",
+    "winner": "NO_WINNER",
+    "won": false,
+    "finalScore": 0,
+    "ticks": 84,
+    "decisions": 85,
+    "nilActionLoop": false,
+    "survivedMinTicks": true,
+    "passed": true
+  },
+  "qualification": {
+    "selectedModelCount": 12,
+    "requiredModelPasses": 6,
+    "clustersModelPasses": 1,
+    "clustersQualified": false,
+    "targetMet": false
+  }
+}

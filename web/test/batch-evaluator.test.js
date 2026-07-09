@@ -3,6 +3,7 @@ const test = require('node:test');
 
 const {
   buildBatchPlan,
+  defaultMaxActionsForCase,
   selectEvalCases,
   runEvalCase,
   runArcadeBatchEvaluation,
@@ -155,6 +156,11 @@ test('runEvalCase passes response type overrides to the live client', async () =
   assert.equal(receivedOptions.synchronousActions, true);
   assert.equal(receivedOptions.preferProviderFallback, true);
   assert.equal(result.finalScore, 3);
+});
+
+test('featured qualification action budget covers class survival thresholds', async () => {
+  assert.equal(defaultMaxActionsForCase({ archetype: 'pusher-puzzle' }, { featuredQualification: true }), 85);
+  assert.equal(defaultMaxActionsForCase({ archetype: 'pusher-puzzle' }, {}), 40);
 });
 
 test('prompt comparison marks different outcomes as meaningful', () => {
