@@ -131,22 +131,43 @@
       border-bottom: 1px solid var(--crease);
     }
 
-    .project-note h2 {
-      margin: 0 0 0.8rem;
+    .project-note summary {
+      margin: 0;
+      list-style: none;
       font-family: var(--mono);
       font-size: 0.74rem;
       font-weight: 600;
       letter-spacing: 0.2em;
       text-transform: uppercase;
       color: var(--label);
+      cursor: pointer;
+    }
+
+    .project-note summary::-webkit-details-marker { display: none; }
+    .project-note summary::after {
+      content: "+";
+      float: right;
+      color: var(--wine-bright);
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .project-note[open] summary { margin-bottom: 0.8rem; }
+    .project-note[open] summary::after { content: "-"; }
+    .project-note summary:hover { color: var(--bone); }
+
+    .project-note code {
+      color: var(--bone);
+      font-family: var(--mono);
+      font-size: 0.9em;
     }
 
     .table {
       width: min(100%, 42rem);
-      margin: clamp(2rem, 5vh, 3rem) auto 2.4rem;
-      padding: 1.2rem 0 1.35rem;
-      border-top: 1px solid var(--crease);
-      border-bottom: 1px solid var(--crease);
+      margin: clamp(1.3rem, 4vh, 2.4rem) auto 2.4rem;
+      padding: 1.2rem clamp(1rem, 3vw, 1.8rem) 1.35rem;
+      border: 1px solid rgba(231, 224, 208, 0.18);
+      background: rgba(12, 13, 16, 0.46);
     }
 
     .eyebrow {
@@ -227,7 +248,29 @@
       gap: 0.8rem;
     }
 
-    .sheet, .revealed { margin-top: 0.6rem; }
+    .sheet, .revealed {
+      width: min(100%, 50rem);
+      margin: 0 auto;
+      padding: clamp(1.5rem, 4vw, 2.4rem);
+      border: 1px solid rgba(231, 224, 208, 0.2);
+      background:
+        linear-gradient(180deg, rgba(25, 27, 34, 0.76), rgba(12, 13, 16, 0.52)),
+        repeating-linear-gradient(180deg, transparent 0 4.6rem, rgba(231, 224, 208, 0.035) 4.6rem 4.66rem);
+      box-shadow:
+        inset 0 1px 0 rgba(231, 224, 208, 0.08),
+        0 1.4rem 4rem rgba(0, 0, 0, 0.32);
+    }
+
+    .sheet .eyebrow, .revealed .eyebrow {
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(231, 224, 208, 0.12);
+    }
+
+    .sheet-actions, .reveal-actions {
+      margin-top: 1.35rem;
+      padding-top: 1.35rem;
+      border-top: 1px solid rgba(231, 224, 208, 0.12);
+    }
     .folds {
       display: flex;
       flex-direction: column;
@@ -399,6 +442,10 @@
       </p>
     </header>
 
+    <section class="prose" aria-label="About the game">
+      <p><strong>Cadavre Exquis</strong> is the Surrealist parlor game often called Exquisite Corpse in which each player writes or draws on a sheet, folds the page to hide the contribution, and passes only the last step in the sequence to the next player. This arcade version seats a language model at the table. Human players choose the table size, the model's seat, and the word limit, and the browser shows only the latest fold. When the sheet is finally revealed, the model then constructs a short close-reading analysis of the finished poem.</p>
+    </section>
+
     <section class="sheet" id="sheetSec" aria-label="The sheet">
       <h2 class="eyebrow">The Sheet</h2>
       <div class="folds" id="folds" aria-hidden="true"></div>
@@ -458,19 +505,13 @@
       </div>
     </section>
 
-    <section class="prose" aria-label="About the game">
-      <p><strong>Cadavre Exquis</strong> is the Surrealist parlor game often called Exquisite Corpse. As <a href="https://www.moma.org/collection/terms/exquisite-corpse" target="_blank" rel="noopener noreferrer">MoMA summarizes it</a>, each player writes or draws on a sheet, folds the page to hide the contribution, and passes only a cue to the next player.</p>
-      <p>This arcade version seats a language model at the table. Human players choose the table size, the model's seat, and the word limit; the browser shows only the latest fold. When the sheet is revealed, the model also writes a short close reading of the finished poem.</p>
-      <p>The fit is structural: the parlor game asks for partial context, associative leaps, and a disciplined handoff. Large language models also operate by completing from a visible context window, so the game turns model behavior into a legible constraint rather than asking the system to impersonate an authorial whole.</p>
-    </section>
-
-    <section class="project-note" aria-label="Project description">
-      <h2>Project description</h2>
-      <p>The AI player is programmed as a completion partner, not a chatbot. The system prompt makes the table rule explicit: answer with only the next one to five words, treat the latest contribution as the immediate cue, preserve local grammar, and avoid explanations until the reveal. That lets the model take one seat at the table while the page enforces the fold, turn order, and word cap.</p>
-      <p>The deployed proxy is server-side at <code>/api/cadavre/chat</code>, so browser clients do not carry API keys. The browser sends requests as <code>cadavre-server</code>; the server tries the Cadavre model route configured by environment first, targets <code>gemma-4-31b-it</code> when that hosted Gemma path is available, and can answer through the OpenRouter Gemma fallback, <code>google/gemma-3-27b-it</code>, when the primary route is unavailable.</p>
-      <p>The companion training pipeline builds an <code>exquisite-corpse</code> LoRA adapter from public-domain PoetryDB, curated Gutenberg modernist and proto-surrealist volumes, and the Gutenberg Poetry Corpus. The data is cleaned, deduplicated, split by poem, reshaped into next-line chat examples, and fine-tuned with Unsloth QLoRA on Gemma 4 E4B before being served through a vLLM adapter path.</p>
-      <p>Surrealist parlor games and large language models meet at the same hinge: neither player sees the total work while contributing, and meaning emerges from constrained continuations. The project uses that overlap as an operations experiment because failures are compact and visible, provider/model swaps are cheap, and each folded turn becomes a reusable trace for prompt, adapter, and fallback comparisons.</p>
-    </section>
+    <details class="project-note" aria-label="Project summary">
+      <summary>Project summary</summary>
+      <p>The public game sends each AI turn through <code>/api/cadavre/chat</code>, a server-side proxy that keeps API keys out of the browser. To the page, that room appears as <code>cadavre-server</code>. In production, it currently routes completions to <code>google/gemma-3-27b-it</code> through OpenRouter.</p>
+      <p>The model's seat is programmed for brief continuations. It receives the latest visible phrase and answers with the next short fold, while the page handles turn order, hidden context, and the word limit.</p>
+      <p>The fine-tuning work is a companion experiment. It builds an Exquisite Corpse adapter by collecting public-domain poetry, removing duplicates, splitting poems into lines, and turning those lines into cue-and-continuation examples. The adapter can then be served through vLLM for experiments against this same game interface.</p>
+      <p>The game is a natural fit for large language models because both work with partial context. In the parlor game, each person sees only the last fold. In a language model, each response is a continuation of the visible context. Cadavre Exquis makes that overlap visible, playful, and easy to test.</p>
+    </details>
 
     <footer>
       <div>source: <a href="https://github.com/milwrite/cadavre-exquis" target="_blank" rel="noopener noreferrer">milwrite/cadavre-exquis</a></div>
@@ -695,7 +736,7 @@ When asked for a close reading, write 2-4 concrete sentences about the finished 
       return tokens(reading).length >= 12 && /[.!?]/.test(reading) && !isCorrective(reading);
     }
 
-    function fallbackReading() {
+    function localReading() {
       const lines = contributions.map((c) => c.text);
       if (lines.length === 1) {
         return `The poem leaves "${lines[0]}" alone on the page, making the word act as image, object, and ending at once. Its force is the refusal to explain what should follow.`;
@@ -715,7 +756,7 @@ When asked for a close reading, write 2-4 concrete sentences about the finished 
           { role: "user", content: `POEM START\n${poemText}\nPOEM END\n\nClose-read only that poem in 1-3 concrete sentences.` }
         ], 360);
         if (!readingLooksLikeReading(readingText) || !readingMatchesPoem(readingText)) {
-          readingText = fallbackReading();
+          readingText = localReading();
         }
         readingEl.textContent = readingText;
         readingEl.classList.add("show");
