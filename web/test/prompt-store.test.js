@@ -111,3 +111,15 @@ test('hungrybirds uses compact portal goal guidance', () => {
   assert.deepEqual(config.codeProtocol.targetItypes, [4]);
   assert.deepEqual(config.codeProtocol.wallItypes, [0]);
 });
+
+test('firecaster uses compact mana target guidance', () => {
+  const config = resolveGamePromptConfig(40, 1);
+
+  assert.equal(config.gameName, 'firecaster');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['resource']);
+  assert.deepEqual(config.codeProtocol.targetItypes, [6]);
+  assert.deepEqual(config.codeProtocol.wallItypes, [0, 5]);
+});
