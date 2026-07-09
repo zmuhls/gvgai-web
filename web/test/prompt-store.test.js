@@ -135,3 +135,16 @@ test('garbagecollector uses compact garbage target guidance', () => {
   assert.deepEqual(config.codeProtocol.targetItypes, [4]);
   assert.deepEqual(config.codeProtocol.wallItypes, [0]);
 });
+
+test('iceandfire uses compact boot resource guidance', () => {
+  const config = resolveGamePromptConfig(51, 1);
+
+  assert.equal(config.gameName, 'iceandfire');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['resource']);
+  assert.equal(config.codeProtocol.targetEntityCode, 'b');
+  assert.deepEqual(config.codeProtocol.wallSources, ['immovable']);
+  assert.equal(config.codeProtocol.wallItypes, undefined);
+});
