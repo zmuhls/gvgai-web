@@ -280,6 +280,59 @@ function hasItemAt(items, x, y, itype = null) {
   return items.some(item => sameGrid([item.x, item.y], x, y) && (itype === null || item.itype === itype));
 }
 
+function chooseFleeDangerCode({ moves, start, dangerItems, dangerSet, wallSet, gridW, gridH, targets, protocol, stateTracker, availableActions }) {
+  const fleeDistance = Number.isFinite(protocol?.fleeDangerDistance)
+    ? protocol.fleeDangerDistance
+    : null;
+  if (!fleeDistance || dangerItems.length === 0) return null;
+
+  const nearestDangerDistance = Math.min(...dangerItems.map(item => manhattan(start, item)));
+  if (nearestDangerDistance > fleeDistance) return null;
+
+  const candidates = moves
+    .map(move => ({
+      ...move,
+      x: start.x + move.delta[0],
+      y: start.y + move.delta[1]
+    }))
+    .filter(move => {
+      const key = gridKey(move.x, move.y);
+      const inBounds = (
+        (!gridW || (move.x >= 0 && move.x < gridW)) &&
+        (!gridH || (move.y >= 0 && move.y < gridH))
+      );
+      return inBounds && !wallSet.has(key) && !dangerSet.has(key);
+    })
+    .map(move => {
+      const dangerDistance = Math.min(...dangerItems.map(item => manhattan(move, item)));
+      const targetDistance = targets.length > 0
+        ? Math.min(...targets.map(target => manhattan(move, target)))
+        : 0;
+      return {
+        ...move,
+        score: (dangerDistance * 100) - targetDistance
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const best = candidates[0];
+  if (best && protocol?.fleeLoopBreaker && stateTracker?.dominantSentAction && stateTracker?.suggestAlternativeDirection) {
+    const dominant = stateTracker.dominantSentAction();
+    const alternativeAction = dominant?.action === best.action && dominant.fraction >= 0.6
+      ? stateTracker.suggestAlternativeDirection(availableActions)
+      : null;
+    const alternative = candidates.find(move => move.action === alternativeAction);
+    if (alternative) {
+      return {
+        code: alternative.code,
+        reason: `flee nearby danger ${nearestDangerDistance}; break ${dominant.action}`
+      };
+    }
+  }
+
+  return best ? { code: best.code, reason: `flee nearby danger ${nearestDangerDistance}` } : null;
+}
+
 function validAliensMoveCode(desiredCode, sso, protocol, playerPos, codes) {
   if (!desiredCode) return null;
 
@@ -419,7 +472,7 @@ function chooseFixedCode(sso, protocol, codes) {
   return null;
 }
 
-function chooseGridTargetCode(sso, protocol, playerPos, codes) {
+function chooseGridTargetCode(sso, protocol, playerPos, codes, stateTracker) {
   if (!playerPos) return null;
 
   const blockSize = sso.blockSize || 1;
@@ -444,6 +497,7 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes) {
   const wallSet = new Set(walls.map(item => gridKey(item.x, item.y)));
   const targetSet = new Set(targets.map(item => gridKey(item.x, item.y)));
   const dangerSet = new Set();
+  let dangerItems = [];
 
   if (protocol.dangerSources || protocol.dangerItypes || protocol.dangerNonTargets) {
     const rawDanger = collectSourcePositions(
@@ -454,7 +508,7 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes) {
       dangerCode,
       entityLimit
     );
-    const dangerItems = protocol.dangerNonTargets
+    dangerItems = protocol.dangerNonTargets
       ? rawDanger.filter(item => !targetSet.has(gridKey(item.x, item.y)))
       : filterByItypes(rawDanger, protocol.dangerItypes);
     for (const item of dangerItems) {
@@ -469,6 +523,21 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes) {
 
   const start = { x: playerPos[0], y: playerPos[1] };
   const [gridW, gridH] = gridDimensions(sso, blockSize);
+  const flee = chooseFleeDangerCode({
+    moves,
+    start,
+    dangerItems,
+    dangerSet,
+    wallSet,
+    gridW,
+    gridH,
+    targets,
+    protocol,
+    stateTracker,
+    availableActions
+  });
+  if (flee) return flee;
+
   const queue = [{ ...start, path: [] }];
   const seen = new Set([gridKey(start.x, start.y)]);
 
@@ -527,7 +596,7 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes) {
   return fallback ? { code: fallback.code, reason: 'greedy step to visible target' } : null;
 }
 
-function choosePolicyActionCode(sso, protocol, playerPos, codes) {
+function choosePolicyActionCode(sso, protocol, playerPos, codes, stateTracker) {
   switch (protocol?.policyId) {
     case 'aliens-opening-move':
       return chooseAliensMovementCode(sso, protocol, playerPos, codes);
@@ -536,7 +605,7 @@ function choosePolicyActionCode(sso, protocol, playerPos, codes) {
     case 'fixed-code':
       return chooseFixedCode(sso, protocol, codes);
     case 'grid-target':
-      return chooseGridTargetCode(sso, protocol, playerPos, codes);
+      return chooseGridTargetCode(sso, protocol, playerPos, codes, stateTracker);
     default:
       return null;
   }
@@ -589,7 +658,7 @@ function buildCodePrompt(sso, promptConfig = {}, stateTracker) {
   const lookaheadRows = protocol.dodgeLookaheadRows || DEFAULT_DODGE_LOOKAHEAD_ROWS;
   const dodge = chooseDodge(playerPos, hazards, availableActions, lookaheadRows);
   const fire = target && target.dx === 0 && dodge === 'N' && availableActions.includes('ACTION_USE') ? 1 : 0;
-  const policy = choosePolicyActionCode(sso, protocol, playerPos, codes);
+  const policy = choosePolicyActionCode(sso, protocol, playerPos, codes, stateTracker);
   const best = policy?.code || chooseBestActionCode({ target, dodge, fire, availableActions, playerPos, hazards, protocol });
   const objectives = cleanCodes(protocol.objectiveCodes, ['WIN']);
   const rules = cleanCodes(protocol.ruleCodes, []);

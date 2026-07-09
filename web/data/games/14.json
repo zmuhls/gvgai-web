@@ -56,6 +56,8 @@
       "npc"
     ],
     "dangerRadius": 1,
+    "fleeDangerDistance": 6,
+    "fleeLoopBreaker": true,
     "policyEntityLimit": 128
   },
   "updatedAt": "2026-07-02T01:39:27.620Z",

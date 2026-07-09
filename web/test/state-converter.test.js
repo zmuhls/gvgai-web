@@ -561,6 +561,55 @@ test('grid target policy skips targets inside a danger radius when safer targets
   assert.match(prompt.userMessage, /B:D/);
 });
 
+test('grid target policy can flee close danger before chasing targets', () => {
+  const prompt = gridTargetPromptFor(createGridTargetState({
+    avatar: [3, 2],
+    targets: [[1, 2, 6]],
+    dangers: [[2, 2, 5]]
+  }), { fleeDangerDistance: 2 });
+
+  assert.equal(prompt.fallbackActionCode, 'U');
+  assert.equal(prompt.fallbackAction, 'ACTION_UP');
+  assert.match(prompt.userMessage, /B:U/);
+});
+
+test('grid target flee policy can break repeated flee direction', () => {
+  const stateTracker = {
+    actionHistory: [],
+    dominantSentAction: () => ({ action: 'ACTION_UP', count: 8, fraction: 0.8 }),
+    suggestAlternativeDirection: () => 'ACTION_RIGHT'
+  };
+  const prompt = buildPrompt(createGridTargetState({
+    avatar: [3, 2],
+    targets: [[1, 2, 6]],
+    dangers: [[2, 2, 5]]
+  }), {
+    gameName: 'grid-target-test',
+    codeProtocol: {
+      enabled: true,
+      id: 'GV1',
+      policyId: 'grid-target',
+      authoritative: true,
+      actionCodes: {
+        U: 'ACTION_UP',
+        D: 'ACTION_DOWN',
+        L: 'ACTION_LEFT',
+        R: 'ACTION_RIGHT'
+      },
+      targetSources: ['npc'],
+      targetItypes: [6],
+      dangerSources: ['npc'],
+      dangerNonTargets: true,
+      fleeDangerDistance: 2,
+      fleeLoopBreaker: true
+    }
+  }, stateTracker);
+
+  assert.equal(prompt.fallbackActionCode, 'R');
+  assert.equal(prompt.fallbackAction, 'ACTION_RIGHT');
+  assert.match(prompt.userMessage, /B:R/);
+});
+
 test('macro-enabled game with a strategy asks for a PLAN closing contract', () => {
   const prompt = buildPrompt(createAliensState(), {
     gameName: 'aliens',
