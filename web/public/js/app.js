@@ -112,28 +112,22 @@ const PREVIEW_MODELS = [
     featured: true
   },
   {
-    id: 'gemma3:12b',
-    name: 'Gemma 3 12B',
-    description: '',
-    featured: true
-  },
-  {
     id: 'qwen3-coder-next',
     name: 'Qwen3 Coder Next',
     description: 'Open-weight model',
-    featured: false
+    featured: true
   },
   {
     id: 'ministral-3:14b',
     name: 'Ministral 3 14B',
     description: 'Open-weight model',
-    featured: false
+    featured: true
   },
   {
     id: 'ministral-3:8b',
     name: 'Ministral 3 8B',
     description: 'Open-weight model',
-    featured: false
+    featured: true
   },
   {
     id: 'ministral-3:3b',
@@ -145,7 +139,7 @@ const PREVIEW_MODELS = [
     id: 'devstral-small-2:24b',
     name: 'Devstral Small 2 24B',
     description: 'Open-weight model',
-    featured: false
+    featured: true
   }
 ];
 

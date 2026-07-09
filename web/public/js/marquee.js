@@ -5,11 +5,9 @@
 (function () {
   const DEFAULT_ATTRACT_MODELS = [
     'Gemma 3 27B',
-    'Gemma 3 12B',
     'Qwen3 Coder Next',
     'Ministral 3 14B',
     'Ministral 3 8B',
-    'Ministral 3 3B',
     'Devstral Small 2 24B'
   ];
   const socket = io();

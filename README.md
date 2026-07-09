@@ -45,17 +45,16 @@ The visitor's free-text tactic is untrusted input that enters the prompt only af
 
 ## Model routing
 
-Seven open-weight small language models all hosted on Ollama Cloud with none carrying reasoning-token capability, keeping every output token as answer rather than hidden thinking overhead.
+The featured marquee rotation uses five open-weight Ollama Cloud models across Google, Alibaba, and Mistral/Devstral. The unavailable 12B Google Gemma tag is intentionally absent.
 
 | Model | Provider | Fallback (OpenRouter) |
 |---|---|---|
 | Gemma 3 27B (featured, default) | Ollama Cloud | `google/gemma-3-27b-it` |
-| Gemma 3 12B (featured) | Ollama Cloud | `google/gemma-3-12b-it` |
-| Qwen3 Coder Next | Ollama Cloud | `qwen/qwen3-coder-next` |
-| Ministral 3 14B | Ollama Cloud | `mistralai/ministral-14b-2512` |
-| Ministral 3 8B | Ollama Cloud | `mistralai/ministral-8b-2512` |
+| Qwen3 Coder Next (featured) | Ollama Cloud | `qwen/qwen3-coder-next` |
+| Ministral 3 14B (featured) | Ollama Cloud | `mistralai/ministral-14b-2512` |
+| Ministral 3 8B (featured) | Ollama Cloud | `mistralai/ministral-8b-2512` |
 | Ministral 3 3B | Ollama Cloud | `mistralai/ministral-3b-2512` |
-| Devstral Small 2 24B | Ollama Cloud | none |
+| Devstral Small 2 24B (featured) | Ollama Cloud | none |
 
 The server calls the selected primary provider first. Legion vLLM routes fall back to `LEGION_FALLBACK_MODEL` on Ollama Cloud, then to the matching OpenRouter slug when one exists. Ollama Cloud routes fall back to OpenRouter directly when the selected model has a slug. The provider that answered is reported on the `llm-reasoning` socket event and on the telemetry dashboard. A usage guardrail caps Ollama Cloud calls at 3000 per hour and 15000 per day with counters persisted across restarts; a tripped guardrail now moves to OpenRouter when the model has a fallback slug.
 
