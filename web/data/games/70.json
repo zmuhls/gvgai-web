@@ -11,6 +11,38 @@
     "maxTokens": 100,
     "temperature": 0.5
   },
+  "codeProtocol": {
+    "enabled": true,
+    "id": "GV1",
+    "policyId": "grid-target",
+    "authoritative": false,
+    "actionCodes": {
+      "N": "ACTION_NIL",
+      "U": "ACTION_UP",
+      "D": "ACTION_DOWN",
+      "L": "ACTION_LEFT",
+      "R": "ACTION_RIGHT"
+    },
+    "entityCodes": {
+      "npc": "p",
+      "static": "x"
+    },
+    "objectiveCodes": [
+      "PAINT_GROUND",
+      "KEEP_MOVING"
+    ],
+    "ruleCodes": [
+      "PATH_TO_PAINT"
+    ],
+    "targetSources": [
+      "npc"
+    ],
+    "targetEntityCode": "p",
+    "wallSources": [
+      "immovable"
+    ],
+    "policyEntityLimit": 256
+  },
   "updatedAt": "2026-07-02T01:39:27.631Z",
   "classification": {
     "classifierVersion": 1,

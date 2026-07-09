@@ -197,3 +197,15 @@ test('superman uses compact portal guidance', () => {
   assert.equal(config.codeProtocol.targetEntityCode, 'g');
   assert.deepEqual(config.codeProtocol.wallSources, ['immovable']);
 });
+
+test('painter uses compact paint target guidance', () => {
+  const config = resolveGamePromptConfig(70, 1);
+
+  assert.equal(config.gameName, 'painter');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['npc']);
+  assert.equal(config.codeProtocol.targetEntityCode, 'p');
+  assert.deepEqual(config.codeProtocol.wallSources, ['immovable']);
+});
