@@ -11,6 +11,50 @@
     "maxTokens": 100,
     "temperature": 0.5
   },
+  "codeProtocol": {
+    "enabled": true,
+    "id": "GV1",
+    "policyId": "grid-target",
+    "authoritative": false,
+    "actionCodes": {
+      "N": "ACTION_NIL",
+      "U": "ACTION_UP",
+      "D": "ACTION_DOWN",
+      "L": "ACTION_LEFT",
+      "R": "ACTION_RIGHT",
+      "F": "ACTION_USE"
+    },
+    "entityCodes": {
+      "npc": "e",
+      "movable": "b",
+      "resource": "d",
+      "static": "x"
+    },
+    "objectiveCodes": [
+      "COLLECT_DIAMONDS",
+      "AVOID_ENEMIES"
+    ],
+    "ruleCodes": [
+      "PATH_TO_NEAREST_DIAMOND",
+      "DIG_DIRT_ALLOWED",
+      "AVOID_BUTTERFLY_CRAB"
+    ],
+    "targetSources": [
+      "resource"
+    ],
+    "targetEntityCode": "d",
+    "wallSources": [
+      "immovable"
+    ],
+    "wallItypes": [
+      0
+    ],
+    "dangerSources": [
+      "npc"
+    ],
+    "dangerRadius": 2,
+    "policyEntityLimit": 128
+  },
   "updatedAt": "2026-07-02T01:39:27.619Z",
   "classification": {
     "classifierVersion": 1,

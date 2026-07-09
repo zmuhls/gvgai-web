@@ -30,3 +30,14 @@ test('selected arcade games have code protocols disabled for natural-language pr
     assert.equal(config.codeProtocol.authoritative, false);
   }
 });
+
+test('boulderchase uses compact diamond-target guidance', () => {
+  const config = resolveGamePromptConfig(10, 1);
+
+  assert.equal(config.gameName, 'boulderchase');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['resource']);
+  assert.deepEqual(config.codeProtocol.wallItypes, [0]);
+});
