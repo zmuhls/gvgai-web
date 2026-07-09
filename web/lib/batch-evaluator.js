@@ -1,6 +1,7 @@
 const EventEmitter = require('events');
 const { buildArcadeEvalPlan, normalizeEvalResult } = require('./eval-plan');
 const { summarizeQualification } = require('./eval-qualification');
+const { readFeaturedIds } = require('./game-registry');
 const { getAllModels, resolveModel } = require('./models');
 const defaultTelemetry = require('./telemetry-store');
 const { getConfig } = require('./runtime-config');
@@ -62,19 +63,25 @@ function modelsForIds(modelIds) {
 }
 
 function modelsForOptions(options = {}) {
-  if (options.allModels) return getAllModels();
+  if (options.allModels || options.featuredQualification) return getAllModels();
   return modelsForIds(options.modelIds);
 }
 
 function buildBatchPlan(options = {}) {
   const gameIds = toIntegerArray(options.gameIds);
+  const featuredQualification = Boolean(options.featuredQualification);
+  const selectedGameIds = featuredQualification && gameIds.length === 0
+    ? readFeaturedIds()
+    : gameIds;
   const planOptions = {
-    gameCount: positiveInteger(options.gameCount, undefined),
+    gameCount: featuredQualification
+      ? selectedGameIds.length
+      : positiveInteger(options.gameCount, undefined),
     models: modelsForOptions(options),
     strategies: options.strategies,
-    levelId: options.levelId
+    levelId: featuredQualification && options.levelId == null ? 1 : options.levelId
   };
-  if (gameIds.length > 0) planOptions.gameIds = gameIds;
+  if (selectedGameIds.length > 0) planOptions.gameIds = selectedGameIds;
   return buildArcadeEvalPlan(planOptions);
 }
 
@@ -100,7 +107,10 @@ function selectEvalCases(plan, options = {}) {
     return true;
   });
 
-  cases = cases.slice(0, selectedCaseLimit(options.limit, cases.length));
+  const requestedLimit = options.featuredQualification && options.limit === undefined
+    ? null
+    : options.limit;
+  cases = cases.slice(0, selectedCaseLimit(requestedLimit, cases.length));
   const repeats = positiveInteger(options.repeats, 1);
   if (repeats <= 1) return cases.map(evalCase => ({ ...evalCase, repeatIndex: 0 }));
 

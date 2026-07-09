@@ -11,6 +11,48 @@
     "maxTokens": 100,
     "temperature": 0.5
   },
+  "codeProtocol": {
+    "enabled": true,
+    "id": "GV1",
+    "policyId": "grid-target",
+    "authoritative": false,
+    "actionCodes": {
+      "U": "ACTION_UP",
+      "D": "ACTION_DOWN",
+      "L": "ACTION_LEFT",
+      "R": "ACTION_RIGHT"
+    },
+    "entityCodes": {
+      "movable": "m",
+      "portal": "g",
+      "static": "x"
+    },
+    "objectiveCodes": [
+      "REACH_GOAL",
+      "RIDE_LOGS",
+      "AVOID_TRUCKS_AND_WATER"
+    ],
+    "ruleCodes": [
+      "PATH_TO_GOAL",
+      "USE_LOGS_TO_CROSS_WATER",
+      "AVOID_TRAFFIC"
+    ],
+    "targetSources": [
+      "portal"
+    ],
+    "targetEntityCode": "g",
+    "wallSources": [
+      "immovable"
+    ],
+    "wallItypes": [
+      0
+    ],
+    "dangerSources": [
+      "movable"
+    ],
+    "dangerRadius": 1,
+    "policyEntityLimit": 256
+  },
   "updatedAt": "2026-07-02T01:39:27.625Z",
   "classification": {
     "classifierVersion": 1,

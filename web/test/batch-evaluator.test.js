@@ -19,6 +19,16 @@ test('batch plan defaults to featured arcade games and prompt strategies', () =>
   assert.deepEqual(cases.map(evalCase => evalCase.strategyId), ['safe', 'points', 'puzzle']);
 });
 
+test('featured qualification selects the full planned sweep by default', () => {
+  const plan = buildBatchPlan({ featuredQualification: true, modelIds: 'gpt-oss:120b' });
+  const cases = selectEvalCases(plan, { featuredQualification: true });
+
+  assert.equal(plan.gameIds.length, 15);
+  assert.ok(plan.models.length >= 8);
+  assert.equal(cases.length, plan.cases.length);
+  assert.ok(cases.every(evalCase => evalCase.levelId === 1));
+});
+
 test('dry run returns selected cases without starting games', async () => {
   const result = await runArcadeBatchEvaluation({
     dryRun: true,

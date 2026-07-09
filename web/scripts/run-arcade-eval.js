@@ -18,6 +18,8 @@ function parseArgs(argv) {
       options.ollamaOffline = true;
     } else if (arg === '--all') {
       options.limit = null;
+    } else if (arg === '--featured-qualification') {
+      options.featuredQualification = true;
     } else if (arg === '--game-count') {
       options.gameCount = next;
       i++;

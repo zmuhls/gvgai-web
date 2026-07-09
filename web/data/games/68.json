@@ -11,6 +11,46 @@
     "maxTokens": 100,
     "temperature": 0.5
   },
+  "codeProtocol": {
+    "enabled": true,
+    "id": "GV1",
+    "policyId": "grid-target",
+    "authoritative": false,
+    "actionCodes": {
+      "U": "ACTION_UP",
+      "D": "ACTION_DOWN",
+      "L": "ACTION_LEFT",
+      "R": "ACTION_RIGHT"
+    },
+    "entityCodes": {
+      "npc": "g",
+      "resource": "p",
+      "static": "x"
+    },
+    "objectiveCodes": [
+      "COLLECT_POWER_AND_FOOD",
+      "AVOID_GHOSTS"
+    ],
+    "ruleCodes": [
+      "PATH_TO_POWER_WHEN_VISIBLE",
+      "AVOID_ACTIVE_GHOSTS"
+    ],
+    "targetSources": [
+      "resource"
+    ],
+    "targetEntityCode": "p",
+    "wallSources": [
+      "immovable"
+    ],
+    "wallItypes": [
+      0
+    ],
+    "dangerSources": [
+      "npc"
+    ],
+    "dangerRadius": 1,
+    "policyEntityLimit": 256
+  },
   "updatedAt": "2026-07-02T01:39:27.630Z",
   "classification": {
     "classifierVersion": 1,
