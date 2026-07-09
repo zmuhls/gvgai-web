@@ -99,3 +99,15 @@ test('crossfire uses compact portal goal guidance', () => {
   assert.deepEqual(config.codeProtocol.wallItypes, [0]);
   assert.deepEqual(config.codeProtocol.dangerSources, ['npc', 'movable']);
 });
+
+test('hungrybirds uses compact portal goal guidance', () => {
+  const config = resolveGamePromptConfig(50, 1);
+
+  assert.equal(config.gameName, 'hungrybirds');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['portal']);
+  assert.deepEqual(config.codeProtocol.targetItypes, [4]);
+  assert.deepEqual(config.codeProtocol.wallItypes, [0]);
+});
