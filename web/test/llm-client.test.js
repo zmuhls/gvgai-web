@@ -926,11 +926,15 @@ test('negative directional steering blocks a forbidden queued action', async () 
   client.pendingLLMAction = 'ACTION_RIGHT';
   client.sendMessageWithId = (msgId, message) => sent.push({ msgId, message });
 
-  await client.processMessage(`5#${actPayload({ gameTick: 5 })}`);
+  await client.processMessage(`5#${actPayload({
+    gameTick: 5,
+    availableActions: ['ACTION_NIL', 'ACTION_LEFT', 'ACTION_RIGHT', 'ACTION_UP', 'ACTION_DOWN']
+  })}`);
   await nextTickDrain();
 
   assert.deepEqual(sent, [{ msgId: '5', message: 'ACTION_LEFT#BOTH' }]);
   assert.equal(client.pendingLLMAction, 'ACTION_LEFT');
+  assert.deepEqual(client.planQueue, ['ACTION_UP', 'ACTION_DOWN']);
 });
 
 test('negative directional steering replaces idle actions with legal movement', async () => {
@@ -945,6 +949,30 @@ test('negative directional steering replaces idle actions with legal movement', 
 
   assert.deepEqual(sent, [{ msgId: '5', message: 'ACTION_LEFT#BOTH' }]);
   assert.equal(client.pendingLLMAction, 'ACTION_LEFT');
+});
+
+test('negative directional steering uses a legal move combination after blocking a direction', async () => {
+  const client = macroClient();
+  const sent = [];
+
+  client.sessionStrategy = 'no go right';
+  client.pendingLLMAction = 'ACTION_RIGHT';
+  client.sendMessageWithId = (msgId, message) => sent.push(message);
+
+  for (let tick = 5; tick <= 7; tick++) {
+    await client.processMessage(`${tick}#${actPayload({
+      gameTick: tick,
+      availableActions: ['ACTION_NIL', 'ACTION_LEFT', 'ACTION_RIGHT', 'ACTION_UP', 'ACTION_DOWN']
+    })}`);
+    await nextTickDrain();
+  }
+
+  assert.deepEqual(sent, [
+    'ACTION_LEFT#BOTH',
+    'ACTION_UP#BOTH',
+    'ACTION_DOWN#BOTH'
+  ]);
+  assert.ok(sent.every(message => !message.startsWith('ACTION_RIGHT')), 'forbidden direction is never sent');
 });
 
 test('negative directional steering rotates away from a stagnant allowed action', async () => {
@@ -972,6 +1000,7 @@ test('negative directional steering rotates away from a stagnant allowed action'
 
   assert.deepEqual(sent, [{ msgId: '31', message: 'ACTION_UP#BOTH' }]);
   assert.equal(client.pendingLLMAction, 'ACTION_UP');
+  assert.deepEqual(client.planQueue, ['ACTION_LEFT', 'ACTION_DOWN']);
 });
 
 test('negative directional steering keeps rotating during sustained stagnation', async () => {
@@ -1002,11 +1031,45 @@ test('negative directional steering keeps rotating during sustained stagnation',
 
   assert.deepEqual(sent, [
     'ACTION_UP#BOTH',
-    'ACTION_DOWN#BOTH',
-    'ACTION_LEFT#BOTH'
+    'ACTION_LEFT#BOTH',
+    'ACTION_DOWN#BOTH'
   ]);
   assert.ok(sent.every(message => !message.startsWith('ACTION_RIGHT')), 'forbidden direction is never sent');
   assert.ok(sent.every(message => !message.startsWith('ACTION_NIL')), 'stagnant steering prefers movement over idle');
+});
+
+test('negative directional steering diversifies all-one-direction model plans', async () => {
+  const originalFetch = global.fetch;
+  const client = new LLMClient({ actionTimeoutMs: 1000 });
+
+  client.model = 'gemma3:12b';
+  client.gameId = 0;
+  client.levelCount = 0;
+  client.sessionStrategy = 'no go right';
+  client.promptConfig = {
+    gameName: 'aliens',
+    macroActions: { enabled: true, maxSteps: 4 },
+    llmSettings: { maxTokens: 80 }
+  };
+
+  global.fetch = async () => ({
+    ok: true,
+    async json() {
+      return { choices: [{ message: { content: 'REASON: left avoids right.\nPLAN: LEFT, LEFT, LEFT, LEFT' } }] };
+    }
+  });
+
+  try {
+    const result = await client.requestLLMAction(actPayload({
+      gameTick: 8,
+      availableActions: ['ACTION_NIL', 'ACTION_LEFT', 'ACTION_RIGHT', 'ACTION_UP', 'ACTION_DOWN']
+    }));
+
+    assert.equal(result.action, 'ACTION_LEFT');
+    assert.deepEqual(client.planQueue, ['ACTION_LEFT', 'ACTION_UP', 'ACTION_DOWN']);
+  } finally {
+    global.fetch = originalFetch;
+  }
 });
 
 test('directional steering rewrites model plans before they enter the queue', async () => {
