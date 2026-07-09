@@ -6,6 +6,14 @@ const DEFAULT_EVENT_LIMIT = 500;
 const DEFAULT_BATCH_SIZE = 25;
 const DEFAULT_FLUSH_MS = 3000;
 const DEFAULT_FALLBACK_READ_BYTES = 2 * 1024 * 1024;
+// How far back the Supabase fetch reaches when building a dashboard snapshot.
+// Aggregation itself is not time-windowed (see buildDashboardSnapshot); this
+// only bounds the cloud query. The JSONL fallback reads its tail bytes instead.
+const DEFAULT_DASHBOARD_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+// Chatty per-tick events (llm_decision, game_state_tick) outnumber completion
+// events ~50:1, so aggregate scans must not be capped at the newest few hundred
+// events or the completions get crowded out.
+const DASHBOARD_SCAN_LIMIT = 5000;
 const EVENT_FAMILIES = new Set([
   'evaluation',
   'user_experience',
@@ -530,7 +538,7 @@ class TelemetryStore {
 
   async getDashboardSnapshot(options = {}) {
     const limit = parsePositiveInteger(options.limit, 80);
-    const windowMs = parsePositiveInteger(options.windowMs, 10 * 60 * 1000);
+    const windowMs = parsePositiveInteger(options.windowMs, DEFAULT_DASHBOARD_WINDOW_MS);
     if (this.isSupabaseReady()) {
       try {
         const cloudEvents = await this.readSupabaseEvents({
@@ -550,7 +558,7 @@ class TelemetryStore {
     }
 
     const localEvents = this.localEventsFromMemoryAndFallback({
-      limit: Math.max(limit, this.maxEvents),
+      limit: Math.max(limit, this.maxEvents, DASHBOARD_SCAN_LIMIT),
       windowMs
     });
 
@@ -563,12 +571,12 @@ class TelemetryStore {
 
   buildDashboardSnapshot(events, options = {}) {
     const limit = parsePositiveInteger(options.limit, 80);
-    const windowMs = parsePositiveInteger(options.windowMs, 10 * 60 * 1000);
     const now = Date.now();
-    const activeEvents = events.filter(event => {
-      const at = Date.parse(event.created_at);
-      return Number.isFinite(at) && now - at <= windowMs;
-    });
+    // Counters, leaderboards, and standings are lifetime aggregates over every
+    // event the fetch layer loaded — time-windowing them here made the whole
+    // dashboard read 0 after an idle stretch. Rate widgets (eventsPerMinute,
+    // minuteSeries) slice their own short windows from this same set.
+    const activeEvents = events.filter(event => Number.isFinite(Date.parse(event.created_at)));
     const recentEvents = activeEvents
       .slice()
       .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))

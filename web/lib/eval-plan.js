@@ -145,10 +145,12 @@ function buildArcadeEvalPlan(options = {}) {
     };
   });
 
+  // Model is the innermost dimension so consecutive cases always rotate to a
+  // different model — the marble run never plays the same model twice in a row.
   const cases = [];
   for (const game of games) {
-    for (const model of models) {
-      strategies.forEach((strategy, strategyIndex) => {
+    strategies.forEach((strategy, strategyIndex) => {
+      for (const model of models) {
         const runId = [
           `arcade-g${game.id}`,
           `l${game.levelId}`,
@@ -169,8 +171,8 @@ function buildArcadeEvalPlan(options = {}) {
           strategyLabel: strategy.label,
           strategy: strategy.text
         });
-      });
-    }
+      }
+    });
   }
 
   const byArchetype = {};

@@ -11,7 +11,8 @@ function parseLimit(raw, fallback = 80) {
 
 router.get('/summary', async (req, res) => {
   res.json(await telemetry.getDashboardSnapshot({
-    limit: parseLimit(req.query.limit)
+    limit: parseLimit(req.query.limit),
+    windowMs: req.query.windowMs
   }));
 });
 
