@@ -148,3 +148,16 @@ test('iceandfire uses compact boot resource guidance', () => {
   assert.deepEqual(config.codeProtocol.wallSources, ['immovable']);
   assert.equal(config.codeProtocol.wallItypes, undefined);
 });
+
+test('roguelike uses compact resource guidance with enemy avoidance', () => {
+  const config = resolveGamePromptConfig(81, 1);
+
+  assert.equal(config.gameName, 'roguelike');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['resource']);
+  assert.equal(config.codeProtocol.targetEntityCode, 'r');
+  assert.deepEqual(config.codeProtocol.dangerSources, ['npc']);
+  assert.equal(config.codeProtocol.dangerRadius, 1);
+});
