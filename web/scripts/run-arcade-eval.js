@@ -32,6 +32,8 @@ function parseArgs(argv) {
       i++;
     } else if (arg === '--all-models') {
       options.allModels = true;
+    } else if (arg === '--prefer-provider-fallback') {
+      options.preferProviderFallback = true;
     } else if (arg === '--ollama-model') {
       options.ollamaModel = next;
       i++;

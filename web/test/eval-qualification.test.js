@@ -53,9 +53,10 @@ test('buildBatchPlan can target level 1 and all catalog models', () => {
 });
 
 test('parseArgs accepts level and all-model qualification flags', () => {
-  const options = parseArgs(['--game-id', '0,10', '--level-id', '1', '--all-models']);
+  const options = parseArgs(['--game-id', '0,10', '--level-id', '1', '--all-models', '--prefer-provider-fallback']);
 
   assert.equal(options.gameIds, '0,10');
   assert.equal(options.levelId, '1');
   assert.equal(options.allModels, true);
+  assert.equal(options.preferProviderFallback, true);
 });

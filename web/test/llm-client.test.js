@@ -184,6 +184,16 @@ test('provider calls use the configured action timeout signal', async () => {
   }
 });
 
+test('preferProviderFallback tries configured OpenRouter fallback before Ollama Cloud', () => {
+  const client = new LLMClient({ preferProviderFallback: true });
+  const routes = client.buildProviderRoutes(models.resolveModel('gemma3:27b'));
+
+  assert.deepEqual(routes, [
+    { provider: 'openrouter', modelId: 'google/gemma-3-27b-it', stage: 'fallback' },
+    { provider: 'ollama-cloud', modelId: 'gemma3:27b', stage: 'primary' }
+  ]);
+});
+
 test('requestLLMAction falls back from legion vLLM through cloud guardrail to OpenRouter', async () => {
   const originalFetch = global.fetch;
   const savedRegistryPath = process.env.FINETUNE_REGISTRY_PATH;

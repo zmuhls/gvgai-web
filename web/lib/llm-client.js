@@ -73,6 +73,7 @@ class LLMClient {
     this.actResponseType = options.actResponseType || (this.synchronousActions ? 'JSON' : 'BOTH');
     this.runId = options.runId || null;
     this.promptConfigOptions = options.promptConfigOptions || {};
+    this.preferProviderFallback = !!options.preferProviderFallback;
     this.lastTraceTickLogged = null;
     this.lastTraceScoreLogged = null;
     this.lastPolicyDecisionTickLogged = null;
@@ -113,6 +114,12 @@ class LLMClient {
       if (routes.some(route => route.provider === provider && route.modelId === modelId)) return;
       routes.push({ provider, modelId, stage });
     };
+
+    if (this.preferProviderFallback && resolved.provider === 'ollama-cloud' && resolved.fallback) {
+      pushRoute('openrouter', resolved.fallback, 'fallback');
+      pushRoute(resolved.provider, resolved.id, 'primary');
+      return routes;
+    }
 
     pushRoute(resolved.provider, resolved.id, 'primary');
 
@@ -934,7 +941,7 @@ class LLMClient {
         }
         break;
       } catch (err) {
-        const label = index === 0 ? 'Primary' : 'Fallback';
+        const label = route.stage === 'primary' && index === 0 ? 'Primary' : 'Fallback';
         console.warn(`[LLMClient] ${label} ${route.provider}/${route.modelId} failed: ${err.message}`);
         telemetry.track({
           eventFamily: 'model_telemetry',

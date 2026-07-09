@@ -195,6 +195,7 @@ async function runEvalCase(evalCase, options = {}) {
         maxActions: positiveInteger(options.maxActions, DEFAULT_MAX_ACTIONS),
         initResponseType: options.initResponseType,
         actResponseType: options.actResponseType,
+        preferProviderFallback: options.preferProviderFallback,
         promptConfigOptions: options.promptConfigOptions || {}
       });
     llmClient.onSessionEnd = () => {

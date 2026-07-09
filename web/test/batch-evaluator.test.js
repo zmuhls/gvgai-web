@@ -136,12 +136,14 @@ test('runEvalCase passes response type overrides to the live client', async () =
     config: { gvgai: { socketPort: 8080 } },
     initResponseType: 'BOTH',
     actResponseType: 'BOTH',
-    synchronousActions: true
+    synchronousActions: true,
+    preferProviderFallback: true
   });
 
   assert.equal(receivedOptions.initResponseType, 'BOTH');
   assert.equal(receivedOptions.actResponseType, 'BOTH');
   assert.equal(receivedOptions.synchronousActions, true);
+  assert.equal(receivedOptions.preferProviderFallback, true);
   assert.equal(result.finalScore, 3);
 });
 
