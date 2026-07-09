@@ -17,7 +17,6 @@ const state = {
   traceLog: [],
   traceStartedAt: null,
   featuredShowcase: null,
-  roadmap: null,
   liveGameState: { tick: 0, score: 0, health: 0 }
 };
 
@@ -184,11 +183,6 @@ const summaryHighlights = document.getElementById('summary-highlights');
 const strategyWarn = document.getElementById('strategy-warn');
 const unfoldRules = document.getElementById('unfold-rules');
 const unfoldChips = document.getElementById('unfold-chips');
-const roadmapSummary = document.getElementById('model-native-summary');
-const roadmapLifecycle = document.getElementById('model-native-lifecycle');
-const roadmapGames = document.getElementById('model-native-games');
-const roadmapPhases = document.getElementById('model-native-phases');
-const roadmapSources = document.getElementById('model-native-sources');
 const selectedGameStageName = document.getElementById('selected-game-stage-name');
 const setupGamePreview = document.getElementById('setup-game-preview');
 
@@ -227,7 +221,6 @@ async function init() {
   console.log('[App] Initializing...');
   await loadGames();
   await loadModels();
-  await loadRoadmap();
   renderStrategyCards();
   setupEventListeners();
   setupWebSocket();
@@ -569,84 +562,6 @@ async function loadModels() {
   }
 }
 
-async function loadRoadmap() {
-  if (!roadmapLifecycle && !roadmapGames && !roadmapPhases) return;
-  try {
-    const response = await fetch('/api/roadmap/model-native');
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    state.roadmap = await response.json();
-    renderRoadmap(state.roadmap);
-  } catch (error) {
-    console.warn('[App] Could not load model-native roadmap:', error.message);
-    trackUx('roadmap_load_failed', { message: error.message });
-  }
-}
-
-function renderRoadmap(roadmap) {
-  if (!roadmap || typeof roadmap !== 'object') return;
-  if (roadmapSummary) {
-    roadmapSummary.textContent = roadmap.summary || '';
-  }
-  if (roadmapLifecycle) {
-    const steps = Array.isArray(roadmap.lifecycle) ? roadmap.lifecycle : [];
-    roadmapLifecycle.innerHTML = steps.map((step, index) => `
-      <div class="roadmap-step">
-        <span>${String(index + 1).padStart(2, '0')}</span>
-        <strong>${escapeHtml(step)}</strong>
-      </div>
-    `).join('');
-  }
-  if (roadmapGames) {
-    const games = Array.isArray(roadmap.games) ? roadmap.games : [];
-    roadmapGames.innerHTML = games.map(game => `
-      <article class="roadmap-game">
-        <div class="roadmap-game-meta">
-          <span>${String(game.id).padStart(3, '0')}</span>
-          <span>${escapeHtml(game.adapterId || '')}</span>
-        </div>
-        <h3>${escapeHtml(game.name || `game-${game.id}`)}</h3>
-        <p>${escapeHtml(game.featuredCopy || '')}</p>
-        <dl>
-          <div><dt>Logic</dt><dd>${escapeHtml(game.logicShape || '')}</dd></div>
-          <div><dt>Contract</dt><dd>${escapeHtml(game.contract || '')}</dd></div>
-          <div><dt>Data</dt><dd>${escapeHtml(game.finetuneData || '')}</dd></div>
-        </dl>
-      </article>
-    `).join('');
-  }
-  if (roadmapPhases) {
-    const phases = Array.isArray(roadmap.phases) ? roadmap.phases : [];
-    roadmapPhases.innerHTML = phases.map(phase => `
-      <article class="roadmap-phase">
-        <p class="roadmap-phase-horizon">${escapeHtml(phase.horizon || '')}</p>
-        <h3>${escapeHtml(phase.title || '')}</h3>
-        <p>${escapeHtml(phase.description || '')}</p>
-      </article>
-    `).join('');
-  }
-  if (roadmapSources) {
-    const sources = Array.isArray(roadmap.sourceReferences) ? roadmap.sourceReferences : [];
-    roadmapSources.innerHTML = sources.map(source => {
-      const label = source.licenseReviewRequired ? 'license review' : 'local source';
-      const name = escapeHtml(source.name || '');
-      const link = source.url
-        ? `<a href="${escapeHtml(source.url)}" target="_blank" rel="noopener noreferrer">${name}</a>`
-        : `<strong>${name}</strong>`;
-      return `
-        <li>
-          ${link}
-          <span>${escapeHtml(label)}</span>
-          <p>${escapeHtml(source.role || '')}</p>
-        </li>
-      `;
-    }).join('');
-  }
-  trackUx('roadmap_loaded', {
-    gameCount: Array.isArray(roadmap.games) ? roadmap.games.length : 0,
-    phaseCount: Array.isArray(roadmap.phases) ? roadmap.phases.length : 0
-  });
-}
-
 // Render games grid
 function renderGames(games) {
   gamesGrid.innerHTML = games.map(game => `
@@ -776,6 +691,21 @@ function selectGame(gameId) {
   document.getElementById('selected-game-name').textContent = state.selectedGame.name;
   if (selectedGameStageName) selectedGameStageName.textContent = state.selectedGame.name;
 
+  // Cabinet placard: archetype / pace / level count chips under the name.
+  const stageMeta = document.getElementById('selected-game-meta');
+  if (stageMeta) {
+    stageMeta.replaceChildren();
+    const levelCount = (state.selectedGame.levels || []).length || state.selectedGame.levelCount || 5;
+    [state.selectedGame.archetype, state.selectedGame.pace, `${levelCount} levels`]
+      .filter(Boolean)
+      .forEach(label => {
+        const chip = document.createElement('span');
+        chip.className = 'meta-chip';
+        chip.textContent = label;
+        stageMeta.appendChild(chip);
+      });
+  }
+
   // Populate level selector - display as 1-5 but values are 0-4
   const levels = state.selectedGame.levels && state.selectedGame.levels.length > 0
     ? state.selectedGame.levels
@@ -801,6 +731,11 @@ function selectGame(gameId) {
 // model prompting, rule unfolding, and model selection are only for LLM runs.
 function updatePlayerTypeUI() {
   const isHuman = playerType === 'human';
+
+  // "Prompt the player" header only applies to model runs; human mode shows
+  // its own Controls block instead.
+  const promptingHead = document.querySelector('.prompting-panel-head');
+  if (promptingHead) promptingHead.classList.toggle('hidden', isHuman);
 
   if (modelRunSetup) {
     modelRunSetup.classList.toggle('hidden', isHuman);

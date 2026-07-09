@@ -8,7 +8,7 @@
   <link rel="preload" href="fonts/silkscreen-latin-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fonts/ibm-plex-mono-latin-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/theme.css">
-  <link rel="stylesheet" href="css/styles.css?v=modelnative-20260708">
+  <link rel="stylesheet" href="css/styles.css?v=20260709">
   <script src="socket.io/socket.io.js"></script>
 </head>
 <body>
@@ -34,7 +34,6 @@
     </a>
     <nav id="main-nav" aria-label="Primary sections">
       <button class="nav-link active" type="button" data-target="play-section" aria-controls="play-section" aria-current="page">Java Arcade</button>
-      <button class="nav-link" type="button" data-target="model-native-roadmap" aria-controls="model-native-roadmap">Model-Native</button>
       <button class="nav-link" type="button" data-target="prompt-dashboard" aria-controls="prompt-dashboard">Operator Desk</button>
       <button class="nav-link" type="button" data-target="telemetry-dashboard" aria-controls="telemetry-dashboard">Telemetry</button>
     </nav>
@@ -173,11 +172,16 @@
           <div class="setup-game-display">
             <span>Selected game</span>
             <strong id="selected-game-stage-name"></strong>
+            <span id="selected-game-meta" class="setup-game-meta"></span>
           </div>
         </div>
       </div>
 
       <section class="prompting-panel" aria-label="Run setup">
+        <div class="prompting-panel-head">
+          <p class="step-label">prompt</p>
+          <h3>Prompt the player</h3>
+        </div>
         <div id="model-run-setup" class="model-run-setup">
           <div id="strategy-form-group" class="form-group">
             <label for="strategy-preset-select">Choose a sample tactic, then rewrite it:</label>
@@ -258,72 +262,6 @@
     </div>
 
     </div><!-- /play-section -->
-
-    <!-- Model-Native Roadmap Section -->
-    <div id="model-native-roadmap" class="section roadmap-section" aria-labelledby="model-native-title" hidden>
-      <div class="dashboard-heading roadmap-heading electric-panel">
-        <p class="step-label">model-native path</p>
-        <h2 id="model-native-title">Model-Native Arcade</h2>
-        <p id="model-native-summary">Loading roadmap...</p>
-      </div>
-
-      <div class="roadmap-status-strip electric-panel">
-        <div>
-          <span>Runtime target</span>
-          <strong>No-Java subset</strong>
-        </div>
-        <div>
-          <span>Serving path</span>
-          <strong>Legion vLLM LoRA</strong>
-        </div>
-        <div>
-          <span>Starter set</span>
-          <strong>10 games</strong>
-        </div>
-      </div>
-
-      <section class="roadmap-panel electric-panel" aria-labelledby="model-native-lifecycle-title">
-        <div class="telemetry-panel-heading">
-          <div>
-            <p class="step-label">lifecycle</p>
-            <h3 id="model-native-lifecycle-title">Build Path</h3>
-          </div>
-        </div>
-        <div id="model-native-lifecycle" class="roadmap-lifecycle"></div>
-      </section>
-
-      <section class="roadmap-panel electric-panel" aria-labelledby="model-native-games-title">
-        <div class="telemetry-panel-heading">
-          <div>
-            <p class="step-label">featured set</p>
-            <h3 id="model-native-games-title">Starter Games</h3>
-          </div>
-        </div>
-        <div id="model-native-games" class="roadmap-games"></div>
-      </section>
-
-      <div class="roadmap-grid">
-        <section class="roadmap-panel electric-panel" aria-labelledby="model-native-phases-title">
-          <div class="telemetry-panel-heading">
-            <div>
-              <p class="step-label">roadmap</p>
-              <h3 id="model-native-phases-title">Phases</h3>
-            </div>
-          </div>
-          <div id="model-native-phases" class="roadmap-phases"></div>
-        </section>
-
-        <section class="roadmap-panel electric-panel" aria-labelledby="model-native-sources-title">
-          <div class="telemetry-panel-heading">
-            <div>
-              <p class="step-label">reuse</p>
-              <h3 id="model-native-sources-title">Reference Sources</h3>
-            </div>
-          </div>
-          <ul id="model-native-sources" class="roadmap-sources"></ul>
-        </section>
-      </div>
-    </div><!-- /model-native-roadmap -->
 
     <!-- Prompt Dashboard Section -->
     <div id="prompt-dashboard" class="section" aria-labelledby="prompt-dashboard-title" hidden>
@@ -445,182 +383,175 @@
       </div>
     </div><!-- /prompt-dashboard -->
 
-    <!-- Telemetry Dashboard Section -->
+    <!-- Telemetry Dashboard Section: a guided exhibit of four stations, A → D.
+         Every station letter is a real waypoint; plaques tie the live data to
+         the GVGAI research lineage. Renderer: js/telemetry-dashboard.js. -->
     <div id="telemetry-dashboard" class="section telemetry-section" aria-labelledby="telemetry-dashboard-title" hidden>
-      <div class="dashboard-heading telemetry-heading electric-panel">
+      <div class="dashboard-heading telemetry-heading">
         <p class="step-label">live data</p>
         <h2 id="telemetry-dashboard-title">Telemetry Stream</h2>
-        <p>Evaluation runs, user actions, model latency, and trace volume.</p>
+        <p>Four stations. A: is it alive. B: what the models did. C: how they decided. D: where it all goes.</p>
       </div>
 
-      <div class="telemetry-status-strip electric-panel" aria-live="polite">
-        <div>
-          <span>Supabase</span>
-          <strong id="telemetry-storage-status">checking</strong>
+      <section class="telemetry-station station-static" id="station-a" aria-labelledby="station-a-title">
+        <div class="station-head">
+          <span class="station-letter" aria-hidden="true">A</span>
+          <span class="station-title-group">
+            <span class="step-label">is it alive</span>
+            <h3 class="station-title" id="station-a-title">Signal</h3>
+          </span>
+          <span class="station-stat"><strong id="telemetry-events-rate">0</strong><small>events / min</small></span>
         </div>
-        <div>
-          <span>Live socket</span>
-          <strong id="telemetry-live-clients">0 clients</strong>
-        </div>
-        <div>
-          <span>Data source</span>
-          <strong id="telemetry-fallback-status">ready</strong>
-        </div>
-        <div>
-          <span>Events / min</span>
-          <strong id="telemetry-events-rate">0</strong>
-        </div>
-      </div>
-
-      <section class="telemetry-backend-panel electric-panel" aria-labelledby="telemetry-backend-title">
-        <div class="telemetry-panel-heading">
-          <div>
-            <p class="step-label">model link</p>
-            <h3 id="telemetry-backend-title">Model Backend Status</h3>
-          </div>
-          <span id="telemetry-backend-active">checking</span>
-        </div>
-        <div id="telemetry-backend-grid" class="telemetry-backend-grid"></div>
-      </section>
-
-      <section class="telemetry-leaderboard electric-panel" aria-labelledby="telemetry-leaderboard-title">
-        <div class="telemetry-panel-heading">
-          <div>
-            <p class="step-label">persistent records</p>
-            <h3 id="telemetry-leaderboard-title">Arcade Leaderboard</h3>
-          </div>
-          <span id="telemetry-leaderboard-source">local memory</span>
-        </div>
-        <div class="leaderboard-grid">
-          <div class="leaderboard-column">
-            <div class="leaderboard-title-row">
-              <span>Runs</span>
-              <strong>scoreboard</strong>
-            </div>
-            <div id="telemetry-run-leaderboard" class="leaderboard-table"></div>
-          </div>
-          <div class="leaderboard-column">
-            <div class="leaderboard-title-row">
-              <span>Usage</span>
-              <strong>model load</strong>
-            </div>
-            <div id="telemetry-usage-leaderboard" class="leaderboard-table"></div>
-          </div>
-          <div class="leaderboard-column">
-            <div class="leaderboard-title-row">
-              <span>Sessions</span>
-              <strong>players</strong>
-            </div>
-            <div id="telemetry-session-leaderboard" class="leaderboard-table"></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="telemetry-leaderboard electric-panel" aria-labelledby="telemetry-marble-title">
-        <div class="telemetry-panel-heading">
-          <div>
-            <p class="step-label">attract mode</p>
-            <h3 id="telemetry-marble-title">Marble Run — Tote Board</h3>
-          </div>
-          <span id="telemetry-marble-total">0 cases</span>
-        </div>
-        <div class="marble-controls">
-          <button id="marble-start-btn" class="btn-small" type="button">Start</button>
-          <button id="marble-stop-btn" class="btn-small btn-danger" type="button">Stop</button>
-        </div>
-        <div class="leaderboard-grid">
-          <div class="leaderboard-column">
-            <div class="leaderboard-title-row">
-              <span>Standings</span>
-              <strong>win rate</strong>
-            </div>
-            <div id="telemetry-marble-standings" class="telemetry-bars"></div>
-          </div>
-          <div class="leaderboard-column">
-            <div class="leaderboard-title-row">
-              <span>By strategy</span>
-              <strong>mean score</strong>
-            </div>
-            <div id="telemetry-marble-strategy" class="telemetry-bars"></div>
-          </div>
-        </div>
-      </section>
-
-      <div class="telemetry-metrics" id="telemetry-metrics"></div>
-
-      <section class="telemetry-pipeline electric-panel" aria-labelledby="telemetry-finetune-title">
-        <div class="telemetry-panel-heading">
-          <div>
-            <p class="step-label">weight updates</p>
-            <h3 id="telemetry-finetune-title">Fine-Tune Pipeline</h3>
-          </div>
-          <span id="telemetry-finetune-model">no runs yet</span>
-        </div>
-        <div id="telemetry-finetune" class="telemetry-bars"></div>
-      </section>
-
-      <section class="telemetry-pipeline electric-panel" aria-labelledby="telemetry-guardrail-title">
-        <div class="telemetry-panel-heading">
-          <div>
-            <p class="step-label">usage caps</p>
-            <h3 id="telemetry-guardrail-title">Ollama Cloud Guardrail</h3>
-          </div>
-        </div>
-        <div id="telemetry-guardrail" class="telemetry-bars"></div>
-      </section>
-
-      <section class="telemetry-pipeline electric-panel" aria-labelledby="telemetry-pipeline-title">
-        <div class="telemetry-panel-heading">
-          <div>
-            <p class="step-label">write path</p>
-            <h3 id="telemetry-pipeline-title">Persistence Pipeline</h3>
-          </div>
-          <span id="telemetry-pipeline-source">local memory</span>
-        </div>
-        <div id="telemetry-pipeline" class="pipeline-rail"></div>
-      </section>
-
-      <div class="telemetry-grid">
-        <section class="telemetry-stream-panel electric-panel" aria-labelledby="telemetry-stream-title">
-          <div class="telemetry-panel-heading">
+        <p class="station-plaque">A fork of GVGAI — the General Video Game AI framework: 122 grid games written in VGDL, a description language built so agents can't memorize any single game. Here, small open-weight language models take the controls.</p>
+        <div class="station-body">
+          <div class="telemetry-status-strip" aria-live="polite">
             <div>
-              <p class="step-label">stream</p>
-              <h3 id="telemetry-stream-title">Data Flow</h3>
+              <span>Supabase</span>
+              <strong id="telemetry-storage-status">checking</strong>
             </div>
-            <span id="telemetry-stream-count">0 events</span>
-          </div>
-          <div id="telemetry-flow" class="telemetry-flow"></div>
-        </section>
-
-        <section class="telemetry-events-panel electric-panel" aria-labelledby="telemetry-events-title">
-          <div class="telemetry-panel-heading">
             <div>
-              <p class="step-label">recent</p>
-              <h3 id="telemetry-events-title">Event Log</h3>
+              <span>Live socket</span>
+              <strong id="telemetry-live-clients">0 clients</strong>
+            </div>
+            <div>
+              <span>Data source</span>
+              <strong id="telemetry-fallback-status">ready</strong>
+            </div>
+            <div>
+              <span>Active backend</span>
+              <strong id="telemetry-backend-active">checking</strong>
             </div>
           </div>
-          <div class="telemetry-event-table" id="telemetry-event-table"></div>
-        </section>
-      </div>
+          <div id="telemetry-backend-grid" class="telemetry-backend-grid"></div>
+        </div>
+        <a class="station-next" href="#station-b" data-station-next="station-b">Next: B — Runs ↓</a>
+      </section>
 
-      <div class="telemetry-chart-grid">
-        <section class="telemetry-chart electric-panel">
-          <h3>Eval Outcomes</h3>
-          <div id="telemetry-eval-chart" class="telemetry-bars"></div>
-        </section>
-        <section class="telemetry-chart electric-panel">
-          <h3>Clickthrough</h3>
-          <div id="telemetry-funnel-chart" class="telemetry-funnel"></div>
-        </section>
-        <section class="telemetry-chart electric-panel">
-          <h3>Model Telemetry</h3>
-          <div id="telemetry-model-chart" class="telemetry-model-list"></div>
-        </section>
-        <section class="telemetry-chart electric-panel">
-          <h3>Trace Categories</h3>
-          <div id="telemetry-trace-chart" class="telemetry-bars"></div>
-        </section>
-      </div>
+      <details class="telemetry-station" id="station-b" aria-labelledby="station-b-title">
+        <summary class="station-head">
+          <span class="station-letter" aria-hidden="true">B</span>
+          <span class="station-title-group">
+            <span class="step-label">what the models did</span>
+            <h3 class="station-title" id="station-b-title">Runs</h3>
+          </span>
+          <span class="station-stat"><strong id="station-b-stat">—</strong><small>runs · wins</small></span>
+          <span class="station-caret" aria-hidden="true">▸</span>
+        </summary>
+        <div class="station-inner">
+          <p class="station-plaque">GVGAI's competitions scored planners across unseen games — general competence, not one practiced high score. Runs here are grouped the same way, by archetype (shooter, pusher, chaser…), because scores across archetypes don't average.</p>
+          <div class="station-body">
+            <div class="station-cols">
+              <div class="station-block">
+                <h4 class="station-sub">Eval outcomes</h4>
+                <div id="telemetry-eval-chart" class="telemetry-bars"></div>
+              </div>
+              <div class="station-block">
+                <h4 class="station-sub">Run leaderboard <span id="telemetry-leaderboard-source">local memory</span></h4>
+                <div id="telemetry-run-leaderboard" class="leaderboard-table"></div>
+              </div>
+            </div>
+            <div class="station-block">
+              <h4 class="station-sub">Marble run — tote board <span id="telemetry-marble-total">0 cases</span></h4>
+              <div class="marble-controls">
+                <button id="marble-start-btn" class="btn-small" type="button">Start</button>
+                <button id="marble-stop-btn" class="btn-small btn-danger" type="button">Stop</button>
+              </div>
+              <div class="station-cols">
+                <div>
+                  <p class="station-microlabel">Standings · win rate</p>
+                  <div id="telemetry-marble-standings" class="telemetry-bars"></div>
+                </div>
+                <div>
+                  <p class="station-microlabel">By strategy · mean score</p>
+                  <div id="telemetry-marble-strategy" class="telemetry-bars"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <a class="station-next" href="#station-c" data-station-next="station-c">Next: C — Decisions ↓</a>
+        </div>
+      </details>
+
+      <details class="telemetry-station" id="station-c" aria-labelledby="station-c-title">
+        <summary class="station-head">
+          <span class="station-letter" aria-hidden="true">C</span>
+          <span class="station-title-group">
+            <span class="step-label">how they decided</span>
+            <h3 class="station-title" id="station-c-title">Decisions</h3>
+          </span>
+          <span class="station-stat"><strong id="station-c-stat">—</strong><small>avg latency</small></span>
+          <span class="station-caret" aria-hidden="true">▸</span>
+        </summary>
+        <div class="station-inner">
+          <p class="station-plaque">The original planning track allowed a 40 ms forward-model budget per move. A language model spends seconds — and narrates a reason. That gap, speed traded for stated intent, is what this arcade measures.</p>
+          <div class="station-body">
+            <div class="station-cols">
+              <div class="station-block">
+                <h4 class="station-sub">Usage leaderboard</h4>
+                <div id="telemetry-usage-leaderboard" class="leaderboard-table"></div>
+              </div>
+              <div class="station-block">
+                <h4 class="station-sub">Decisions &amp; latency by model</h4>
+                <div id="telemetry-model-chart" class="telemetry-model-list"></div>
+              </div>
+            </div>
+            <div class="station-block">
+              <h4 class="station-sub">Ollama Cloud guardrail</h4>
+              <div id="telemetry-guardrail" class="telemetry-bars"></div>
+            </div>
+          </div>
+          <a class="station-next" href="#station-d" data-station-next="station-d">Next: D — Records ↓</a>
+        </div>
+      </details>
+
+      <details class="telemetry-station" id="station-d" aria-labelledby="station-d-title">
+        <summary class="station-head">
+          <span class="station-letter" aria-hidden="true">D</span>
+          <span class="station-title-group">
+            <span class="step-label">where it all goes</span>
+            <h3 class="station-title" id="station-d-title">Records</h3>
+          </span>
+          <span class="station-stat"><strong id="station-d-stat">—</strong><small>events stored</small></span>
+          <span class="station-caret" aria-hidden="true">▸</span>
+        </summary>
+        <div class="station-inner">
+          <p class="station-plaque">Every run leaves a trace: state, action, stated reason. Traces become training data, training data becomes adapters, adapters return to the cabinet as new players. Evaluation as a loop, not a leaderboard.</p>
+          <div class="station-body">
+            <div class="station-block">
+              <h4 class="station-sub">Persistence pipeline <span id="telemetry-pipeline-source">local memory</span></h4>
+              <div id="telemetry-pipeline" class="pipeline-rail"></div>
+            </div>
+            <div class="station-block">
+              <h4 class="station-sub">Fine-tune pipeline <span id="telemetry-finetune-model">no runs yet</span></h4>
+              <div id="telemetry-finetune" class="telemetry-bars"></div>
+            </div>
+            <div class="station-cols">
+              <div class="station-block">
+                <h4 class="station-sub">Data flow <span id="telemetry-stream-count">0 events</span></h4>
+                <div id="telemetry-flow" class="telemetry-flow"></div>
+              </div>
+              <div class="station-block">
+                <h4 class="station-sub">Event log</h4>
+                <div class="telemetry-event-table" id="telemetry-event-table"></div>
+              </div>
+            </div>
+            <div class="station-cols station-cols-3">
+              <div class="station-block">
+                <h4 class="station-sub">Clickthrough funnel</h4>
+                <div id="telemetry-funnel-chart" class="telemetry-funnel"></div>
+              </div>
+              <div class="station-block">
+                <h4 class="station-sub">Trace categories</h4>
+                <div id="telemetry-trace-chart" class="telemetry-bars"></div>
+              </div>
+              <div class="station-block">
+                <h4 class="station-sub">Sessions</h4>
+                <div id="telemetry-session-leaderboard" class="leaderboard-table"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
     </div><!-- /telemetry-dashboard -->
 
   </div>

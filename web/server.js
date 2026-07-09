@@ -230,7 +230,6 @@ app.use('/api/telemetry', require('./routes/telemetry'));
 app.use('/api/marble', require('./routes/marble'));
 app.use('/api/traces', require('./routes/traces-local'));
 app.use('/api/finetune', require('./routes/finetune'));
-app.use('/api/roadmap', require('./routes/roadmap'));
 
 // Clean URL for the embeddable spectator page (also served as /marquee.html).
 app.get('/marquee', (req, res) => res.sendFile(path.join(__dirname, 'public', 'marquee.html')));

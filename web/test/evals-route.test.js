@@ -10,7 +10,6 @@ test('server mounts the arcade eval route', () => {
 
   assert.match(serverSource, /app\.use\('\/api\/evals',\s*require\('\.\/routes\/evals'\)\);/);
   assert.match(serverSource, /app\.use\('\/api\/telemetry',\s*require\('\.\/routes\/telemetry'\)\);/);
-  assert.match(serverSource, /app\.use\('\/api\/roadmap',\s*require\('\.\/routes\/roadmap'\)\);/);
 });
 
 test('eval route exposes the arcade plan builder', () => {
