@@ -75,6 +75,20 @@ function createChipsChallengeState({ avatar = [5, 6], chips = 0, score = 0 } = {
   };
 }
 
+function createFrogsState({ avatar = [8, 9], tick = 0, score = 0 } = {}) {
+  return {
+    blockSize: 10,
+    worldDimension: [300, 110],
+    observationGridNum: 30,
+    observationGridMaxRow: 11,
+    avatarPosition: gridPosition(avatar),
+    avatarHealthPoints: 0,
+    gameScore: score,
+    gameTick: tick,
+    availableActions: ['ACTION_UP', 'ACTION_DOWN', 'ACTION_LEFT', 'ACTION_RIGHT']
+  };
+}
+
 function createGridTargetState({
   avatar = [3, 2],
   targets = [[1, 2, 6]],
@@ -176,6 +190,29 @@ function chipsChallengePromptFor(state) {
       chipItype: 22,
       objectiveCodes: ['COLLECT_CHIPS_KEYS_BOOTS', 'REACH_EXIT'],
       ruleCodes: ['PUSH_LEFT_CRATE_TO_WATER', 'SWEEP_LOWER_CHIPS', 'PATROL_SAFE_CORRIDOR']
+    }
+  });
+}
+
+function frogsPromptFor(state) {
+  return buildPrompt(state, {
+    gameName: 'frogs',
+    codeProtocol: {
+      enabled: true,
+      id: 'GV1',
+      policyId: 'frogs-level1',
+      authoritative: true,
+      actionCodes: {
+        U: 'ACTION_UP',
+        D: 'ACTION_DOWN',
+        L: 'ACTION_LEFT',
+        R: 'ACTION_RIGHT'
+      },
+      objectiveCodes: ['REACH_GOAL', 'RIDE_LOGS', 'AVOID_TRUCKS_AND_WATER'],
+      ruleCodes: ['PATROL_SAFE_START_BANK', 'WAIT_FOR_TRAFFIC_GAP', 'AVOID_TRAFFIC_LANES'],
+      safeBankY: 9,
+      stagingLeftX: 7,
+      stagingRightX: 8
     }
   });
 }
@@ -711,6 +748,46 @@ test('chipschallenge level 1 policy patrols safe corridors after lower chips', (
   assert.equal(prompt.fallbackAction, 'ACTION_LEFT');
   assert.equal(prompt.policyReason, 'patrol collected chip row');
   assert.match(prompt.userMessage, /B:L/);
+});
+
+test('frogs level 1 policy opens by staging on the safe bank', () => {
+  const prompt = frogsPromptFor(createFrogsState({
+    avatar: [8, 9]
+  }));
+
+  assert.equal(prompt.responseMode, 'code');
+  assert.equal(prompt.policyAuthoritative, true);
+  assert.equal(prompt.fallbackActionCode, 'L');
+  assert.equal(prompt.fallbackAction, 'ACTION_LEFT');
+  assert.equal(prompt.policyReason, 'patrol safe bank while waiting for traffic');
+  assert.match(prompt.userMessage, /B:L/);
+});
+
+test('frogs level 1 policy patrols between staging tiles without waiting', () => {
+  const leftTile = frogsPromptFor(createFrogsState({
+    avatar: [7, 9]
+  }));
+  const rightTile = frogsPromptFor(createFrogsState({
+    avatar: [8, 9]
+  }));
+
+  assert.equal(leftTile.fallbackActionCode, 'R');
+  assert.equal(leftTile.fallbackAction, 'ACTION_RIGHT');
+  assert.equal(rightTile.fallbackActionCode, 'L');
+  assert.equal(rightTile.fallbackAction, 'ACTION_LEFT');
+  assert.match(leftTile.userMessage, /B:R/);
+  assert.match(rightTile.userMessage, /B:L/);
+});
+
+test('frogs level 1 policy recovers back to the safe bank', () => {
+  const prompt = frogsPromptFor(createFrogsState({
+    avatar: [8, 8]
+  }));
+
+  assert.equal(prompt.fallbackActionCode, 'D');
+  assert.equal(prompt.fallbackAction, 'ACTION_DOWN');
+  assert.equal(prompt.policyReason, 'return to safe start bank');
+  assert.match(prompt.userMessage, /B:D/);
 });
 
 test('macro-enabled game with a strategy asks for a PLAN closing contract', () => {

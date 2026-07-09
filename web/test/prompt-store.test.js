@@ -140,10 +140,18 @@ test('frogs uses compact goal guidance with traffic avoidance', () => {
 
   assert.equal(config.gameName, 'frogs');
   assert.equal(config.codeProtocol.enabled, true);
-  assert.equal(config.codeProtocol.policyId, 'grid-target');
-  assert.equal(config.codeProtocol.authoritative, false);
+  assert.equal(config.codeProtocol.policyId, 'frogs-level1');
+  assert.equal(config.codeProtocol.authoritative, true);
   assert.deepEqual(config.codeProtocol.targetSources, ['portal']);
   assert.deepEqual(config.codeProtocol.dangerSources, ['movable']);
+  assert.equal(config.codeProtocol.safeBankY, 9);
+  assert.equal(config.codeProtocol.stagingLeftX, 7);
+  assert.equal(config.codeProtocol.stagingRightX, 8);
+  assert.deepEqual(config.codeProtocol.ruleCodes, [
+    'PATROL_SAFE_START_BANK',
+    'WAIT_FOR_TRAFFIC_GAP',
+    'AVOID_TRAFFIC_LANES'
+  ]);
 });
 
 test('chase uses compact scared-goat target guidance', () => {

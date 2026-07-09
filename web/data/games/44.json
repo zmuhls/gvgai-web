@@ -21,8 +21,8 @@
   "codeProtocol": {
     "enabled": true,
     "id": "GV1",
-    "policyId": "grid-target",
-    "authoritative": false,
+    "policyId": "frogs-level1",
+    "authoritative": true,
     "actionCodes": {
       "U": "ACTION_UP",
       "D": "ACTION_DOWN",
@@ -40,10 +40,13 @@
       "AVOID_TRUCKS_AND_WATER"
     ],
     "ruleCodes": [
-      "PATH_TO_GOAL",
-      "USE_LOGS_TO_CROSS_WATER",
-      "AVOID_TRAFFIC"
+      "PATROL_SAFE_START_BANK",
+      "WAIT_FOR_TRAFFIC_GAP",
+      "AVOID_TRAFFIC_LANES"
     ],
+    "safeBankY": 9,
+    "stagingLeftX": 7,
+    "stagingRightX": 8,
     "targetSources": [
       "portal"
     ],
@@ -60,7 +63,7 @@
     "dangerRadius": 1,
     "policyEntityLimit": 256
   },
-  "updatedAt": "2026-07-02T01:39:27.625Z",
+  "updatedAt": "2026-07-09T07:30:00.000Z",
   "classification": {
     "classifierVersion": 1,
     "archetype": "chaser",

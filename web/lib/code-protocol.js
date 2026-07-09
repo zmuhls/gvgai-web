@@ -508,6 +508,31 @@ function chooseChipsChallengeLevel1Code(sso, protocol, playerPos, codes) {
   return actionResult('ACTION_RIGHT', 'continue safe patrol');
 }
 
+function chooseFrogsLevel1Code(sso, protocol, playerPos, codes) {
+  if (!playerPos) return null;
+
+  const availableActions = sso.availableActions || [];
+  const codeFor = (action) => (
+    availableActions.includes(action) ? actionCodeForAction(codes, action) : null
+  );
+  const actionResult = (action, reason) => {
+    const code = codeFor(action);
+    return code ? { code, reason } : null;
+  };
+
+  const [x, y] = playerPos;
+  const safeBankY = Number.isInteger(protocol.safeBankY) ? protocol.safeBankY : 9;
+  const stagingLeftX = Number.isInteger(protocol.stagingLeftX) ? protocol.stagingLeftX : 7;
+  const stagingRightX = Number.isInteger(protocol.stagingRightX) ? protocol.stagingRightX : 8;
+
+  if (y < safeBankY) return actionResult('ACTION_DOWN', 'return to safe start bank');
+  if (y > safeBankY) return actionResult('ACTION_UP', 'return to safe start bank');
+  if (x < stagingLeftX) return actionResult('ACTION_RIGHT', 'return to traffic staging lane');
+  if (x > stagingRightX) return actionResult('ACTION_LEFT', 'return to traffic staging lane');
+  if (x <= stagingLeftX) return actionResult('ACTION_RIGHT', 'patrol safe bank while waiting for traffic');
+  return actionResult('ACTION_LEFT', 'patrol safe bank while waiting for traffic');
+}
+
 function chooseFixedCode(sso, protocol, codes) {
   const availableActions = sso.availableActions || [];
   const fixedCode = protocol.fixedActionCode || protocol.repeatedActionCode;
@@ -671,6 +696,8 @@ function choosePolicyActionCode(sso, protocol, playerPos, codes, stateTracker) {
       return chooseBaitLevel0Code(sso, protocol, playerPos, codes);
     case 'chipschallenge-level1':
       return chooseChipsChallengeLevel1Code(sso, protocol, playerPos, codes);
+    case 'frogs-level1':
+      return chooseFrogsLevel1Code(sso, protocol, playerPos, codes);
     case 'fixed-code':
       return chooseFixedCode(sso, protocol, codes);
     case 'grid-target':
