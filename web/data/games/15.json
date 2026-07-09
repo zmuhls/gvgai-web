@@ -12,11 +12,10 @@
     "temperature": 0.1
   },
   "codeProtocol": {
-    "enabled": false,
+    "enabled": true,
     "id": "GV1",
-    "policyId": "fixed-code",
+    "policyId": "grid-target",
     "authoritative": false,
-    "fixedActionCode": "R",
     "actionCodes": {
       "U": "ACTION_UP",
       "D": "ACTION_DOWN",
@@ -32,7 +31,17 @@
       "RACE_GOAL"
     ],
     "ruleCodes": [
-      "MOVE_RIGHT_TO_GOAL"
+      "PATH_TO_GOAL"
+    ],
+    "targetSources": [
+      "portal"
+    ],
+    "targetEntityCode": "g",
+    "wallSources": [
+      "immovable"
+    ],
+    "wallItypes": [
+      0
     ]
   },
   "updatedAt": "2026-07-02T01:39:27.620Z",

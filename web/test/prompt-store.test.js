@@ -15,8 +15,7 @@ test('aliens prompt config has code protocol disabled for natural-language promp
 
 test('selected arcade games have code protocols disabled for natural-language prompting', () => {
   const expectations = [
-    [4, 'bait', 'bait-level0'],
-    [15, 'camelRace', 'fixed-code']
+    [4, 'bait', 'bait-level0']
   ];
 
   for (const [gameId, gameName, policyId] of expectations) {
@@ -61,4 +60,16 @@ test('chase uses compact scared-goat target guidance', () => {
   assert.deepEqual(config.codeProtocol.targetSources, ['npc']);
   assert.deepEqual(config.codeProtocol.targetItypes, [6]);
   assert.equal(config.codeProtocol.dangerNonTargets, true);
+});
+
+test('camelRace uses compact portal target guidance', () => {
+  const config = resolveGamePromptConfig(15, 1);
+
+  assert.equal(config.gameName, 'camelRace');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['portal']);
+  assert.equal(config.codeProtocol.targetEntityCode, 'g');
+  assert.deepEqual(config.codeProtocol.wallItypes, [0]);
 });
