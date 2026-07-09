@@ -72,6 +72,7 @@ node_modules/
 # Marble-run spectator page — also tracked despite the global *.html ignore
 !web/public/marquee.html
 # Companion room subpages (iframe hosts) — tracked despite the global *.html ignore
+!web/public/cadavre.html
 !web/public/haggle.html
 !web/public/langgames.html
 

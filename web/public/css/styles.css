@@ -605,6 +605,90 @@ label {
   color: #34210d;
 }
 
+/* ---- Cadavre Exquis: folded ink-and-bone parlor sheet ---- */
+.room-cadavre {
+  color: #e7e0d0;
+  background:
+    linear-gradient(176deg, transparent 0 24%, rgba(231, 224, 208, 0.16) 24.2% 24.8%, transparent 25% 49%, rgba(231, 224, 208, 0.12) 49.2% 49.8%, transparent 50% 73%, rgba(231, 224, 208, 0.1) 73.2% 73.8%, transparent 74%),
+    radial-gradient(circle at 18% 20%, rgba(207, 116, 134, 0.24), transparent 26%),
+    radial-gradient(circle at 86% 78%, rgba(231, 224, 208, 0.08), transparent 28%),
+    linear-gradient(145deg, rgba(27, 29, 36, 0.98), rgba(15, 17, 22, 0.96) 56%, rgba(9, 10, 13, 0.98)),
+    #0c0d10;
+  border-color: rgba(231, 224, 208, 0.22);
+  box-shadow:
+    inset 0 0 0 1px rgba(231, 224, 208, 0.08),
+    inset 0 -30px 54px rgba(0, 0, 0, 0.34),
+    0 10px 28px rgba(0, 0, 0, 0.36);
+}
+
+.room-cadavre::before {
+  content: "";
+  position: absolute;
+  inset: 13px 14px;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(231, 224, 208, 0.16), rgba(231, 224, 208, 0.04)),
+    repeating-linear-gradient(180deg, transparent 0 23px, rgba(231, 224, 208, 0.13) 24px 25px);
+  clip-path: polygon(0 0, 92% 0, 100% 16%, 94% 100%, 5% 96%);
+  opacity: 0.9;
+}
+
+.room-cadavre::after {
+  content: "CE";
+  position: absolute;
+  top: 13px;
+  right: 13px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(231, 224, 208, 0.34);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 36% 26%, rgba(231, 224, 208, 0.28), transparent 32%),
+    linear-gradient(145deg, rgba(164, 72, 86, 0.92), rgba(98, 34, 46, 0.9));
+  color: #f1d7dd;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  line-height: 1;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 219, 226, 0.12),
+    0 0 16px rgba(207, 116, 134, 0.42);
+}
+
+.room-cadavre .companion-subtitle {
+  color: #b8b2a4;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.74);
+}
+
+.room-cadavre .companion-subtitle::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 16px;
+  height: 36px;
+  margin-right: 10px;
+  background:
+    linear-gradient(180deg, rgba(231, 224, 208, 0.78), rgba(231, 224, 208, 0.28)),
+    repeating-linear-gradient(180deg, transparent 0 9px, rgba(12, 13, 16, 0.48) 10px 11px);
+  clip-path: polygon(5% 0, 88% 6%, 100% 100%, 0 92%);
+  transform: rotate(-3deg);
+}
+
+.room-cadavre h3 {
+  margin-top: var(--space-4);
+  color: #e7e0d0;
+  font-family: "Iowan Old Style", Georgia, serif;
+  font-size: var(--text-2xl);
+  font-weight: 500;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.64);
+}
+
+.room-cadavre .companion-url {
+  color: #d4cbb9;
+}
+
 .room-jeopardy {
   color: #f4f9ff;
   background:
@@ -674,6 +758,20 @@ label {
 
 .room-cloze:hover h3 {
   color: #211305;
+}
+
+.room-cadavre:hover {
+  background:
+    linear-gradient(176deg, transparent 0 24%, rgba(231, 224, 208, 0.18) 24.2% 24.8%, transparent 25% 49%, rgba(231, 224, 208, 0.14) 49.2% 49.8%, transparent 50% 73%, rgba(231, 224, 208, 0.12) 73.2% 73.8%, transparent 74%),
+    radial-gradient(circle at 18% 20%, rgba(207, 116, 134, 0.3), transparent 26%),
+    radial-gradient(circle at 86% 78%, rgba(231, 224, 208, 0.1), transparent 28%),
+    linear-gradient(145deg, rgba(31, 33, 42, 0.98), rgba(17, 19, 25, 0.96) 56%, rgba(10, 11, 15, 0.98)),
+    #101116;
+  border-color: rgba(207, 116, 134, 0.52);
+}
+
+.room-cadavre:hover h3 {
+  color: #f0e9db;
 }
 
 .room-jeopardy:hover {
@@ -872,6 +970,11 @@ label {
 .companion-link.room-cloze .companion-url,
 .companion-link.room-cloze:hover .companion-url {
   color: #34210d;
+}
+
+.companion-link.room-cadavre .companion-url,
+.companion-link.room-cadavre:hover .companion-url {
+  color: #d4cbb9;
 }
 
 .companion-link.room-jeopardy .companion-url,
