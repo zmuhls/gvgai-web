@@ -16,39 +16,6 @@
     system: 'System'
   };
 
-  const metricCards = [
-    {
-      key: 'evaluations',
-      label: 'Evaluations',
-      detail: 'runs, cases, summaries',
-      format: value => formatNumber(value)
-    },
-    {
-      key: 'userExperienceEvents',
-      label: 'User Experience',
-      detail: 'views, searches, sockets',
-      format: value => formatNumber(value)
-    },
-    {
-      key: 'clickthroughRate',
-      label: 'Clickthrough Rate',
-      detail: 'start clicks / selections',
-      format: value => formatPercent(value)
-    },
-    {
-      key: 'averageModelLatencyMs',
-      label: 'Model Latency',
-      detail: 'mean decision time',
-      format: value => `${formatNumber(value)}ms`
-    },
-    {
-      key: 'traceEvents',
-      label: 'Trace Volume',
-      detail: 'sampled state ticks',
-      format: value => formatNumber(value)
-    }
-  ];
-
   async function loadSummary() {
     try {
       const [summaryRes, guardRes, finetuneRes, modelsRes] = await Promise.all([
@@ -76,31 +43,60 @@
     }, 650);
   }
 
+  // Stations B–D are <details> and render lazily: collapsed stations only
+  // update their always-visible headline stat; interiors paint on open.
+  function stationOpen(id) {
+    const node = document.getElementById(id);
+    if (!node) return false;
+    return node.tagName !== 'DETAILS' || node.open;
+  }
+
+  function renderStationStats(snapshot) {
+    const outcomes = snapshot.evalOutcomes || {};
+    const total = outcomes.total || 0;
+    const winPct = total ? Math.round(((outcomes.wins || 0) / total) * 100) : 0;
+    setText('station-b-stat', total ? `${formatNumber(total)} · ${winPct}% W` : '—');
+    const latency = snapshot.metrics?.averageModelLatencyMs || 0;
+    setText('station-c-stat', latency ? `${formatNumber(latency)}ms` : '—');
+    setText('station-d-stat', formatNumber(snapshot.metrics?.totalEvents || 0));
+  }
+
   function render() {
     const snapshot = state.snapshot;
     if (!snapshot) return;
 
+    // Station A (always open) + the collapsed-station headline stats.
     setText('telemetry-storage-status', snapshot.storage?.label || 'unknown');
     setText('telemetry-live-clients', `${snapshot.liveClients || 0} clients`);
     setText('telemetry-fallback-status', sourceLabel(snapshot));
     setText('telemetry-events-rate', formatNumber(snapshot.metrics?.eventsPerMinute || 0));
-    setText('telemetry-stream-count', `${formatNumber(snapshot.metrics?.totalEvents || 0)} events`);
-    setText('telemetry-leaderboard-source', sourceLabel(snapshot));
-    setText('telemetry-pipeline-source', pipelineLabel(snapshot.pipeline, snapshot));
-
+    renderStationStats(snapshot);
     renderBackendStatus(snapshot);
-    renderLeaderboards(snapshot.leaderboards || {});
-    renderMetrics(snapshot.metrics || {});
-    renderPipeline(snapshot.pipeline || {});
-    renderFlow(snapshot);
-    renderEvents(snapshot.recentEvents || []);
-    renderEvalChart(snapshot.evalOutcomes || {});
-    renderFunnel(snapshot.funnel || {});
-    renderModelChart(snapshot.models || []);
-    renderTraceChart(snapshot.traceTypes || []);
-    renderMarbleRun(snapshot.marbleRun || {});
-    renderGuardrail(state.guardrail);
-    renderFinetune();
+
+    if (stationOpen('station-b')) {
+      setText('telemetry-leaderboard-source', sourceLabel(snapshot));
+      renderEvalChart(snapshot.evalOutcomes || {});
+      renderRunLeaderboard((snapshot.leaderboards || {}).runs || []);
+      renderMarbleRun(snapshot.marbleRun || {});
+    }
+
+    if (stationOpen('station-c')) {
+      renderUsageLeaderboard((snapshot.leaderboards || {}).usage || []);
+      renderModelChart(snapshot.models || []);
+      renderGuardrail(state.guardrail);
+    }
+
+    if (stationOpen('station-d')) {
+      setText('telemetry-stream-count', `${formatNumber(snapshot.metrics?.totalEvents || 0)} events`);
+      setText('telemetry-pipeline-source', pipelineLabel(snapshot.pipeline, snapshot));
+      renderPipeline(snapshot.pipeline || {});
+      renderFinetune();
+      renderFlow(snapshot);
+      renderEvents(snapshot.recentEvents || []);
+      renderFunnel(snapshot.funnel || {});
+      renderTraceChart(snapshot.traceTypes || []);
+      renderSessionLeaderboard((snapshot.leaderboards || {}).sessions || []);
+    }
   }
 
   // Marble run controls
@@ -342,25 +338,6 @@
         `).join('');
       }
     }
-  }
-
-  function renderMetrics(metrics) {
-    const container = document.getElementById('telemetry-metrics');
-    if (!container) return;
-
-    container.innerHTML = metricCards.map(card => `
-      <article class="telemetry-metric electric-panel">
-        <span>${escapeHtml(card.label)}</span>
-        <strong>${escapeHtml(card.format(metrics[card.key] || 0))}</strong>
-        <small>${escapeHtml(card.detail)}</small>
-      </article>
-    `).join('');
-  }
-
-  function renderLeaderboards(leaderboards) {
-    renderRunLeaderboard(leaderboards.runs || []);
-    renderUsageLeaderboard(leaderboards.usage || []);
-    renderSessionLeaderboard(leaderboards.sessions || []);
   }
 
   function renderRunLeaderboard(rows) {
@@ -624,10 +601,6 @@
     return Number(value || 0).toLocaleString();
   }
 
-  function formatPercent(value) {
-    return `${Math.round(Number(value || 0) * 100)}%`;
-  }
-
   function formatCompactNumber(value) {
     return Number(value || 0).toLocaleString(undefined, { notation: 'compact', maximumFractionDigits: 1 });
   }
@@ -667,6 +640,34 @@
       }
     });
   });
+
+  // Lazy station interiors: paint from the cached snapshot the moment a
+  // station opens, instead of waiting for the next poll tick.
+  document.querySelectorAll('#telemetry-dashboard details.telemetry-station').forEach(section => {
+    section.addEventListener('toggle', () => {
+      if (section.open) render();
+    });
+  });
+
+  // The guided A → B → C → D path: each "Next" link opens the following
+  // station before scrolling to it.
+  document.querySelectorAll('#telemetry-dashboard .station-next').forEach(link => {
+    link.addEventListener('click', event => {
+      const target = document.getElementById(link.dataset.stationNext || '');
+      if (!target) return;
+      event.preventDefault();
+      if (target.tagName === 'DETAILS') target.open = true;
+      const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+      if (history.replaceState) history.replaceState(null, '', `#${target.id}`);
+    });
+  });
+
+  // Deep links (#station-b/c/d) open their station on load.
+  if (/^#station-[b-d]$/.test(window.location.hash)) {
+    const target = document.getElementById(window.location.hash.slice(1));
+    if (target && target.tagName === 'DETAILS') target.open = true;
+  }
 
   if (socket) {
     socket.on('connect', () => renderBackendStatus(state.snapshot || {}));
