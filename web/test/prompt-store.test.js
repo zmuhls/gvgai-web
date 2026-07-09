@@ -86,3 +86,16 @@ test('digdug uses compact gem target guidance', () => {
   assert.deepEqual(config.codeProtocol.wallItypes, [0, 4]);
   assert.deepEqual(config.codeProtocol.dangerSources, ['movable']);
 });
+
+test('crossfire uses compact portal goal guidance', () => {
+  const config = resolveGamePromptConfig(26, 1);
+
+  assert.equal(config.gameName, 'crossfire');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['portal']);
+  assert.deepEqual(config.codeProtocol.targetItypes, [6]);
+  assert.deepEqual(config.codeProtocol.wallItypes, [0]);
+  assert.deepEqual(config.codeProtocol.dangerSources, ['npc', 'movable']);
+});
