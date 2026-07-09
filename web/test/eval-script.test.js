@@ -19,6 +19,7 @@ test('arcade eval script parses dry-run, selection, and timeout options', () => 
     '--ready-timeout-ms', '60000',
     '--action-timeout-ms', '2500',
     '--max-actions', '40',
+    '--env-file', '/tmp/gvgai.env',
     '--out', 'evals/results.json'
   ]);
 
@@ -35,12 +36,13 @@ test('arcade eval script parses dry-run, selection, and timeout options', () => 
   assert.equal(options.readyTimeoutMs, '60000');
   assert.equal(options.actionTimeoutMs, '2500');
   assert.equal(options.maxActions, '40');
+  assert.equal(options.envFile, '/tmp/gvgai.env');
   assert.equal(options.out, 'evals/results.json');
 });
 
 test('arcade eval script loads repository env before creating runtime clients', () => {
   const source = fs.readFileSync(path.resolve(__dirname, '..', 'scripts', 'run-arcade-eval.js'), 'utf-8');
-  const envIndex = source.indexOf('await loadRootEnv()');
+  const envIndex = source.indexOf('await loadRootEnv({ path: options.envFile })');
   const runnerIndex = source.indexOf("require('../lib/batch-evaluator')");
 
   assert.ok(envIndex !== -1);

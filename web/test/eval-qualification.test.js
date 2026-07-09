@@ -52,11 +52,21 @@ test('buildBatchPlan can target level 1 and all catalog models', () => {
   assert.ok(plan.models.length >= 7);
 });
 
+test('buildBatchPlan expands featured qualification to all featured games at level 1', () => {
+  const plan = buildBatchPlan({ featuredQualification: true });
+
+  assert.deepEqual(plan.gameIds, [0, 10, 14, 18, 13, 19, 20, 22, 30, 68, 44, 50, 15, 26, 63]);
+  assert.ok(plan.models.length >= 8);
+  assert.ok(plan.games.every(game => game.levelId === 1));
+  assert.equal(plan.cases.length, plan.gameIds.length * plan.models.length * plan.strategies.length);
+});
+
 test('parseArgs accepts level and all-model qualification flags', () => {
-  const options = parseArgs(['--game-id', '0,10', '--level-id', '1', '--all-models', '--prefer-provider-fallback']);
+  const options = parseArgs(['--game-id', '0,10', '--level-id', '1', '--all-models', '--prefer-provider-fallback', '--featured-qualification']);
 
   assert.equal(options.gameIds, '0,10');
   assert.equal(options.levelId, '1');
   assert.equal(options.allModels, true);
   assert.equal(options.preferProviderFallback, true);
+  assert.equal(options.featuredQualification, true);
 });

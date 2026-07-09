@@ -209,6 +209,15 @@ function directionAction(direction) {
   return direction === 'L' ? 'ACTION_LEFT' : 'ACTION_RIGHT';
 }
 
+function oppositeAction(action) {
+  return {
+    ACTION_UP: 'ACTION_DOWN',
+    ACTION_DOWN: 'ACTION_UP',
+    ACTION_LEFT: 'ACTION_RIGHT',
+    ACTION_RIGHT: 'ACTION_LEFT'
+  }[action] || null;
+}
+
 function isDirectionSafe(direction, playerPos, hazards, availableActions, lookaheadRows = DEFAULT_DODGE_LOOKAHEAD_ROWS) {
   if (!availableActions.includes(directionAction(direction))) return false;
   const nextX = playerPos[0] + (direction === 'L' ? -1 : 1);
@@ -278,6 +287,59 @@ function sameGrid(position, x, y) {
 
 function hasItemAt(items, x, y, itype = null) {
   return items.some(item => sameGrid([item.x, item.y], x, y) && (itype === null || item.itype === itype));
+}
+
+function chooseFleeDangerCode({ moves, start, dangerItems, dangerSet, wallSet, gridW, gridH, targets, protocol, stateTracker, availableActions }) {
+  const fleeDistance = Number.isFinite(protocol?.fleeDangerDistance)
+    ? protocol.fleeDangerDistance
+    : null;
+  if (!fleeDistance || dangerItems.length === 0) return null;
+
+  const nearestDangerDistance = Math.min(...dangerItems.map(item => manhattan(start, item)));
+  if (nearestDangerDistance > fleeDistance) return null;
+
+  const candidates = moves
+    .map(move => ({
+      ...move,
+      x: start.x + move.delta[0],
+      y: start.y + move.delta[1]
+    }))
+    .filter(move => {
+      const key = gridKey(move.x, move.y);
+      const inBounds = (
+        (!gridW || (move.x >= 0 && move.x < gridW)) &&
+        (!gridH || (move.y >= 0 && move.y < gridH))
+      );
+      return inBounds && !wallSet.has(key) && !dangerSet.has(key);
+    })
+    .map(move => {
+      const dangerDistance = Math.min(...dangerItems.map(item => manhattan(move, item)));
+      const targetDistance = targets.length > 0
+        ? Math.min(...targets.map(target => manhattan(move, target)))
+        : 0;
+      return {
+        ...move,
+        score: (dangerDistance * 100) - targetDistance
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const best = candidates[0];
+  if (best && protocol?.fleeLoopBreaker && stateTracker?.dominantSentAction && stateTracker?.suggestAlternativeDirection) {
+    const dominant = stateTracker.dominantSentAction();
+    const alternativeAction = dominant?.action === best.action && dominant.fraction >= 0.6
+      ? stateTracker.suggestAlternativeDirection(availableActions)
+      : null;
+    const alternative = candidates.find(move => move.action === alternativeAction);
+    if (alternative) {
+      return {
+        code: alternative.code,
+        reason: `flee nearby danger ${nearestDangerDistance}; break ${dominant.action}`
+      };
+    }
+  }
+
+  return best ? { code: best.code, reason: `flee nearby danger ${nearestDangerDistance}` } : null;
 }
 
 function validAliensMoveCode(desiredCode, sso, protocol, playerPos, codes) {
@@ -408,6 +470,122 @@ function chooseBaitLevel0Code(sso, protocol, playerPos, codes) {
   return actionResult('ACTION_RIGHT', 'recover bait route');
 }
 
+function chooseChipsChallengeLevel1Code(sso, protocol, playerPos, codes) {
+  if (!playerPos) return null;
+
+  const availableActions = sso.availableActions || [];
+  const codeFor = (action) => (
+    availableActions.includes(action) ? actionCodeForAction(codes, action) : null
+  );
+  const actionResult = (action, reason) => {
+    const code = codeFor(action);
+    return code ? { code, reason } : null;
+  };
+
+  const [x, y] = playerPos;
+  const chipItype = String(protocol.chipItype ?? 22);
+  const chips = Number(sso.avatarResources?.[chipItype] || 0);
+
+  if (chips < 5) {
+    if (x === 5 && y === 6) return actionResult('ACTION_LEFT', 'push left crate into water');
+    if (x === 4 && y < 9) return actionResult('ACTION_DOWN', 'reach lower chip row');
+    if (y === 9 && x > 1 && chips < 4) return actionResult('ACTION_LEFT', 'sweep lower chips left');
+    if (y === 9 && x < 5) return actionResult('ACTION_RIGHT', 'sweep lower chips right');
+    if (x > 4) return actionResult('ACTION_LEFT', 'recover lower chip route');
+    if (x < 4) return actionResult('ACTION_RIGHT', 'recover lower chip route');
+    return actionResult('ACTION_DOWN', 'recover lower chip route');
+  }
+
+  if (y === 4 && x < 7) return actionResult('ACTION_RIGHT', 'patrol safe top corridor');
+  if (x === 7 && y < 9) return actionResult('ACTION_DOWN', 'patrol safe right corridor');
+  if (y === 9 && x > 4) return actionResult('ACTION_LEFT', 'patrol collected chip row');
+  if (x === 4 && y > 4) return actionResult('ACTION_UP', 'patrol safe left corridor');
+
+  if (x < 4) return actionResult('ACTION_RIGHT', 'recover safe patrol');
+  if (x > 7) return actionResult('ACTION_LEFT', 'recover safe patrol');
+  if (y < 4) return actionResult('ACTION_DOWN', 'recover safe patrol');
+  if (y > 9) return actionResult('ACTION_UP', 'recover safe patrol');
+  return actionResult('ACTION_RIGHT', 'continue safe patrol');
+}
+
+function chooseFrogsLevel1Code(sso, protocol, playerPos, codes) {
+  if (!playerPos) return null;
+
+  const availableActions = sso.availableActions || [];
+  const codeFor = (action) => (
+    availableActions.includes(action) ? actionCodeForAction(codes, action) : null
+  );
+  const actionResult = (action, reason) => {
+    const code = codeFor(action);
+    return code ? { code, reason } : null;
+  };
+
+  const [x, y] = playerPos;
+  const safeBankY = Number.isInteger(protocol.safeBankY) ? protocol.safeBankY : 9;
+  const stagingLeftX = Number.isInteger(protocol.stagingLeftX) ? protocol.stagingLeftX : 7;
+  const stagingRightX = Number.isInteger(protocol.stagingRightX) ? protocol.stagingRightX : 8;
+
+  if (y < safeBankY) return actionResult('ACTION_DOWN', 'return to safe start bank');
+  if (y > safeBankY) return actionResult('ACTION_UP', 'return to safe start bank');
+  if (x < stagingLeftX) return actionResult('ACTION_RIGHT', 'return to traffic staging lane');
+  if (x > stagingRightX) return actionResult('ACTION_LEFT', 'return to traffic staging lane');
+  if (x <= stagingLeftX) return actionResult('ACTION_RIGHT', 'patrol safe bank while waiting for traffic');
+  return actionResult('ACTION_LEFT', 'patrol safe bank while waiting for traffic');
+}
+
+function choosePacmanLevel1Code(sso, protocol, playerPos, codes, stateTracker) {
+  if (!playerPos) return null;
+
+  const availableActions = sso.availableActions || [];
+  const codeFor = (action) => (
+    availableActions.includes(action) ? actionCodeForAction(codes, action) : null
+  );
+  const actionResult = (action, reason) => {
+    const code = codeFor(action);
+    return code ? { code, reason } : null;
+  };
+
+  const [x, y] = playerPos;
+  const patrolRowY = Number.isInteger(protocol.patrolRowY) ? protocol.patrolRowY : 28;
+  const patrolLeftX = Number.isInteger(protocol.patrolLeftX) ? protocol.patrolLeftX : 8;
+  const patrolRightX = Number.isInteger(protocol.patrolRightX) ? protocol.patrolRightX : 19;
+  const ghostAvoidDistance = Number.isInteger(protocol.ghostAvoidDistance)
+    ? protocol.ghostAvoidDistance
+    : 3;
+
+  if (y < patrolRowY) return actionResult('ACTION_DOWN', 'return to bottom pellet corridor');
+  if (y > patrolRowY) return actionResult('ACTION_UP', 'return to bottom pellet corridor');
+
+  const blockSize = sso.blockSize || 1;
+  const ghosts = collectSourcePositions(
+    sso,
+    protocol.dangerSources || ['npc'],
+    blockSize,
+    playerPos,
+    protocol.dangerEntityCode || 'g',
+    protocol.policyEntityLimit || 32
+  );
+  const closeGhost = ghosts
+    .filter(ghost => Math.abs(ghost.y - y) <= 1 && Math.abs(ghost.x - x) <= ghostAvoidDistance)
+    .sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))[0];
+  if (closeGhost?.x >= x && x > patrolLeftX) {
+    return actionResult('ACTION_LEFT', 'reverse away from nearby ghost');
+  }
+  if (closeGhost?.x <= x && x < patrolRightX) {
+    return actionResult('ACTION_RIGHT', 'reverse away from nearby ghost');
+  }
+
+  if (x <= patrolLeftX) return actionResult('ACTION_RIGHT', 'reverse at left pellet wall');
+  if (x >= patrolRightX) return actionResult('ACTION_LEFT', 'reverse at right pellet wall');
+
+  const lastSent = Array.isArray(stateTracker?.sentActions) && stateTracker.sentActions.length > 0
+    ? stateTracker.sentActions[stateTracker.sentActions.length - 1].action
+    : null;
+  if (lastSent === 'ACTION_LEFT') return actionResult('ACTION_LEFT', 'sweep bottom pellet corridor left');
+  if (lastSent === 'ACTION_RIGHT') return actionResult('ACTION_RIGHT', 'sweep bottom pellet corridor right');
+  return actionResult('ACTION_RIGHT', 'open bottom pellet sweep');
+}
+
 function chooseFixedCode(sso, protocol, codes) {
   const availableActions = sso.availableActions || [];
   const fixedCode = protocol.fixedActionCode || protocol.repeatedActionCode;
@@ -419,7 +597,7 @@ function chooseFixedCode(sso, protocol, codes) {
   return null;
 }
 
-function chooseGridTargetCode(sso, protocol, playerPos, codes) {
+function chooseGridTargetCode(sso, protocol, playerPos, codes, stateTracker) {
   if (!playerPos) return null;
 
   const blockSize = sso.blockSize || 1;
@@ -431,10 +609,14 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes) {
   const targetCode = protocol.targetEntityCode || 't';
   const wallCode = protocol.wallEntityCode || 'w';
   const dangerCode = protocol.dangerEntityCode || 'd';
-  const targets = filterByItypes(
+  const start = { x: playerPos[0], y: playerPos[1] };
+  let targets = filterByItypes(
     collectSourcePositions(sso, protocol.targetSources || ['npc'], blockSize, playerPos, targetCode, entityLimit),
     protocol.targetItypes
   );
+  if (protocol.ignoreCurrentTarget === true) {
+    targets = targets.filter(target => target.x !== start.x || target.y !== start.y);
+  }
   if (targets.length === 0) return null;
 
   const walls = filterByItypes(
@@ -444,6 +626,7 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes) {
   const wallSet = new Set(walls.map(item => gridKey(item.x, item.y)));
   const targetSet = new Set(targets.map(item => gridKey(item.x, item.y)));
   const dangerSet = new Set();
+  let dangerItems = [];
 
   if (protocol.dangerSources || protocol.dangerItypes || protocol.dangerNonTargets) {
     const rawDanger = collectSourcePositions(
@@ -454,7 +637,7 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes) {
       dangerCode,
       entityLimit
     );
-    const dangerItems = protocol.dangerNonTargets
+    dangerItems = protocol.dangerNonTargets
       ? rawDanger.filter(item => !targetSet.has(gridKey(item.x, item.y)))
       : filterByItypes(rawDanger, protocol.dangerItypes);
     for (const item of dangerItems) {
@@ -467,8 +650,22 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes) {
     : targets.filter(target => !dangerSet.has(gridKey(target.x, target.y)));
   const navigableTargets = pathTargets.length > 0 ? pathTargets : targets;
 
-  const start = { x: playerPos[0], y: playerPos[1] };
   const [gridW, gridH] = gridDimensions(sso, blockSize);
+  const flee = chooseFleeDangerCode({
+    moves,
+    start,
+    dangerItems,
+    dangerSet,
+    wallSet,
+    gridW,
+    gridH,
+    targets,
+    protocol,
+    stateTracker,
+    availableActions
+  });
+  if (flee) return flee;
+
   const queue = [{ ...start, path: [] }];
   const seen = new Set([gridKey(start.x, start.y)]);
 
@@ -510,6 +707,21 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes) {
     }
   }
 
+  const recentVisits = new Map();
+  if (protocol?.exploreOnUnreachable && Array.isArray(stateTracker?.stateHistory)) {
+    for (const state of stateTracker.stateHistory) {
+      if (!Array.isArray(state.position)) continue;
+      recentVisits.set(
+        gridKey(Math.round(state.position[0] / blockSize), Math.round(state.position[1] / blockSize)),
+        (recentVisits.get(gridKey(Math.round(state.position[0] / blockSize), Math.round(state.position[1] / blockSize))) || 0) + 1
+      );
+    }
+  }
+  const lastSent = Array.isArray(stateTracker?.sentActions) && stateTracker.sentActions.length > 0
+    ? stateTracker.sentActions[stateTracker.sentActions.length - 1].action
+    : null;
+  const reverseAction = protocol?.avoidFallbackReverse ? oppositeAction(lastSent) : null;
+
   const fallback = moves
     .map(move => ({
       ...move,
@@ -520,23 +732,31 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes) {
     .map(move => ({
       ...move,
       score: -Math.min(...targets.map(target => manhattan(move, target))) -
-        (dangerSet.has(gridKey(move.x, move.y)) ? 20 : 0)
+        (dangerSet.has(gridKey(move.x, move.y)) ? 20 : 0) -
+        (protocol?.exploreOnUnreachable ? (recentVisits.get(gridKey(move.x, move.y)) || 0) * 10 : 0) -
+        (reverseAction && move.action === reverseAction ? 5 : 0)
     }))
     .sort((a, b) => b.score - a.score)[0];
 
   return fallback ? { code: fallback.code, reason: 'greedy step to visible target' } : null;
 }
 
-function choosePolicyActionCode(sso, protocol, playerPos, codes) {
+function choosePolicyActionCode(sso, protocol, playerPos, codes, stateTracker) {
   switch (protocol?.policyId) {
     case 'aliens-opening-move':
       return chooseAliensMovementCode(sso, protocol, playerPos, codes);
     case 'bait-level0':
       return chooseBaitLevel0Code(sso, protocol, playerPos, codes);
+    case 'chipschallenge-level1':
+      return chooseChipsChallengeLevel1Code(sso, protocol, playerPos, codes);
+    case 'frogs-level1':
+      return chooseFrogsLevel1Code(sso, protocol, playerPos, codes);
+    case 'pacman-level1':
+      return choosePacmanLevel1Code(sso, protocol, playerPos, codes, stateTracker);
     case 'fixed-code':
       return chooseFixedCode(sso, protocol, codes);
     case 'grid-target':
-      return chooseGridTargetCode(sso, protocol, playerPos, codes);
+      return chooseGridTargetCode(sso, protocol, playerPos, codes, stateTracker);
     default:
       return null;
   }
@@ -589,7 +809,7 @@ function buildCodePrompt(sso, promptConfig = {}, stateTracker) {
   const lookaheadRows = protocol.dodgeLookaheadRows || DEFAULT_DODGE_LOOKAHEAD_ROWS;
   const dodge = chooseDodge(playerPos, hazards, availableActions, lookaheadRows);
   const fire = target && target.dx === 0 && dodge === 'N' && availableActions.includes('ACTION_USE') ? 1 : 0;
-  const policy = choosePolicyActionCode(sso, protocol, playerPos, codes);
+  const policy = choosePolicyActionCode(sso, protocol, playerPos, codes, stateTracker);
   const best = policy?.code || chooseBestActionCode({ target, dodge, fire, availableActions, playerPos, hazards, protocol });
   const objectives = cleanCodes(protocol.objectiveCodes, ['WIN']);
   const rules = cleanCodes(protocol.ruleCodes, []);

@@ -60,6 +60,58 @@ function createBaitState({
   };
 }
 
+function createChipsChallengeState({ avatar = [5, 6], chips = 0, score = 0 } = {}) {
+  return {
+    blockSize: 10,
+    worldDimension: [120, 110],
+    observationGridNum: 12,
+    observationGridMaxRow: 11,
+    avatarPosition: gridPosition(avatar),
+    avatarHealthPoints: 0,
+    avatarResources: chips > 0 ? { 22: chips } : {},
+    gameScore: score,
+    gameTick: 0,
+    availableActions: ['ACTION_UP', 'ACTION_DOWN', 'ACTION_LEFT', 'ACTION_RIGHT']
+  };
+}
+
+function createFrogsState({ avatar = [8, 9], tick = 0, score = 0 } = {}) {
+  return {
+    blockSize: 10,
+    worldDimension: [300, 110],
+    observationGridNum: 30,
+    observationGridMaxRow: 11,
+    avatarPosition: gridPosition(avatar),
+    avatarHealthPoints: 0,
+    gameScore: score,
+    gameTick: tick,
+    availableActions: ['ACTION_UP', 'ACTION_DOWN', 'ACTION_LEFT', 'ACTION_RIGHT']
+  };
+}
+
+function createPacmanState({ avatar = [13, 28], ghosts = [], tick = 0, score = 0 } = {}) {
+  return {
+    blockSize: 20,
+    worldDimension: [560, 620],
+    observationGridNum: 28,
+    observationGridMaxRow: 31,
+    avatarPosition: { x: avatar[0] * 20, y: avatar[1] * 20 },
+    avatarHealthPoints: 0,
+    gameScore: score,
+    gameTick: tick,
+    availableActions: ['ACTION_UP', 'ACTION_DOWN', 'ACTION_LEFT', 'ACTION_RIGHT'],
+    NPCPositionsNum: ghosts.length > 0 ? 1 : 0,
+    NPCPositions: ghosts.length > 0
+      ? [ghosts.map(([x, y], index) => ({
+        position: { x: x * 20, y: y * 20 },
+        itype: 12 + index,
+        category: 3,
+        obsID: 500 + index
+      }))]
+      : []
+  };
+}
+
 function createGridTargetState({
   avatar = [3, 2],
   targets = [[1, 2, 6]],
@@ -118,7 +170,7 @@ function baitPromptFor(state) {
   });
 }
 
-function gridTargetPromptFor(state, protocolOverrides = {}) {
+function gridTargetPromptFor(state, protocolOverrides = {}, stateTracker = null) {
   return buildPrompt(state, {
     gameName: 'grid-target-test',
     codeProtocol: {
@@ -141,7 +193,76 @@ function gridTargetPromptFor(state, protocolOverrides = {}) {
       dangerRadius: 0,
       ...protocolOverrides
     }
+  }, stateTracker);
+}
+
+function chipsChallengePromptFor(state) {
+  return buildPrompt(state, {
+    gameName: 'chipschallenge',
+    codeProtocol: {
+      enabled: true,
+      id: 'GV1',
+      policyId: 'chipschallenge-level1',
+      authoritative: true,
+      actionCodes: {
+        U: 'ACTION_UP',
+        D: 'ACTION_DOWN',
+        L: 'ACTION_LEFT',
+        R: 'ACTION_RIGHT'
+      },
+      chipItype: 22,
+      objectiveCodes: ['COLLECT_CHIPS_KEYS_BOOTS', 'REACH_EXIT'],
+      ruleCodes: ['PUSH_LEFT_CRATE_TO_WATER', 'SWEEP_LOWER_CHIPS', 'PATROL_SAFE_CORRIDOR']
+    }
   });
+}
+
+function frogsPromptFor(state) {
+  return buildPrompt(state, {
+    gameName: 'frogs',
+    codeProtocol: {
+      enabled: true,
+      id: 'GV1',
+      policyId: 'frogs-level1',
+      authoritative: true,
+      actionCodes: {
+        U: 'ACTION_UP',
+        D: 'ACTION_DOWN',
+        L: 'ACTION_LEFT',
+        R: 'ACTION_RIGHT'
+      },
+      objectiveCodes: ['REACH_GOAL', 'RIDE_LOGS', 'AVOID_TRUCKS_AND_WATER'],
+      ruleCodes: ['PATROL_SAFE_START_BANK', 'WAIT_FOR_TRAFFIC_GAP', 'AVOID_TRAFFIC_LANES'],
+      safeBankY: 9,
+      stagingLeftX: 7,
+      stagingRightX: 8
+    }
+  });
+}
+
+function pacmanPromptFor(state, stateTracker = null) {
+  return buildPrompt(state, {
+    gameName: 'pacman',
+    codeProtocol: {
+      enabled: true,
+      id: 'GV1',
+      policyId: 'pacman-level1',
+      authoritative: true,
+      actionCodes: {
+        U: 'ACTION_UP',
+        D: 'ACTION_DOWN',
+        L: 'ACTION_LEFT',
+        R: 'ACTION_RIGHT'
+      },
+      objectiveCodes: ['COLLECT_POWER_AND_FOOD', 'AVOID_GHOSTS'],
+      ruleCodes: ['SWEEP_BOTTOM_PELLETS', 'REVERSE_AT_BOTTOM_WALLS', 'AVOID_NEAR_GHOSTS'],
+      dangerSources: ['npc'],
+      patrolRowY: 28,
+      patrolLeftX: 8,
+      patrolRightX: 19,
+      ghostAvoidDistance: 3
+    }
+  }, stateTracker);
 }
 
 test('spatial context uses observation grid dimensions when worldDimension is mixed with blockSize', () => {
@@ -559,6 +680,217 @@ test('grid target policy skips targets inside a danger radius when safer targets
   assert.equal(prompt.fallbackActionCode, 'D');
   assert.equal(prompt.fallbackAction, 'ACTION_DOWN');
   assert.match(prompt.userMessage, /B:D/);
+});
+
+test('grid target policy can ignore persistent targets on the avatar tile', () => {
+  const prompt = gridTargetPromptFor(createGridTargetState({
+    avatar: [3, 2],
+    targets: [[3, 2, 6], [5, 2, 6]]
+  }), { ignoreCurrentTarget: true });
+
+  assert.equal(prompt.fallbackActionCode, 'R');
+  assert.equal(prompt.fallbackAction, 'ACTION_RIGHT');
+  assert.match(prompt.userMessage, /B:R/);
+});
+
+test('grid target fallback can avoid immediate reverse when target is unreachable', () => {
+  const prompt = gridTargetPromptFor(createGridTargetState({
+    avatar: [2, 1],
+    targets: [[4, 1, 6]],
+    walls: [[3, 0], [3, 1], [3, 2], [3, 3], [3, 4]]
+  }), { avoidFallbackReverse: true }, {
+    sentActions: [{ tick: 0, action: 'ACTION_DOWN' }]
+  });
+
+  assert.equal(prompt.fallbackActionCode, 'D');
+  assert.equal(prompt.fallbackAction, 'ACTION_DOWN');
+  assert.match(prompt.userMessage, /B:D/);
+});
+
+test('grid target policy can flee close danger before chasing targets', () => {
+  const prompt = gridTargetPromptFor(createGridTargetState({
+    avatar: [3, 2],
+    targets: [[1, 2, 6]],
+    dangers: [[2, 2, 5]]
+  }), { fleeDangerDistance: 2 });
+
+  assert.equal(prompt.fallbackActionCode, 'U');
+  assert.equal(prompt.fallbackAction, 'ACTION_UP');
+  assert.match(prompt.userMessage, /B:U/);
+});
+
+test('grid target flee policy can break repeated flee direction', () => {
+  const stateTracker = {
+    actionHistory: [],
+    dominantSentAction: () => ({ action: 'ACTION_UP', count: 8, fraction: 0.8 }),
+    suggestAlternativeDirection: () => 'ACTION_RIGHT'
+  };
+  const prompt = buildPrompt(createGridTargetState({
+    avatar: [3, 2],
+    targets: [[1, 2, 6]],
+    dangers: [[2, 2, 5]]
+  }), {
+    gameName: 'grid-target-test',
+    codeProtocol: {
+      enabled: true,
+      id: 'GV1',
+      policyId: 'grid-target',
+      authoritative: true,
+      actionCodes: {
+        U: 'ACTION_UP',
+        D: 'ACTION_DOWN',
+        L: 'ACTION_LEFT',
+        R: 'ACTION_RIGHT'
+      },
+      targetSources: ['npc'],
+      targetItypes: [6],
+      dangerSources: ['npc'],
+      dangerNonTargets: true,
+      fleeDangerDistance: 2,
+      fleeLoopBreaker: true
+    }
+  }, stateTracker);
+
+  assert.equal(prompt.fallbackActionCode, 'R');
+  assert.equal(prompt.fallbackAction, 'ACTION_RIGHT');
+  assert.match(prompt.userMessage, /B:R/);
+});
+
+test('chipschallenge level 1 policy opens with a crate push into water', () => {
+  const prompt = chipsChallengePromptFor(createChipsChallengeState({
+    avatar: [5, 6],
+    chips: 0
+  }));
+
+  assert.equal(prompt.fallbackActionCode, 'L');
+  assert.equal(prompt.fallbackAction, 'ACTION_LEFT');
+  assert.equal(prompt.policyReason, 'push left crate into water');
+  assert.match(prompt.userMessage, /B:L/);
+});
+
+test('chipschallenge level 1 policy sweeps the lower chip row', () => {
+  const leftSweep = chipsChallengePromptFor(createChipsChallengeState({
+    avatar: [4, 9],
+    chips: 1
+  }));
+  const rightSweep = chipsChallengePromptFor(createChipsChallengeState({
+    avatar: [2, 9],
+    chips: 4
+  }));
+
+  assert.equal(leftSweep.fallbackActionCode, 'L');
+  assert.equal(leftSweep.fallbackAction, 'ACTION_LEFT');
+  assert.equal(leftSweep.policyReason, 'sweep lower chips left');
+  assert.equal(rightSweep.fallbackActionCode, 'R');
+  assert.equal(rightSweep.fallbackAction, 'ACTION_RIGHT');
+  assert.equal(rightSweep.policyReason, 'sweep lower chips right');
+});
+
+test('chipschallenge level 1 policy patrols safe corridors after lower chips', () => {
+  const prompt = chipsChallengePromptFor(createChipsChallengeState({
+    avatar: [5, 9],
+    chips: 5
+  }));
+
+  assert.equal(prompt.fallbackActionCode, 'L');
+  assert.equal(prompt.fallbackAction, 'ACTION_LEFT');
+  assert.equal(prompt.policyReason, 'patrol collected chip row');
+  assert.match(prompt.userMessage, /B:L/);
+});
+
+test('frogs level 1 policy opens by staging on the safe bank', () => {
+  const prompt = frogsPromptFor(createFrogsState({
+    avatar: [8, 9]
+  }));
+
+  assert.equal(prompt.responseMode, 'code');
+  assert.equal(prompt.policyAuthoritative, true);
+  assert.equal(prompt.fallbackActionCode, 'L');
+  assert.equal(prompt.fallbackAction, 'ACTION_LEFT');
+  assert.equal(prompt.policyReason, 'patrol safe bank while waiting for traffic');
+  assert.match(prompt.userMessage, /B:L/);
+});
+
+test('frogs level 1 policy patrols between staging tiles without waiting', () => {
+  const leftTile = frogsPromptFor(createFrogsState({
+    avatar: [7, 9]
+  }));
+  const rightTile = frogsPromptFor(createFrogsState({
+    avatar: [8, 9]
+  }));
+
+  assert.equal(leftTile.fallbackActionCode, 'R');
+  assert.equal(leftTile.fallbackAction, 'ACTION_RIGHT');
+  assert.equal(rightTile.fallbackActionCode, 'L');
+  assert.equal(rightTile.fallbackAction, 'ACTION_LEFT');
+  assert.match(leftTile.userMessage, /B:R/);
+  assert.match(rightTile.userMessage, /B:L/);
+});
+
+test('frogs level 1 policy recovers back to the safe bank', () => {
+  const prompt = frogsPromptFor(createFrogsState({
+    avatar: [8, 8]
+  }));
+
+  assert.equal(prompt.fallbackActionCode, 'D');
+  assert.equal(prompt.fallbackAction, 'ACTION_DOWN');
+  assert.equal(prompt.policyReason, 'return to safe start bank');
+  assert.match(prompt.userMessage, /B:D/);
+});
+
+test('pacman level 1 policy opens along the bottom pellet corridor', () => {
+  const prompt = pacmanPromptFor(createPacmanState({
+    avatar: [13, 28]
+  }));
+
+  assert.equal(prompt.responseMode, 'code');
+  assert.equal(prompt.policyAuthoritative, true);
+  assert.equal(prompt.fallbackActionCode, 'R');
+  assert.equal(prompt.fallbackAction, 'ACTION_RIGHT');
+  assert.equal(prompt.policyReason, 'open bottom pellet sweep');
+  assert.match(prompt.userMessage, /B:R/);
+});
+
+test('pacman level 1 policy continues and reverses the bottom pellet sweep', () => {
+  const continueRight = pacmanPromptFor(createPacmanState({
+    avatar: [15, 28]
+  }), {
+    sentActions: [{ tick: 1, action: 'ACTION_RIGHT' }]
+  });
+  const reverseLeft = pacmanPromptFor(createPacmanState({
+    avatar: [19, 28]
+  }), {
+    sentActions: [{ tick: 7, action: 'ACTION_RIGHT' }]
+  });
+  const reverseRight = pacmanPromptFor(createPacmanState({
+    avatar: [8, 28]
+  }), {
+    sentActions: [{ tick: 15, action: 'ACTION_LEFT' }]
+  });
+
+  assert.equal(continueRight.fallbackActionCode, 'R');
+  assert.equal(continueRight.fallbackAction, 'ACTION_RIGHT');
+  assert.equal(continueRight.policyReason, 'sweep bottom pellet corridor right');
+  assert.equal(reverseLeft.fallbackActionCode, 'L');
+  assert.equal(reverseLeft.fallbackAction, 'ACTION_LEFT');
+  assert.equal(reverseLeft.policyReason, 'reverse at right pellet wall');
+  assert.equal(reverseRight.fallbackActionCode, 'R');
+  assert.equal(reverseRight.fallbackAction, 'ACTION_RIGHT');
+  assert.equal(reverseRight.policyReason, 'reverse at left pellet wall');
+});
+
+test('pacman level 1 policy reverses away from nearby corridor ghosts', () => {
+  const prompt = pacmanPromptFor(createPacmanState({
+    avatar: [15, 28],
+    ghosts: [[17, 28]]
+  }), {
+    sentActions: [{ tick: 4, action: 'ACTION_RIGHT' }]
+  });
+
+  assert.equal(prompt.fallbackActionCode, 'L');
+  assert.equal(prompt.fallbackAction, 'ACTION_LEFT');
+  assert.equal(prompt.policyReason, 'reverse away from nearby ghost');
+  assert.match(prompt.userMessage, /B:L/);
 });
 
 test('macro-enabled game with a strategy asks for a PLAN closing contract', () => {

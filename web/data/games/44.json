@@ -11,7 +11,59 @@
     "maxTokens": 100,
     "temperature": 0.5
   },
-  "updatedAt": "2026-07-02T01:39:27.625Z",
+  "actionAliases": {
+    "ACTION_NIL": "WAIT",
+    "ACTION_UP": "UP",
+    "ACTION_DOWN": "DOWN",
+    "ACTION_LEFT": "LEFT",
+    "ACTION_RIGHT": "RIGHT"
+  },
+  "codeProtocol": {
+    "enabled": true,
+    "id": "GV1",
+    "policyId": "frogs-level1",
+    "authoritative": true,
+    "actionCodes": {
+      "U": "ACTION_UP",
+      "D": "ACTION_DOWN",
+      "L": "ACTION_LEFT",
+      "R": "ACTION_RIGHT"
+    },
+    "entityCodes": {
+      "movable": "m",
+      "portal": "g",
+      "static": "x"
+    },
+    "objectiveCodes": [
+      "REACH_GOAL",
+      "RIDE_LOGS",
+      "AVOID_TRUCKS_AND_WATER"
+    ],
+    "ruleCodes": [
+      "PATROL_SAFE_START_BANK",
+      "WAIT_FOR_TRAFFIC_GAP",
+      "AVOID_TRAFFIC_LANES"
+    ],
+    "safeBankY": 9,
+    "stagingLeftX": 7,
+    "stagingRightX": 8,
+    "targetSources": [
+      "portal"
+    ],
+    "targetEntityCode": "g",
+    "wallSources": [
+      "immovable"
+    ],
+    "wallItypes": [
+      0
+    ],
+    "dangerSources": [
+      "movable"
+    ],
+    "dangerRadius": 1,
+    "policyEntityLimit": 256
+  },
+  "updatedAt": "2026-07-09T07:30:00.000Z",
   "classification": {
     "classifierVersion": 1,
     "archetype": "chaser",

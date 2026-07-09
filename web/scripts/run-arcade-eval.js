@@ -18,6 +18,8 @@ function parseArgs(argv) {
       options.ollamaOffline = true;
     } else if (arg === '--all') {
       options.limit = null;
+    } else if (arg === '--featured-qualification') {
+      options.featuredQualification = true;
     } else if (arg === '--game-count') {
       options.gameCount = next;
       i++;
@@ -58,6 +60,9 @@ function parseArgs(argv) {
     } else if (arg === '--max-actions') {
       options.maxActions = next;
       i++;
+    } else if (arg === '--env-file') {
+      options.envFile = next;
+      i++;
     } else if (arg === '--out') {
       options.out = next;
       i++;
@@ -72,9 +77,9 @@ function defaultOutputPath() {
 }
 
 async function main() {
-  const envLoad = await loadRootEnv();
-  const { runArcadeBatchEvaluation } = require('../lib/batch-evaluator');
   const options = parseArgs(process.argv.slice(2));
+  const envLoad = await loadRootEnv({ path: options.envFile });
+  const { runArcadeBatchEvaluation } = require('../lib/batch-evaluator');
   if (envLoad.timedOut) {
     console.warn(`[Eval] skipped root .env after ${envLoad.timeoutMs}ms; using process environment`);
   }

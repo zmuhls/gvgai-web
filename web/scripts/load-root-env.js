@@ -38,7 +38,8 @@ function readEnvFileWithTimeout(filePath, timeoutMs) {
 
 async function loadRootEnv(options = {}) {
   const env = options.env || process.env;
-  const envPath = path.resolve(options.path || path.resolve(__dirname, '..', '..', '.env'));
+  const requestedPath = options.path || env.GVGAI_ENV_FILE;
+  const envPath = path.resolve(requestedPath || path.resolve(__dirname, '..', '..', '.env'));
   const timeoutMs = Number.isInteger(options.timeoutMs) && options.timeoutMs > 0 ? options.timeoutMs : 2000;
 
   if (options.skip || env.TELEMETRY_SKIP_DOTENV === 'true') {

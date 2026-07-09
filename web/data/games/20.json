@@ -11,6 +11,61 @@
     "maxTokens": 100,
     "temperature": 0.5
   },
+  "actionAliases": {
+    "ACTION_USE": "BOMB",
+    "ACTION_NIL": "WAIT",
+    "ACTION_UP": "UP",
+    "ACTION_DOWN": "DOWN",
+    "ACTION_LEFT": "LEFT",
+    "ACTION_RIGHT": "RIGHT"
+  },
+  "codeProtocol": {
+    "enabled": true,
+    "id": "GV1",
+    "policyId": "grid-target",
+    "authoritative": false,
+    "actionCodes": {
+      "N": "ACTION_NIL",
+      "U": "ACTION_UP",
+      "D": "ACTION_DOWN",
+      "L": "ACTION_LEFT",
+      "R": "ACTION_RIGHT",
+      "F": "ACTION_USE"
+    },
+    "entityCodes": {
+      "npc": "t",
+      "movable": "m",
+      "portal": "p",
+      "static": "x"
+    },
+    "objectiveCodes": [
+      "BOMB_TANKS",
+      "CLEAR_PORTAL_BASES",
+      "AVOID_SAM"
+    ],
+    "ruleCodes": [
+      "PATH_TO_TANK_OR_BASE",
+      "DROP_BOMB_WHEN_ALIGNED",
+      "AVOID_MISSILES"
+    ],
+    "targetSources": [
+      "npc",
+      "portal"
+    ],
+    "targetEntityCode": "t",
+    "wallSources": [
+      "immovable"
+    ],
+    "wallItypes": [
+      0
+    ],
+    "dangerSources": [
+      "movable",
+      "fromAvatar"
+    ],
+    "dangerRadius": 1,
+    "policyEntityLimit": 256
+  },
   "updatedAt": "2026-07-02T01:39:27.621Z",
   "classification": {
     "classifierVersion": 1,

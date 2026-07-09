@@ -47,6 +47,20 @@ test('telemetry env loader reads a provided env file without mutating existing k
   fs.rmSync(filePath, { force: true });
 });
 
+test('telemetry env loader honors GVGAI_ENV_FILE when no path is passed', async () => {
+  const filePath = path.join(os.tmpdir(), `gvgai-env-var-${Date.now()}.env`);
+  fs.writeFileSync(filePath, 'SUPABASE_URL=https://env-var.supabase.co\n', 'utf-8');
+  const env = { GVGAI_ENV_FILE: filePath };
+
+  const result = await loadRootEnv({ env });
+
+  assert.equal(result.loaded, true);
+  assert.equal(result.path, filePath);
+  assert.equal(env.SUPABASE_URL, 'https://env-var.supabase.co');
+
+  fs.rmSync(filePath, { force: true });
+});
+
 test('telemetry check row matches migration constraints', () => {
   const row = buildCheckRow(new Date('2026-06-19T12:00:00.000Z'));
 

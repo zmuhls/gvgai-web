@@ -28,6 +28,28 @@ test('selected arcade games have code protocols disabled for natural-language pr
   }
 });
 
+test('all featured games resolve prompt support', () => {
+  const featuredIds = [0, 10, 14, 18, 13, 19, 20, 22, 30, 68, 44, 50, 15, 26, 63];
+
+  for (const gameId of featuredIds) {
+    const config = resolveGamePromptConfig(gameId, 1);
+    assert.equal(config.gameId, gameId);
+    assert.ok(config.gameName);
+    assert.ok(config.gameContent || config.codeProtocol?.enabled);
+  }
+});
+
+test('all featured games expose readable action aliases', () => {
+  const featuredIds = [0, 10, 14, 18, 13, 19, 20, 22, 30, 68, 44, 50, 15, 26, 63];
+
+  for (const gameId of featuredIds) {
+    const config = resolveGamePromptConfig(gameId, 1);
+    assert.equal(config.actionAliases?.ACTION_NIL, 'WAIT', `${config.gameName} wait alias`);
+    assert.equal(config.actionAliases?.ACTION_LEFT, 'LEFT', `${config.gameName} left alias`);
+    assert.equal(config.actionAliases?.ACTION_RIGHT, 'RIGHT', `${config.gameName} right alias`);
+  }
+});
+
 test('boulderchase uses compact diamond-target guidance', () => {
   const config = resolveGamePromptConfig(10, 1);
 
@@ -39,6 +61,57 @@ test('boulderchase uses compact diamond-target guidance', () => {
   assert.deepEqual(config.codeProtocol.wallItypes, [0]);
 });
 
+test('cakybaky uses compact ingredient guidance with chef avoidance', () => {
+  const config = resolveGamePromptConfig(14, 1);
+
+  assert.equal(config.gameName, 'cakybaky');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['resource']);
+  assert.deepEqual(config.codeProtocol.dangerSources, ['npc']);
+  assert.equal(config.codeProtocol.dangerRadius, 1);
+});
+
+test('chipschallenge uses compact resource guidance', () => {
+  const config = resolveGamePromptConfig(19, 1);
+
+  assert.equal(config.gameName, 'chipschallenge');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'chipschallenge-level1');
+  assert.equal(config.codeProtocol.authoritative, true);
+  assert.equal(config.codeProtocol.chipItype, 22);
+  assert.deepEqual(config.codeProtocol.ruleCodes, [
+    'PUSH_LEFT_CRATE_TO_WATER',
+    'SWEEP_LOWER_CHIPS',
+    'PATROL_SAFE_CORRIDOR'
+  ]);
+});
+
+test('chopper uses compact tank and base guidance', () => {
+  const config = resolveGamePromptConfig(20, 1);
+
+  assert.equal(config.gameName, 'chopper');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['npc', 'portal']);
+  assert.deepEqual(config.codeProtocol.dangerSources, ['movable', 'fromAvatar']);
+});
+
+test('clusters uses compact box-target guidance with hole avoidance', () => {
+  const config = resolveGamePromptConfig(22, 1);
+
+  assert.equal(config.gameName, 'clusters');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['movable']);
+  assert.equal(config.codeProtocol.targetEntityCode, 'b');
+  assert.deepEqual(config.codeProtocol.dangerSources, ['portal']);
+  assert.equal(config.codeProtocol.dangerRadius, 1);
+});
+
 test('butterflies uses compact butterfly-target guidance', () => {
   const config = resolveGamePromptConfig(13, 1);
 
@@ -48,6 +121,45 @@ test('butterflies uses compact butterfly-target guidance', () => {
   assert.equal(config.codeProtocol.authoritative, false);
   assert.deepEqual(config.codeProtocol.targetSources, ['npc']);
   assert.deepEqual(config.codeProtocol.targetItypes, [5]);
+});
+
+test('pacman uses compact power guidance with ghost avoidance', () => {
+  const config = resolveGamePromptConfig(68, 1);
+
+  assert.equal(config.gameName, 'pacman');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'pacman-level1');
+  assert.equal(config.codeProtocol.authoritative, true);
+  assert.deepEqual(config.codeProtocol.targetSources, ['resource']);
+  assert.deepEqual(config.codeProtocol.dangerSources, ['npc']);
+  assert.equal(config.codeProtocol.patrolRowY, 28);
+  assert.equal(config.codeProtocol.patrolLeftX, 8);
+  assert.equal(config.codeProtocol.patrolRightX, 19);
+  assert.equal(config.codeProtocol.ghostAvoidDistance, 3);
+  assert.deepEqual(config.codeProtocol.ruleCodes, [
+    'SWEEP_BOTTOM_PELLETS',
+    'REVERSE_AT_BOTTOM_WALLS',
+    'AVOID_NEAR_GHOSTS'
+  ]);
+});
+
+test('frogs uses compact goal guidance with traffic avoidance', () => {
+  const config = resolveGamePromptConfig(44, 1);
+
+  assert.equal(config.gameName, 'frogs');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'frogs-level1');
+  assert.equal(config.codeProtocol.authoritative, true);
+  assert.deepEqual(config.codeProtocol.targetSources, ['portal']);
+  assert.deepEqual(config.codeProtocol.dangerSources, ['movable']);
+  assert.equal(config.codeProtocol.safeBankY, 9);
+  assert.equal(config.codeProtocol.stagingLeftX, 7);
+  assert.equal(config.codeProtocol.stagingRightX, 8);
+  assert.deepEqual(config.codeProtocol.ruleCodes, [
+    'PATROL_SAFE_START_BANK',
+    'WAIT_FOR_TRAFFIC_GAP',
+    'AVOID_TRAFFIC_LANES'
+  ]);
 });
 
 test('chase uses compact scared-goat target guidance', () => {
@@ -181,9 +293,15 @@ test('link uses compact resource guidance', () => {
   assert.equal(config.codeProtocol.enabled, true);
   assert.equal(config.codeProtocol.policyId, 'grid-target');
   assert.equal(config.codeProtocol.authoritative, false);
-  assert.deepEqual(config.codeProtocol.targetSources, ['resource']);
+  assert.deepEqual(config.codeProtocol.targetSources, ['resource', 'portal']);
+  assert.deepEqual(config.codeProtocol.targetItypes, [4, 26]);
   assert.equal(config.codeProtocol.targetEntityCode, 'r');
   assert.deepEqual(config.codeProtocol.wallSources, ['immovable']);
+  assert.deepEqual(config.codeProtocol.wallItypes, [29, 30]);
+  assert.deepEqual(config.codeProtocol.dangerItypes, [8, 9, 10, 11]);
+  assert.equal(config.codeProtocol.ignoreCurrentTarget, true);
+  assert.equal(config.codeProtocol.exploreOnUnreachable, true);
+  assert.equal(config.codeProtocol.avoidFallbackReverse, true);
 });
 
 test('superman uses compact portal guidance', () => {

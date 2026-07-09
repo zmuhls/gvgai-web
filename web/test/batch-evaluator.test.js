@@ -3,6 +3,7 @@ const test = require('node:test');
 
 const {
   buildBatchPlan,
+  defaultMaxActionsForCase,
   selectEvalCases,
   runEvalCase,
   runArcadeBatchEvaluation,
@@ -17,6 +18,16 @@ test('batch plan defaults to featured arcade games and prompt strategies', () =>
   assert.equal(plan.modelIds.length, 1);
   assert.equal(cases.length, 3);
   assert.deepEqual(cases.map(evalCase => evalCase.strategyId), ['safe', 'points', 'puzzle']);
+});
+
+test('featured qualification selects the full planned sweep by default', () => {
+  const plan = buildBatchPlan({ featuredQualification: true, modelIds: 'gpt-oss:120b' });
+  const cases = selectEvalCases(plan, { featuredQualification: true });
+
+  assert.equal(plan.gameIds.length, 15);
+  assert.ok(plan.models.length >= 8);
+  assert.equal(cases.length, plan.cases.length);
+  assert.ok(cases.every(evalCase => evalCase.levelId === 1));
 });
 
 test('dry run returns selected cases without starting games', async () => {
@@ -145,6 +156,11 @@ test('runEvalCase passes response type overrides to the live client', async () =
   assert.equal(receivedOptions.synchronousActions, true);
   assert.equal(receivedOptions.preferProviderFallback, true);
   assert.equal(result.finalScore, 3);
+});
+
+test('featured qualification action budget covers class survival thresholds', async () => {
+  assert.equal(defaultMaxActionsForCase({ archetype: 'pusher-puzzle' }, { featuredQualification: true }), 85);
+  assert.equal(defaultMaxActionsForCase({ archetype: 'pusher-puzzle' }, {}), 40);
 });
 
 test('prompt comparison marks different outcomes as meaningful', () => {
