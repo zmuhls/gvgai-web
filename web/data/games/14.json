@@ -11,6 +11,13 @@
     "maxTokens": 100,
     "temperature": 0.5
   },
+  "actionAliases": {
+    "ACTION_NIL": "WAIT",
+    "ACTION_UP": "UP",
+    "ACTION_DOWN": "DOWN",
+    "ACTION_LEFT": "LEFT",
+    "ACTION_RIGHT": "RIGHT"
+  },
   "codeProtocol": {
     "enabled": true,
     "id": "GV1",

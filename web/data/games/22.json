@@ -11,6 +11,54 @@
     "maxTokens": 100,
     "temperature": 0.5
   },
+  "actionAliases": {
+    "ACTION_NIL": "WAIT",
+    "ACTION_UP": "UP",
+    "ACTION_DOWN": "DOWN",
+    "ACTION_LEFT": "LEFT",
+    "ACTION_RIGHT": "RIGHT"
+  },
+  "codeProtocol": {
+    "enabled": true,
+    "id": "GV1",
+    "policyId": "grid-target",
+    "authoritative": false,
+    "actionCodes": {
+      "U": "ACTION_UP",
+      "D": "ACTION_DOWN",
+      "L": "ACTION_LEFT",
+      "R": "ACTION_RIGHT"
+    },
+    "entityCodes": {
+      "movable": "b",
+      "portal": "h",
+      "static": "x"
+    },
+    "objectiveCodes": [
+      "PUSH_BOXES_TO_MATCHING_BLOCKS",
+      "AVOID_HOLES"
+    ],
+    "ruleCodes": [
+      "PATH_TO_VISIBLE_BOX",
+      "PUSH_TOWARD_MATCHING_BLOCK",
+      "AVOID_HOLES"
+    ],
+    "targetSources": [
+      "movable"
+    ],
+    "targetEntityCode": "b",
+    "wallSources": [
+      "immovable"
+    ],
+    "wallItypes": [
+      0
+    ],
+    "dangerSources": [
+      "portal"
+    ],
+    "dangerRadius": 1,
+    "policyEntityLimit": 256
+  },
   "updatedAt": "2026-07-02T01:39:27.622Z",
   "classification": {
     "classifierVersion": 1,

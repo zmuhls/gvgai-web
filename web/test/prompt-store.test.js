@@ -39,6 +39,17 @@ test('all featured games resolve prompt support', () => {
   }
 });
 
+test('all featured games expose readable action aliases', () => {
+  const featuredIds = [0, 10, 14, 18, 13, 19, 20, 22, 30, 68, 44, 50, 15, 26, 63];
+
+  for (const gameId of featuredIds) {
+    const config = resolveGamePromptConfig(gameId, 1);
+    assert.equal(config.actionAliases?.ACTION_NIL, 'WAIT', `${config.gameName} wait alias`);
+    assert.equal(config.actionAliases?.ACTION_LEFT, 'LEFT', `${config.gameName} left alias`);
+    assert.equal(config.actionAliases?.ACTION_RIGHT, 'RIGHT', `${config.gameName} right alias`);
+  }
+});
+
 test('boulderchase uses compact diamond-target guidance', () => {
   const config = resolveGamePromptConfig(10, 1);
 
@@ -82,6 +93,19 @@ test('chopper uses compact tank and base guidance', () => {
   assert.equal(config.codeProtocol.authoritative, false);
   assert.deepEqual(config.codeProtocol.targetSources, ['npc', 'portal']);
   assert.deepEqual(config.codeProtocol.dangerSources, ['movable', 'fromAvatar']);
+});
+
+test('clusters uses compact box-target guidance with hole avoidance', () => {
+  const config = resolveGamePromptConfig(22, 1);
+
+  assert.equal(config.gameName, 'clusters');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['movable']);
+  assert.equal(config.codeProtocol.targetEntityCode, 'b');
+  assert.deepEqual(config.codeProtocol.dangerSources, ['portal']);
+  assert.equal(config.codeProtocol.dangerRadius, 1);
 });
 
 test('butterflies uses compact butterfly-target guidance', () => {

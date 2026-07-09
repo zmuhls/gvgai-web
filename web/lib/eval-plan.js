@@ -85,8 +85,8 @@ function sanitizeRunPart(value) {
     .replace(/^-+|-+$/g, '');
 }
 
-function boundedGameCount(requested, available) {
-  const count = Number.isInteger(requested) && requested > 0 ? requested : DEFAULT_GAME_COUNT;
+function boundedGameCount(requested, available, fallback = DEFAULT_GAME_COUNT) {
+  const count = Number.isInteger(requested) && requested > 0 ? requested : fallback;
   return Math.min(count, available);
 }
 
@@ -110,8 +110,13 @@ function normalizeStrategies(strategies) {
 function buildArcadeEvalPlan(options = {}) {
   const root = options.projectRoot || projectRoot();
   const registry = readGameRegistry(root);
-  const featuredIds = Array.isArray(options.gameIds) ? options.gameIds.map(Number) : readFeaturedIds();
-  const count = boundedGameCount(options.gameCount, featuredIds.length);
+  const explicitGameIds = Array.isArray(options.gameIds);
+  const featuredIds = explicitGameIds ? options.gameIds.map(Number) : readFeaturedIds();
+  const count = boundedGameCount(
+    options.gameCount,
+    featuredIds.length,
+    explicitGameIds ? featuredIds.length : DEFAULT_GAME_COUNT
+  );
   const gameIds = featuredIds.slice(0, count);
   const strategies = normalizeStrategies(options.strategies || DEFAULT_STRATEGIES);
   const models = (options.models || MODELS.filter(model => model.featured)).map(model => ({
