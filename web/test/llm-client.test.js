@@ -289,7 +289,7 @@ test('requestLLMAction sends GV1 code tape and maps compact output to GVGAI acti
     gameName: 'aliens',
     systemContent: 'paragraph system prompt should be bypassed',
     gameContent: 'Space invaders variant. Aliens scroll horizontally and drop bombs.',
-    llmSettings: { maxTokens: 8, temperature: 0.1 },
+    llmSettings: { maxTokens: 100, temperature: 0.1 },
     codeProtocol: {
       enabled: true,
       id: 'GV1',

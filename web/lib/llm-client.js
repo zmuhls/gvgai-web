@@ -920,7 +920,13 @@ class LLMClient {
     const userContent = [outcomeContext, userMessage].filter(Boolean).join('\n\n');
     messages.push({ role: 'user', content: userContent });
 
-    const settings = this.promptConfig?.llmSettings || {};
+    const settings = { ...(this.promptConfig?.llmSettings || {}) };
+    if (responseMode === 'code') {
+      const configuredMaxTokens = Number(settings.maxTokens);
+      if (!Number.isFinite(configuredMaxTokens) || configuredMaxTokens > 8) {
+        settings.maxTokens = 8;
+      }
+    }
     const resolved = resolveModel(this.model);
     const startTime = Date.now();
     let llmResponse;
