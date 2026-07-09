@@ -116,7 +116,7 @@ const PREVIEW_MODELS = [
   {
     id: 'gemma3:12b',
     name: 'Gemma 3 12B',
-    description: '',
+    description: 'Open-weight model',
     featured: true
   },
   {
@@ -613,7 +613,7 @@ function annotateGameCardsWithTraces() {
 // Render models dropdown (featured frontier models first, one selected by default)
 function renderModels(models) {
   modelSelect.innerHTML = models.map(model => `
-    <option value="${escapeHtml(model.id)}">${escapeHtml(model.name)}${model.featured ? ' ★' : ''}${model.description ? ` — ${escapeHtml(model.description)}` : ''}</option>
+    <option value="${escapeHtml(model.id)}">${escapeHtml(model.name)}${model.featured ? ' ★' : ''} — ${escapeHtml(model.description)}</option>
   `).join('');
   const defaultModel = models.find(m => m.featured) || models[0];
   if (defaultModel) modelSelect.value = defaultModel.id;
