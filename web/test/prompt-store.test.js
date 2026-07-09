@@ -73,3 +73,16 @@ test('camelRace uses compact portal target guidance', () => {
   assert.equal(config.codeProtocol.targetEntityCode, 'g');
   assert.deepEqual(config.codeProtocol.wallItypes, [0]);
 });
+
+test('digdug uses compact gem target guidance', () => {
+  const config = resolveGamePromptConfig(30, 1);
+
+  assert.equal(config.gameName, 'digdug');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['immovable']);
+  assert.deepEqual(config.codeProtocol.targetItypes, [5]);
+  assert.deepEqual(config.codeProtocol.wallItypes, [0, 4]);
+  assert.deepEqual(config.codeProtocol.dangerSources, ['movable']);
+});

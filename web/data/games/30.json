@@ -11,6 +11,52 @@
     "maxTokens": 100,
     "temperature": 0.5
   },
+  "codeProtocol": {
+    "enabled": true,
+    "id": "GV1",
+    "policyId": "grid-target",
+    "authoritative": false,
+    "actionCodes": {
+      "N": "ACTION_NIL",
+      "U": "ACTION_UP",
+      "D": "ACTION_DOWN",
+      "L": "ACTION_LEFT",
+      "R": "ACTION_RIGHT",
+      "F": "ACTION_USE"
+    },
+    "entityCodes": {
+      "movable": "m",
+      "static": "x",
+      "resource": "g"
+    },
+    "objectiveCodes": [
+      "COLLECT_GEMS",
+      "AVOID_MONSTER"
+    ],
+    "ruleCodes": [
+      "PATH_TO_GEM",
+      "AVOID_MONSTER"
+    ],
+    "targetSources": [
+      "immovable"
+    ],
+    "targetItypes": [
+      5
+    ],
+    "targetEntityCode": "g",
+    "wallSources": [
+      "immovable"
+    ],
+    "wallItypes": [
+      0,
+      4
+    ],
+    "dangerSources": [
+      "movable"
+    ],
+    "dangerRadius": 1,
+    "policyEntityLimit": 256
+  },
   "updatedAt": "2026-07-02T01:39:27.623Z",
   "classification": {
     "classifierVersion": 1,
