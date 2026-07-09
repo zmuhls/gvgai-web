@@ -123,3 +123,15 @@ test('firecaster uses compact mana target guidance', () => {
   assert.deepEqual(config.codeProtocol.targetItypes, [6]);
   assert.deepEqual(config.codeProtocol.wallItypes, [0, 5]);
 });
+
+test('garbagecollector uses compact garbage target guidance', () => {
+  const config = resolveGamePromptConfig(45, 1);
+
+  assert.equal(config.gameName, 'garbagecollector');
+  assert.equal(config.codeProtocol.enabled, true);
+  assert.equal(config.codeProtocol.policyId, 'grid-target');
+  assert.equal(config.codeProtocol.authoritative, false);
+  assert.deepEqual(config.codeProtocol.targetSources, ['movable']);
+  assert.deepEqual(config.codeProtocol.targetItypes, [4]);
+  assert.deepEqual(config.codeProtocol.wallItypes, [0]);
+});
