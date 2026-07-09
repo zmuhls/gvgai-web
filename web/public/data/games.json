@@ -194,8 +194,8 @@
       4
     ],
     "levelCount": 5,
-    "featured": true,
-    "featuredRank": 2
+    "featured": false,
+    "featuredRank": null
   },
   {
     "id": 11,
@@ -249,7 +249,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 5
+    "featuredRank": 4
   },
   {
     "id": 14,
@@ -267,7 +267,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 3
+    "featuredRank": 2
   },
   {
     "id": 15,
@@ -285,7 +285,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 13
+    "featuredRank": 12
   },
   {
     "id": 16,
@@ -339,7 +339,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 4
+    "featuredRank": 3
   },
   {
     "id": 19,
@@ -357,7 +357,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 6
+    "featuredRank": 5
   },
   {
     "id": 20,
@@ -375,7 +375,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 7
+    "featuredRank": 6
   },
   {
     "id": 21,
@@ -411,7 +411,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 8
+    "featuredRank": 7
   },
   {
     "id": 23,
@@ -483,7 +483,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 14
+    "featuredRank": 13
   },
   {
     "id": 27,
@@ -555,7 +555,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 9
+    "featuredRank": 8
   },
   {
     "id": 31,
@@ -807,7 +807,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 11
+    "featuredRank": 10
   },
   {
     "id": 45,
@@ -915,7 +915,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 12
+    "featuredRank": 11
   },
   {
     "id": 51,
@@ -1149,7 +1149,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 15
+    "featuredRank": 14
   },
   {
     "id": 64,
@@ -1239,7 +1239,7 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 10
+    "featuredRank": 9
   },
   {
     "id": 69,

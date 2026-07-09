@@ -31,6 +31,10 @@ const io = socketIo(server);
 
 // Screenshot streaming — native fs.watch for low-latency macOS FSEvents
 let screenshotWatcher = null;
+// The run that owns the frame stream right now ({ runId, source: 'walkup'|'marble' }).
+// Every game-frame is tagged with it so viewers can drop frames that belong to a
+// different run (the walk-up viewer ignores marble frames and vice versa).
+let frameOwner = null;
 let lastScreenshotDigest = null;
 let lastFrameSendTime = 0;
 let pendingFrameTimeout = null;
@@ -52,8 +56,9 @@ function screenshotDigest(buffer) {
   return crypto.createHash('sha1').update(buffer).digest('hex');
 }
 
-function startScreenshotStreaming() {
+function startScreenshotStreaming(owner = null) {
   stopScreenshotStreaming();
+  frameOwner = owner && owner.runId ? { runId: owner.runId, source: owner.source || 'walkup' } : null;
 
   console.log('[Server] Starting screenshot streaming from:', screenshotPath);
 
@@ -137,7 +142,9 @@ async function sendScreenshotAsync() {
     const base64 = imageBuffer.toString('base64');
     io.emit('game-frame', {
       image: `data:image/png;base64,${base64}`,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      runId: frameOwner ? frameOwner.runId : null,
+      source: frameOwner ? frameOwner.source : null
     });
   } catch (error) {
     // File might not exist yet or be mid-write, silently skip
@@ -169,6 +176,7 @@ function stopScreenshotStreaming() {
       screenshotWatcher.close();
     }
     screenshotWatcher = null;
+    frameOwner = null;
     lastScreenshotDigest = null;
     lastFrameSendTime = 0;
     frameReadInFlight = false;
@@ -290,7 +298,7 @@ app.post('/api/game/start', async (req, res) => {
     }
 
     // Start screenshot streaming BEFORE the client connects (screenshots begin on first ACT tick)
-    startScreenshotStreaming();
+    startScreenshotStreaming({ runId, source: 'walkup' });
 
     // Create the appropriate client based on playerType.
     // Human play: HumanPlayClient sends keyboard actions via Socket.IO (no LLM calls).
@@ -392,6 +400,37 @@ app.post('/api/game/start', async (req, res) => {
     stopScreenshotStreaming();
     res.status(500).json({ error: error.message });
   }
+});
+
+// Steer a live LLM run: update the session strategy mid-play. The new directive
+// is sanitized inside updateStrategy and takes effect on the model's next decision.
+app.post('/api/game/steer', (req, res) => {
+  const { processId, strategy } = req.body;
+
+  const game = activeGames.get(processId);
+  if (!game) {
+    return res.status(404).json({ error: 'Game not found' });
+  }
+  if (game.client.playerType === 'human' || typeof game.client.updateStrategy !== 'function') {
+    return res.status(400).json({ error: 'Steering only applies to model runs' });
+  }
+
+  const { text, warnings } = game.client.updateStrategy(strategy);
+  telemetry.track({
+    eventFamily: 'evaluation',
+    eventType: 'run_steered',
+    source: 'server',
+    runId: game.client.runId,
+    gameId: game.client.gameId,
+    modelId: game.client.model,
+    payload: {
+      strategy_present: Boolean(text),
+      strategy_sanitized: warnings.length > 0,
+      strategy_warning_types: warnings.map(w => w.type)
+    }
+  });
+
+  res.json({ status: 'steered', processId, strategy: text, strategyWarnings: warnings });
 });
 
 // Stop game endpoint

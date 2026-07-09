@@ -31,7 +31,27 @@
     return resolveScreen(mode, hasLiveFrame, false) === 'attract';
   }
 
-  var api = { shouldShowAttract: shouldShowAttract, resolveScreen: resolveScreen };
+  function isPlayingMode(mode) {
+    return Boolean(PLAYING_MODES[mode]);
+  }
+
+  // Whether an incoming game-frame belongs on the marquee canvas. The marquee
+  // spectates the marble run only: outside marble play (idle, yielding, a
+  // visitor at the cabinet) incoming frames are the walk-up's and must be
+  // dropped — drawing them makes the canvas fight the attract painter, which
+  // reads as flashing. Frames tagged with a source must be marble frames;
+  // untagged frames fall back to the mode gate alone.
+  function acceptFrame(mode, source) {
+    if (!isPlayingMode(mode)) return false;
+    return source == null || source === 'marble';
+  }
+
+  var api = {
+    shouldShowAttract: shouldShowAttract,
+    resolveScreen: resolveScreen,
+    isPlayingMode: isPlayingMode,
+    acceptFrame: acceptFrame
+  };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (global) global.MarqueeScreen = api;
 })(typeof window !== 'undefined' ? window : null);

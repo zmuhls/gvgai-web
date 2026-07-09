@@ -113,7 +113,7 @@
       text-transform: uppercase;
     }
 
-    .prose, .project-note {
+    .prose {
       width: min(100%, 42rem);
       margin: 0 auto 2.4rem;
       color: rgba(231, 224, 208, 0.88);
@@ -121,46 +121,9 @@
       line-height: 1.72;
     }
 
-    .prose p, .project-note p { margin: 0; }
-    .prose p + p, .project-note p + p { margin-top: 0.9em; }
+    .prose p { margin: 0; }
+    .prose p + p { margin-top: 0.9em; }
     strong { color: var(--bone); font-weight: 600; }
-
-    .project-note {
-      padding: 1.2rem 0 1.35rem;
-      border-top: 1px solid var(--crease);
-      border-bottom: 1px solid var(--crease);
-    }
-
-    .project-note summary {
-      margin: 0;
-      list-style: none;
-      font-family: var(--mono);
-      font-size: 0.74rem;
-      font-weight: 600;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--label);
-      cursor: pointer;
-    }
-
-    .project-note summary::-webkit-details-marker { display: none; }
-    .project-note summary::after {
-      content: "+";
-      float: right;
-      color: var(--wine-bright);
-      font-size: 1rem;
-      line-height: 1;
-    }
-
-    .project-note[open] summary { margin-bottom: 0.8rem; }
-    .project-note[open] summary::after { content: "-"; }
-    .project-note summary:hover { color: var(--bone); }
-
-    .project-note code {
-      color: var(--bone);
-      font-family: var(--mono);
-      font-size: 0.9em;
-    }
 
     .table {
       width: min(100%, 42rem);
@@ -504,14 +467,6 @@
         <button id="startBtn" class="primary" type="button">begin</button>
       </div>
     </section>
-
-    <details class="project-note" aria-label="Project summary">
-      <summary>Project summary</summary>
-      <p>The public game sends each AI turn through <code>/api/cadavre/chat</code>, a server-side proxy that keeps API keys out of the browser. To the page, that room appears as <code>cadavre-server</code>. In production, it currently routes completions to <code>google/gemma-3-27b-it</code> through OpenRouter.</p>
-      <p>The model's seat is programmed for brief continuations. It receives the latest visible phrase and answers with the next short fold, while the page handles turn order, hidden context, and the word limit.</p>
-      <p>The fine-tuning work is a companion experiment. It builds an Exquisite Corpse adapter by collecting public-domain poetry, removing duplicates, splitting poems into lines, and turning those lines into cue-and-continuation examples. The adapter can then be served through vLLM for experiments against this same game interface.</p>
-      <p>The game is a natural fit for large language models because both work with partial context. In the parlor game, each person sees only the last fold. In a language model, each response is a continuation of the visible context. Cadavre Exquis makes that overlap visible, playful, and easy to test.</p>
-    </details>
 
     <footer>
       <div>source: <a href="https://github.com/milwrite/cadavre-exquis" target="_blank" rel="noopener noreferrer">milwrite/cadavre-exquis</a></div>

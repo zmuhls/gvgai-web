@@ -158,6 +158,7 @@ class HumanPlayClient {
         });
         if (this.io) {
           this.io.emit('session-end', {
+            runId: this.runId,
             reason: 'finished',
             levelsPlayed: this.levelCount
           });
@@ -283,6 +284,7 @@ class HumanPlayClient {
       // Spectator view — same shape as LLMClient
       if (this.io) {
         this.io.emit('game-state', {
+          runId: this.runId,
           score: sso.gameScore,
           health: sso.avatarHealthPoints,
           maxHealth: sso.avatarMaxHealthPoints,
@@ -310,6 +312,7 @@ class HumanPlayClient {
     // Notify frontend (per-level, not session end)
     if (this.io) {
       this.io.emit('level-end', {
+        runId: this.runId,
         score: sso.gameScore,
         winner: sso.gameWinner,
         ticks: sso.gameTick,
@@ -388,6 +391,7 @@ class HumanPlayClient {
     const finalScore = lastEntry ? lastEntry.score : (sso.gameScore || 0);
 
     return {
+      runId: this.runId,
       playerType: 'human',
       provider: 'human',
       modelUsed: null,

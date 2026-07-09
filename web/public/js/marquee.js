@@ -420,9 +420,23 @@
       box.textContent = `ended: ${c.endedBy}`;
     }
   });
-  socket.on('game-frame', (data) => queueGameFrame(data && data.image));
+  // The socket carries every run's events (walk-up play included). The marquee
+  // spectates the marble run only, so drop anything that arrives while the run
+  // isn't live — otherwise walk-up frames fight the attract painter (flashing).
+  function acceptsMarbleEvents(source) {
+    const gate = (typeof MarqueeScreen !== 'undefined' && MarqueeScreen.acceptFrame) || null;
+    if (gate) return gate(marqueeState.mode, source);
+    const playing = marqueeState.mode === 'MARBLE_PLAYING' || marqueeState.mode === 'MARBLE_STARTING';
+    return playing && (source == null || source === 'marble');
+  }
+
+  socket.on('game-frame', (data) => {
+    if (!acceptsMarbleEvents(data && data.source)) return;
+    queueGameFrame(data && data.image);
+  });
   socket.on('game-state', (s) => {
     if (!s) return;
+    if (!acceptsMarbleEvents(null)) return;
     if (s.score != null) {
       el('score').textContent = s.score;
       marqueeState.score = s.score;
@@ -437,7 +451,10 @@
     }
     advancePlanTape(s);
   });
-  socket.on('llm-reasoning', addNarration);
+  socket.on('llm-reasoning', (data) => {
+    if (!acceptsMarbleEvents(null)) return;
+    addNarration(data);
+  });
 
   function renderGameToText() {
     return JSON.stringify({

@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 
-const { shouldShowAttract, resolveScreen } = require('../public/js/marquee-screen.js');
+const { shouldShowAttract, resolveScreen, acceptFrame } = require('../public/js/marquee-screen.js');
 
 test('attract shows when no active case is playing', () => {
   assert.equal(shouldShowAttract('IDLE', false), true);
@@ -57,4 +57,25 @@ test('compact embed screen is not capped by the narrow-page breakpoint', () => {
   assert.match(compactScreenRule.groups.body, /height:\s*100%;/);
   assert.match(compactScreenRule.groups.body, /min-height:\s*0;/);
   assert.match(compactScreenRule.groups.body, /max-height:\s*none;/);
+});
+
+test('incoming frames are dropped outside marble play (walk-up hijack/flash fix)', () => {
+  // Regression for the flashing marquee: during a walk-up (or idle/yield) the
+  // globally broadcast game-frames belong to the visitor's run. Drawing them
+  // makes the canvas fight the attract painter at frame rate.
+  assert.equal(acceptFrame('WALKUP_PLAYING', 'walkup'), false);
+  assert.equal(acceptFrame('WALKUP_PLAYING', null), false);
+  assert.equal(acceptFrame('YIELDING', 'marble'), false);
+  assert.equal(acceptFrame('IDLE', null), false);
+  assert.equal(acceptFrame('RESUMING', 'walkup'), false);
+});
+
+test('incoming frames draw during marble play, and walk-up frames never do', () => {
+  assert.equal(acceptFrame('MARBLE_PLAYING', 'marble'), true);
+  assert.equal(acceptFrame('MARBLE_STARTING', 'marble'), true);
+  // Untagged frames (no source field) fall back to the mode gate alone.
+  assert.equal(acceptFrame('MARBLE_PLAYING', null), true);
+  // A mode-transition race can deliver a walk-up frame while the marquee still
+  // believes the marble run is live; the source tag closes that hole.
+  assert.equal(acceptFrame('MARBLE_PLAYING', 'walkup'), false);
 });

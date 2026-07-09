@@ -1680,6 +1680,22 @@ label {
   font-size: var(--text-sm);
 }
 
+/* mid-run steering: redirect the model while it plays */
+.steer-form {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.steer-form input[type="text"] {
+  flex: 1;
+  font-size: var(--text-sm);
+}
+
+.steer-form .btn-secondary {
+  flex-shrink: 0;
+}
+
 .adherence-ribbon {
   display: flex;
   align-items: center;

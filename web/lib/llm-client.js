@@ -280,6 +280,7 @@ class LLMClient {
         });
         if (this.io) {
           this.io.emit('session-end', {
+            runId: this.runId,
             reason: 'finished',
             levelsPlayed: this.levelCount
           });
@@ -455,6 +456,7 @@ class LLMClient {
       this.recordStateTrace(sso, actionToSend);
       if (this.io) {
         this.io.emit('game-state', {
+          runId: this.runId,
           score: sso.gameScore,
           health: sso.avatarHealthPoints,
           maxHealth: sso.avatarMaxHealthPoints,
@@ -691,6 +693,7 @@ class LLMClient {
 
     if (this.io) {
       this.io.emit('llm-reasoning', {
+        runId: this.runId,
         prompt,
         systemPrompt: decision.systemPrompt,
         promptLayers: decision.promptLayers || null,
@@ -988,7 +991,7 @@ class LLMClient {
           const message = routes.length > 1
             ? `provider fallback chain failed: ${err.message}`
             : err.message;
-          if (this.io) this.io.emit('llm-error', { status: 0, message });
+          if (this.io) this.io.emit('llm-error', { runId: this.runId, status: 0, message });
           throw err;
         }
       }
@@ -1090,6 +1093,7 @@ class LLMClient {
 
     if (this.io) {
       this.io.emit('llm-reasoning', {
+        runId: this.runId,
         prompt,
         systemPrompt: systemMessage || null,
         promptLayers: promptLayers || null,
@@ -1163,6 +1167,7 @@ class LLMClient {
     // Notify frontend (per-level, not session end)
     if (this.io) {
       this.io.emit('level-end', {
+        runId: this.runId,
         score: sso.gameScore,
         winner: sso.gameWinner,
         ticks: sso.gameTick,
@@ -1276,6 +1281,7 @@ class LLMClient {
       .map(e => ({ tick: e.tick, action: e.action, reason: e.reason, scoreDelta: e.scoreDelta }));
 
     return {
+      runId: this.runId,
       strategy: this.sessionStrategy,
       provider: this.lastProvider,
       modelUsed: this.lastModelUsed || this.model,
@@ -1342,6 +1348,24 @@ class LLMClient {
     } else {
       console.error('[LLMClient] Cannot send - socket not ready');
     }
+  }
+
+  // Mid-run steering: replace the session strategy while the model is playing.
+  // Sanitized the same way as the connect-time strategy; the current macro plan
+  // is dropped so the new directive shapes the very next decision instead of
+  // waiting for a queued plan to drain.
+  updateStrategy(rawStrategy) {
+    const { text, warnings } = sanitizeStrategy(rawStrategy);
+    this.sessionStrategy = text;
+    this.clearPlan();
+    if (this.io) {
+      this.io.emit('strategy-updated', {
+        runId: this.runId,
+        strategy: text,
+        warnings
+      });
+    }
+    return { text, warnings };
   }
 
   _triggerSessionEnd() {

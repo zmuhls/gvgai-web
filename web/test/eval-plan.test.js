@@ -14,10 +14,10 @@ test('arcade eval plan covers the featured models across three arcade games', ()
   const plan = buildArcadeEvalPlan({ gameCount: 3 });
 
   assert.deepEqual(plan.modelIds, ['gemma3:27b', 'gemma3:12b']);
-  assert.deepEqual(plan.gameIds, [0, 10, 14]);
+  assert.deepEqual(plan.gameIds, [0, 14, 18]);
   assert.equal(plan.games[0].name, 'aliens');
-  assert.equal(plan.games[1].name, 'boulderchase');
-  assert.equal(plan.games[2].name, 'cakybaky');
+  assert.equal(plan.games[1].name, 'cakybaky');
+  assert.equal(plan.games[2].name, 'chase');
   assert.ok(plan.strategies.length >= 2);
   assert.equal(plan.cases.length, plan.modelIds.length * plan.gameIds.length * plan.strategies.length);
 
@@ -35,7 +35,7 @@ test('arcade eval plan can include more games without changing model coverage', 
   const plan = buildArcadeEvalPlan({ gameCount: 5 });
 
   assert.deepEqual(plan.modelIds, ['gemma3:27b', 'gemma3:12b']);
-  assert.deepEqual(plan.gameIds, [0, 10, 14, 18, 13]);
+  assert.deepEqual(plan.gameIds, [0, 14, 18, 13, 19]);
   assert.equal(plan.cases.length, plan.modelIds.length * plan.gameIds.length * plan.strategies.length);
 });
 
@@ -43,9 +43,9 @@ test('arcade eval plan can cover the full model-native starter set', () => {
   const { buildArcadeEvalPlan } = loadEvalPlan();
   const plan = buildArcadeEvalPlan({ gameCount: 10 });
 
-  assert.deepEqual(plan.gameIds, [0, 10, 14, 18, 13, 19, 20, 22, 30, 68]);
-  assert.equal(plan.games[5].name, 'chipschallenge');
-  assert.equal(plan.games[9].name, 'pacman');
+  assert.deepEqual(plan.gameIds, [0, 14, 18, 13, 19, 20, 22, 30, 68, 44]);
+  assert.equal(plan.games[5].name, 'chopper');
+  assert.equal(plan.games[9].name, 'frogs');
   assert.equal(plan.cases.length, plan.modelIds.length * plan.gameIds.length * plan.strategies.length);
 });
 
@@ -99,7 +99,7 @@ test('eval case filtering targets games, models, strategies, and caps run count'
   const plan = buildArcadeEvalPlan({ gameCount: 5 });
 
   const cases = filterEvalCases(plan, {
-    gameIds: [0, 10],
+    gameIds: [0, 14],
     modelIds: ['gemma3:27b'],
     strategyIds: ['safe', 'puzzle'],
     maxCases: 3
@@ -107,6 +107,6 @@ test('eval case filtering targets games, models, strategies, and caps run count'
 
   assert.equal(cases.length, 3);
   assert.deepEqual([...new Set(cases.map(evalCase => evalCase.modelId))], ['gemma3:27b']);
-  assert.ok(cases.every(evalCase => [0, 10].includes(evalCase.gameId)));
+  assert.ok(cases.every(evalCase => [0, 14].includes(evalCase.gameId)));
   assert.ok(cases.every(evalCase => ['safe', 'puzzle'].includes(evalCase.strategyId)));
 });

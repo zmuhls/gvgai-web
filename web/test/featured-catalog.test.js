@@ -12,7 +12,7 @@ const WEB_ROOT = path.resolve(__dirname, '..');
 
 test('featured game order is the model-native starter set plus the arcade classics and top eval candidates', () => {
   assert.deepEqual(readFeaturedIds(path.resolve(WEB_ROOT, '..')), [
-    0, 10, 14, 18, 13, 19, 20, 22, 30, 68, 44, 50, 15, 26, 63
+    0, 14, 18, 13, 19, 20, 22, 30, 68, 44, 50, 15, 26, 63
   ]);
 });
 
@@ -20,9 +20,10 @@ test('games route derives stable featured ranks', () => {
   const ranks = gamesRoute.loadFeaturedRanks();
 
   assert.equal(ranks.get(0), 1);
-  assert.equal(ranks.get(68), 10);
-  assert.equal(ranks.get(44), 11);
-  assert.equal(ranks.get(63), 15);
+  assert.equal(ranks.get(68), 9);
+  assert.equal(ranks.get(44), 10);
+  assert.equal(ranks.get(63), 14);
+  assert.equal(ranks.get(10), undefined);
   assert.equal(ranks.get(4), undefined);
 });
 

@@ -86,24 +86,23 @@ const GENERIC_TACTIC_WORDS = new Set(['avoid', 'dodge', 'defend', 'defensive', '
 
 const PREVIEW_GAMES = [
   { id: 0, name: 'aliens', category: 'gridphysics', archetype: 'shooter-lane', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 1 },
-  { id: 10, name: 'boulderchase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 2 },
-  { id: 14, name: 'cakybaky', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 3 },
-  { id: 18, name: 'chase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 4 },
-  { id: 13, name: 'butterflies', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 5 },
-  { id: 19, name: 'chipschallenge', category: 'gridphysics', archetype: 'pusher-puzzle', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 6 },
-  { id: 20, name: 'chopper', category: 'gridphysics', archetype: 'shooter-roaming', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 7 },
-  { id: 22, name: 'clusters', category: 'gridphysics', archetype: 'pusher-puzzle', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 8 },
-  { id: 30, name: 'digdug', category: 'gridphysics', archetype: 'navigator', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 9 },
-  { id: 68, name: 'pacman', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 10 },
-  { id: 44, name: 'frogs', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 11 },
-  { id: 50, name: 'hungrybirds', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 12 },
-  { id: 15, name: 'camelRace', category: 'gridphysics', archetype: 'collector', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 13 },
-  { id: 26, name: 'crossfire', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 14 },
-  { id: 63, name: 'link', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 15 }
+  { id: 14, name: 'cakybaky', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 2 },
+  { id: 18, name: 'chase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 3 },
+  { id: 13, name: 'butterflies', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 4 },
+  { id: 19, name: 'chipschallenge', category: 'gridphysics', archetype: 'pusher-puzzle', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 5 },
+  { id: 20, name: 'chopper', category: 'gridphysics', archetype: 'shooter-roaming', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 6 },
+  { id: 22, name: 'clusters', category: 'gridphysics', archetype: 'pusher-puzzle', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 7 },
+  { id: 30, name: 'digdug', category: 'gridphysics', archetype: 'navigator', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 8 },
+  { id: 68, name: 'pacman', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 9 },
+  { id: 44, name: 'frogs', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 10 },
+  { id: 50, name: 'hungrybirds', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 11 },
+  { id: 15, name: 'camelRace', category: 'gridphysics', archetype: 'collector', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 12 },
+  { id: 26, name: 'crossfire', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 13 },
+  { id: 63, name: 'link', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 14 }
 ];
 
-const FEATURED_CABINET_COUNT = 15;
-const FEATURED_ORDER_IDS = [0, 10, 14, 18, 13, 19, 20, 22, 30, 68, 44, 50, 15, 26, 63];
+const FEATURED_CABINET_COUNT = 14;
+const FEATURED_ORDER_IDS = [0, 14, 18, 13, 19, 20, 22, 30, 68, 44, 50, 15, 26, 63];
 const SINGLE_PLAYER_CABINET_COUNT = 122;
 
 const PREVIEW_MODELS = [
@@ -177,6 +176,9 @@ const modelRunSetup = document.getElementById('model-run-setup');
 const toggleBrowseAllBtn = document.getElementById('toggle-browse-all');
 const gamesModeLabel = document.getElementById('games-mode-label');
 const strategyActive = document.getElementById('strategy-active');
+const steerForm = document.getElementById('steer-form');
+const steerInput = document.getElementById('steer-input');
+const steerSendBtn = document.getElementById('steer-send');
 const summaryStrategy = document.getElementById('summary-strategy');
 const summaryAdherence = document.getElementById('summary-adherence');
 const summaryHighlights = document.getElementById('summary-highlights');
@@ -911,6 +913,12 @@ async function startGame() {
       strategyActive.classList.add('hidden');
     }
 
+    // Mid-run steering only applies to model runs
+    if (steerForm) {
+      steerForm.classList.toggle('hidden', playerType === 'human');
+      if (steerInput) steerInput.value = '';
+    }
+
     showStep(gameViewer);
 
     // Attach keyboard listeners for human play mode
@@ -1049,6 +1057,14 @@ function setupEventListeners() {
   startGameBtn.addEventListener('click', startGame);
   stopGameBtn.addEventListener('click', stopGame);
 
+  // Mid-run steering: submit sends the new directive to the live model run
+  if (steerForm) {
+    steerForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      sendSteer();
+    });
+  }
+
   // Preset-tactic dropdown fills the editable tactic box (listener stays put; options re-render per game)
   if (strategyPresetSelect) strategyPresetSelect.addEventListener('change', handleStrategyPresetChange);
 
@@ -1157,6 +1173,14 @@ function setupWebSocket() {
     console.error('[App] Connection error:', error);
   });
 
+  // The server broadcasts every run's events on one global socket — walk-up
+  // runs and the attract-mode marble run alike. Only apply events tagged with
+  // this viewer's active run, so a resuming marble case can't hijack the
+  // cabinet with a different game's frames and reasoning.
+  function isCurrentRun(data) {
+    return Boolean(data && state.runId && data.runId === state.runId);
+  }
+
   // The newest multi-step plan's tape, so per-tick game-state events can
   // advance the live "executing step N" cell without a new socket event.
   let latestPlanTape = null;
@@ -1179,6 +1203,7 @@ function setupWebSocket() {
   }
 
   socket.on('llm-reasoning', (data) => {
+    if (!isCurrentRun(data)) return;
     console.log('[App] LLM reasoning:', data);
 
     // Update game state overlay
@@ -1255,10 +1280,12 @@ function setupWebSocket() {
   });
 
   socket.on('game-frame', (data) => {
+    if (!isCurrentRun(data)) return;
     queueGameFrame(data);
   });
 
   socket.on('game-state', (data) => {
+    if (!isCurrentRun(data)) return;
     // Track live game state for synchronous access by human-trace recorder
     state.liveGameState = {
       tick: data.tick || 0,
@@ -1297,6 +1324,7 @@ function setupWebSocket() {
 
   // Per-level end (non-blocking notification)
   socket.on('level-end', (data) => {
+    if (!isCurrentRun(data)) return;
     console.log('[App] Level ended:', data);
 
     const result = data.winner === 'PLAYER_WINS' ? 'Win' :
@@ -1316,8 +1344,10 @@ function setupWebSocket() {
 
   // End-of-run summary card (fires on level end, carries adherence + highlights)
   socket.on('run-summary', (data) => {
+    if (!isCurrentRun(data)) return;
     console.log('[App] Run summary:', data);
     cleanupHumanPlay();
+    if (steerForm) steerForm.classList.add('hidden');
     state.lastSummary = data;
     trackUx('run_summary_viewed', {
       winner: data.winner,
@@ -1337,8 +1367,10 @@ function setupWebSocket() {
 
   // Full session end (all levels done)
   socket.on('session-end', (data) => {
+    if (!isCurrentRun(data)) return;
     console.log('[App] Session ended:', data);
     cleanupHumanPlay();
+    if (steerForm) steerForm.classList.add('hidden');
 
     // If a run-summary already populated the card, leave it as-is
     if (!state.lastSummary) {
@@ -1355,6 +1387,7 @@ function setupWebSocket() {
 
   // LLM API errors
   socket.on('llm-error', (data) => {
+    if (!isCurrentRun(data)) return;
     console.error('[App] LLM error:', data);
 
     const entry = document.createElement('div');
@@ -1363,6 +1396,20 @@ function setupWebSocket() {
       <div class="action timeout">API Error (${data.status}): ${escapeHtml(data.message?.substring(0, 200) || 'Unknown error')}</div>
     `;
     reasoningLog.insertBefore(entry, reasoningLog.firstChild);
+  });
+
+  // Mid-run steering applied server-side: refresh the banner and log the pivot
+  // so every tab watching this run sees the new directive.
+  socket.on('strategy-updated', (data) => {
+    if (!isCurrentRun(data)) return;
+    state.activeStrategy = data.strategy || null;
+    if (data.strategy) {
+      strategyActive.textContent = `Strategy: "${data.strategy}"`;
+      strategyActive.classList.remove('hidden');
+    } else {
+      strategyActive.classList.add('hidden');
+    }
+    addSteerToTrace(data.strategy);
   });
 
   // A fine-tuned model landed in the catalog: refresh the picker without
@@ -1667,6 +1714,60 @@ function addHumanMoveToTrace(action) {
   reasoningLog.insertBefore(entry, reasoningLog.firstChild);
 
   // Keep only last 20 entries (same trim as LLM reasoning entries)
+  while (reasoningLog.children.length > 20) {
+    reasoningLog.removeChild(reasoningLog.lastChild);
+  }
+}
+
+// ─── Mid-run steering ────────────────────────────────────────────────────────
+
+// Send a new directive to the live model run. The server sanitizes it and swaps
+// it into the prompt for the model's next decision; the strategy-updated socket
+// event then refreshes the banner + trace for every tab watching this run.
+async function sendSteer() {
+  const text = (steerInput?.value || '').trim();
+  if (!text || !state.processId) return;
+  if (steerSendBtn) steerSendBtn.disabled = true;
+  try {
+    const response = await fetch('/api/game/steer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ processId: state.processId, strategy: text })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Failed to steer');
+    if (steerInput) steerInput.value = '';
+    trackUx('run_steered', { length: text.length }, {}, {
+      eventFamily: 'clickthrough',
+      gameId: state.selectedGame?.id,
+      modelId: state.selectedModel
+    });
+  } catch (error) {
+    console.error('[App] Error steering run:', error);
+    trackUx('run_steer_failed', { message: error.message });
+  } finally {
+    if (steerSendBtn) steerSendBtn.disabled = false;
+  }
+}
+
+// Log the steering pivot in the move trace so the narration shows where the
+// player redirected the model.
+function addSteerToTrace(strategy) {
+  if (state.traceLog.length < 500) {
+    state.traceLog.push({
+      tick: state.liveGameState?.tick || 0,
+      steer: strategy || null,
+      human: true
+    });
+  }
+  if (!reasoningLog) return;
+  const entry = document.createElement('div');
+  entry.className = 'reasoning-entry human-entry steer-entry';
+  const youLine = document.createElement('div');
+  youLine.className = 'narration';
+  youLine.textContent = strategy ? `YOU steered: "${strategy}"` : 'YOU cleared the strategy';
+  entry.appendChild(youLine);
+  reasoningLog.insertBefore(entry, reasoningLog.firstChild);
   while (reasoningLog.children.length > 20) {
     reasoningLog.removeChild(reasoningLog.lastChild);
   }

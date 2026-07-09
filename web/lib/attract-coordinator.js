@@ -240,7 +240,9 @@ class AttractCoordinator {
         this.currentStartedAt = nowIso();
         this.mode = 'MARBLE_STARTING';
         this._emitState();
-        if (this.streamer) this.streamer.start();
+        // Tag the frame stream with this case's runId so walk-up viewers can
+        // drop marble frames instead of having their canvas hijacked.
+        if (this.streamer) this.streamer.start({ runId: evalCase.runId, source: 'marble' });
         this._emit('case-started', this._caseStartedPayload(evalCase));
 
         let caseErrored = false;

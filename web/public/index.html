@@ -251,6 +251,11 @@
           <h3>Move Trace</h3>
           <p class="panel-note">Compare each reason with the chosen action.</p>
           <div id="strategy-active" class="strategy-active hidden"></div>
+          <form id="steer-form" class="steer-form hidden" autocomplete="off">
+            <input type="text" id="steer-input" maxlength="240"
+              placeholder="Steer the model mid-run, e.g. play safer, rush the exit…" />
+            <button id="steer-send" class="btn-secondary" type="submit">Steer</button>
+          </form>
           <div id="adherence-ribbon" class="adherence-ribbon hidden"></div>
           <div id="reasoning-log"></div>
         </div>

@@ -189,6 +189,7 @@ async function runEvalCase(evalCase, options = {}) {
     llmClient = options.createLLMClient
       ? options.createLLMClient(evalCase)
       : new LLMClient({
+        runId: evalCase.runId,
         initialLevelId: evalCase.levelId,
         synchronousActions: options.synchronousActions !== false,
         actionTimeoutMs: options.actionTimeoutMs,
