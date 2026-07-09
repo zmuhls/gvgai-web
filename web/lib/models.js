@@ -2,8 +2,8 @@
 //
 // The built-in catalog is the stated Ollama Cloud roster, drawing on
 // OLLAMA_API_KEY. OpenRouter is the per-call fallback for rows with a known
-// compatible slug. Each entry is a non-reasoning model, so the game receives
-// answer tokens rather than hidden reasoning tokens.
+// compatible slug. The featured set intentionally spans vendors so the marquee
+// does not become a Gemma-only loop.
 //
 // NOTE: confirm exact Ollama Cloud tags and OpenRouter slugs near the event —
 // a stale id 404s at call time (surfaced via the 'llm-error' socket event), and
@@ -18,31 +18,25 @@ const MODELS = [
     description: 'Open-weight · flagship small Gemma, non-reasoning',
     speed: 'fast', cost: 'low', featured: true
   },
-  {
-    id: 'gemma3:12b', name: 'Gemma 3 12B',
-    provider: 'ollama-cloud', fallback: 'google/gemma-3-12b-it',
-    description: '',
-    speed: null, cost: null, featured: true
-  },
   // --- Qwen (Alibaba) ---
   {
     id: 'qwen3-coder-next', name: 'Qwen3 Coder Next',
     provider: 'ollama-cloud', fallback: 'qwen/qwen3-coder-next',
     description: 'Open-weight · MoE coder, non-reasoning (small active params)',
-    speed: 'fast', cost: 'low', featured: false
+    speed: 'fast', cost: 'low', featured: true
   },
   // --- Ministral (Mistral) ---
   {
     id: 'ministral-3:14b', name: 'Ministral 3 14B',
     provider: 'ollama-cloud', fallback: 'mistralai/ministral-14b-2512',
     description: 'Open-weight · compact Mistral family model, non-reasoning',
-    speed: 'fast', cost: 'low', featured: false
+    speed: 'fast', cost: 'low', featured: true
   },
   {
     id: 'ministral-3:8b', name: 'Ministral 3 8B',
     provider: 'ollama-cloud', fallback: 'mistralai/ministral-8b-2512',
     description: 'Open-weight · smaller Mistral family model, non-reasoning',
-    speed: 'fast', cost: 'low', featured: false
+    speed: 'fast', cost: 'low', featured: true
   },
   {
     id: 'ministral-3:3b', name: 'Ministral 3 3B',
@@ -55,7 +49,7 @@ const MODELS = [
     id: 'devstral-small-2:24b', name: 'Devstral Small 2 24B',
     provider: 'ollama-cloud', fallback: null,
     description: 'Open-weight · coder-flavored small model, non-reasoning',
-    speed: 'fast', cost: 'low', featured: false
+    speed: 'fast', cost: 'low', featured: true
   },
   // --- Frontier (reasoning-era flagships on Ollama Cloud) ---
   // Unlike the roster above, these think by default. llm-client routes

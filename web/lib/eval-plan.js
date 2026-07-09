@@ -4,7 +4,7 @@ const { MODELS } = require('./models');
 const { getCachedClassification } = require('./game-classifier');
 const { getClassDefaults } = require('./class-defaults');
 
-const DEFAULT_GAME_COUNT = 3;
+const DEFAULT_GAME_COUNT = null;
 const MIN_SURVIVAL_TICKS = 50;
 const NIL_LOOP_THRESHOLD = 3;
 
@@ -86,7 +86,7 @@ function sanitizeRunPart(value) {
 }
 
 function boundedGameCount(requested, available) {
-  const count = Number.isInteger(requested) && requested > 0 ? requested : DEFAULT_GAME_COUNT;
+  const count = Number.isInteger(requested) && requested > 0 ? requested : available;
   return Math.min(count, available);
 }
 
@@ -145,12 +145,15 @@ function buildArcadeEvalPlan(options = {}) {
     };
   });
 
-  // Model is the innermost dimension so consecutive cases always rotate to a
-  // different model — the marble run never plays the same model twice in a row.
   const cases = [];
-  for (const game of games) {
-    strategies.forEach((strategy, strategyIndex) => {
-      for (const model of models) {
+  // Interleave the game x model grid instead of exhausting one game before
+  // advancing. With several models and the full featured game list, consecutive
+  // marquee cases change both the cabinet and the model.
+  strategies.forEach((strategy, strategyIndex) => {
+    for (let gameOffset = 0; gameOffset < games.length; gameOffset++) {
+      for (let modelIndex = 0; modelIndex < models.length; modelIndex++) {
+        const game = games[(gameOffset + modelIndex) % games.length];
+        const model = models[modelIndex];
         const runId = [
           `arcade-g${game.id}`,
           `l${game.levelId}`,
@@ -172,8 +175,8 @@ function buildArcadeEvalPlan(options = {}) {
           strategy: strategy.text
         });
       }
-    });
-  }
+    }
+  });
 
   const byArchetype = {};
   for (const game of games) {

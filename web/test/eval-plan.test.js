@@ -1,6 +1,15 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
+const FEATURED_MODEL_IDS = [
+  'gemma3:27b',
+  'qwen3-coder-next',
+  'ministral-3:14b',
+  'ministral-3:8b',
+  'devstral-small-2:24b'
+];
+const FEATURED_GAME_IDS = [0, 14, 18, 13, 19, 20, 30, 68, 44, 50, 15, 26, 63];
+
 function loadEvalPlan() {
   try {
     return require('../lib/eval-plan');
@@ -13,7 +22,7 @@ test('arcade eval plan covers the featured models across three arcade games', ()
   const { buildArcadeEvalPlan } = loadEvalPlan();
   const plan = buildArcadeEvalPlan({ gameCount: 3 });
 
-  assert.deepEqual(plan.modelIds, ['gemma3:27b', 'gemma3:12b']);
+  assert.deepEqual(plan.modelIds, FEATURED_MODEL_IDS);
   assert.deepEqual(plan.gameIds, [0, 14, 18]);
   assert.equal(plan.games[0].name, 'aliens');
   assert.equal(plan.games[1].name, 'cakybaky');
@@ -34,9 +43,27 @@ test('arcade eval plan can include more games without changing model coverage', 
   const { buildArcadeEvalPlan } = loadEvalPlan();
   const plan = buildArcadeEvalPlan({ gameCount: 5 });
 
-  assert.deepEqual(plan.modelIds, ['gemma3:27b', 'gemma3:12b']);
+  assert.deepEqual(plan.modelIds, FEATURED_MODEL_IDS);
   assert.deepEqual(plan.gameIds, [0, 14, 18, 13, 19]);
   assert.equal(plan.cases.length, plan.modelIds.length * plan.gameIds.length * plan.strategies.length);
+});
+
+test('arcade eval plan defaults to the full featured game rotation', () => {
+  const { buildArcadeEvalPlan } = loadEvalPlan();
+  const plan = buildArcadeEvalPlan();
+
+  assert.deepEqual(plan.modelIds, FEATURED_MODEL_IDS);
+  assert.deepEqual(plan.gameIds, FEATURED_GAME_IDS);
+  assert.equal(plan.cases.length, plan.modelIds.length * plan.gameIds.length * plan.strategies.length);
+});
+
+test('arcade eval plan interleaves games and models for marquee rotation', () => {
+  const { buildArcadeEvalPlan } = loadEvalPlan();
+  const plan = buildArcadeEvalPlan({ gameCount: 5 });
+  const openingCases = plan.cases.slice(0, FEATURED_MODEL_IDS.length);
+
+  assert.deepEqual(openingCases.map(evalCase => evalCase.modelId), FEATURED_MODEL_IDS);
+  assert.deepEqual(openingCases.map(evalCase => evalCase.gameId), [0, 14, 18, 13, 19]);
 });
 
 test('arcade eval plan can cover the full model-native starter set', () => {

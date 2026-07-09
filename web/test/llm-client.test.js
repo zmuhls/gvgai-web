@@ -116,7 +116,7 @@ test('socket close emits a partial run summary from recorded fallback actions', 
       events.push({ event, payload });
     }
   };
-  client.model = 'gemma3:12b';
+  client.model = 'qwen3-coder-next';
   client.sessionStrategy = 'Play safely';
   client.runStartScore = 0;
   client.lastSso = {
@@ -143,7 +143,7 @@ test('socket close emits a partial run summary from init state before first acti
       events.push({ event, payload });
     }
   };
-  client.model = 'gemma3:12b';
+  client.model = 'qwen3-coder-next';
   client.lastSso = {
     gameScore: 0,
     gameWinner: 'NO_WINNER',
@@ -165,7 +165,7 @@ test('async mode enforces maxActions with an ABORT and a run summary', async () 
   const events = [];
   client.sendMessageWithId = (msgId, message) => sent.push({ msgId, message });
   client.io = { emit: (event, payload) => events.push({ event, payload }) };
-  client.model = 'gemma3:12b';
+  client.model = 'qwen3-coder-next';
   client.lastSso = { gameScore: 1, gameWinner: 'NO_WINNER', gameTick: 9 };
 
   client.recordActionDecision('ACTION_LEFT', 3, 'probe left');
@@ -742,7 +742,7 @@ test('requestLLMAction queues a PLAN response and emits plan metadata', async ()
   const client = new LLMClient({ actionTimeoutMs: 1000 });
   const emitted = [];
 
-  client.model = 'gemma3:12b';
+  client.model = 'qwen3-coder-next';
   client.gameId = 0;
   client.levelCount = 0;
   client.sessionStrategy = 'rush left and shoot';
@@ -783,7 +783,7 @@ test('MACRO_ACTIONS_DISABLED=1 degrades a PLAN response to a single action', asy
   const originalFetch = global.fetch;
   const client = new LLMClient({ actionTimeoutMs: 1000 });
 
-  client.model = 'gemma3:12b';
+  client.model = 'qwen3-coder-next';
   client.gameId = 0;
   client.levelCount = 0;
   client.promptConfig = {
@@ -1042,7 +1042,7 @@ test('negative directional steering diversifies all-one-direction model plans', 
   const originalFetch = global.fetch;
   const client = new LLMClient({ actionTimeoutMs: 1000 });
 
-  client.model = 'gemma3:12b';
+  client.model = 'qwen3-coder-next';
   client.gameId = 0;
   client.levelCount = 0;
   client.sessionStrategy = 'no go right';
@@ -1076,7 +1076,7 @@ test('directional steering rewrites model plans before they enter the queue', as
   const originalFetch = global.fetch;
   const client = new LLMClient({ actionTimeoutMs: 1000 });
 
-  client.model = 'gemma3:12b';
+  client.model = 'qwen3-coder-next';
   client.gameId = 0;
   client.levelCount = 0;
   client.sessionStrategy = 'go right';
@@ -1109,7 +1109,7 @@ test('in-flight provider responses are ignored after a steering update', async (
   const originalFetch = global.fetch;
   const client = new LLMClient({ actionTimeoutMs: 1000 });
 
-  client.model = 'gemma3:12b';
+  client.model = 'qwen3-coder-next';
   client.gameId = 0;
   client.levelCount = 0;
   client.sessionStrategy = 'no go right';
