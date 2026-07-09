@@ -971,6 +971,12 @@ class LLMClient {
     const parsed = parseStructured(llmResponse, sso.availableActions, actionCodeMap, { maxPlanSteps });
     let { action, reason } = parsed;
     let decisionSource = parsed.source || 'unknown';
+    const trustedCodeParse = !responseMode || responseMode !== 'code' || [
+      'compact-exact',
+      'compact-field',
+      'exact-action',
+      'canonical-action'
+    ].includes(parsed.source);
     if (
       responseMode === 'code' &&
       policyAuthoritative &&
@@ -982,7 +988,7 @@ class LLMClient {
       decisionSource = parsed.valid === false ? 'policy-fallback' : 'policy-override';
     } else if (
       responseMode === 'code' &&
-      parsed.valid === false &&
+      (parsed.valid === false || !trustedCodeParse) &&
       fallbackAction &&
       (sso.availableActions || []).includes(fallbackAction)
     ) {

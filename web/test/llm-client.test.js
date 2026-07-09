@@ -393,6 +393,60 @@ test('requestLLMAction uses encoded best action when compact output is invalid',
   }
 });
 
+test('requestLLMAction ignores bare prose directions in code mode', async () => {
+  const originalFetch = global.fetch;
+  const client = new LLMClient({ actionTimeoutMs: 1000 });
+
+  client.model = 'ministral-3:3b';
+  client.gameId = 0;
+  client.levelCount = 0;
+  client.promptConfig = {
+    gameName: 'aliens',
+    llmSettings: { maxTokens: 8, temperature: 0.1 },
+    codeProtocol: {
+      enabled: true,
+      id: 'GV1',
+      forceActionCode: 'U',
+      actionCodes: {
+        N: 'ACTION_NIL',
+        L: 'ACTION_LEFT',
+        R: 'ACTION_RIGHT',
+        U: 'ACTION_USE'
+      },
+      entityCodes: {
+        npc: 'a',
+        movable: 'b'
+      }
+    }
+  };
+
+  global.fetch = async () => ({
+    ok: true,
+    async json() {
+      return { choices: [{ message: { content: 'The right lane looks safest, so move right.' } }] };
+    }
+  });
+
+  try {
+    const result = await client.requestLLMAction(JSON.stringify({
+      blockSize: 10,
+      avatarPosition: [160, 100],
+      avatarHealthPoints: 100,
+      gameScore: 0,
+      gameTick: 0,
+      availableActions: ['ACTION_NIL', 'ACTION_LEFT', 'ACTION_RIGHT', 'ACTION_USE'],
+      NPCPositionsNum: 1,
+      NPCPositions: [[{ position: { x: 180, y: 70 }, itype: 4, category: 3 }]]
+    }));
+
+    assert.equal(result.action, 'ACTION_USE');
+    assert.equal(result.decisionSource, 'policy-fallback');
+    assert.equal(client.pendingLLMAction, 'ACTION_USE');
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
 test('requestLLMAction can let authoritative game code override a valid model action', async () => {
   const originalFetch = global.fetch;
   const client = new LLMClient({ actionTimeoutMs: 1000 });

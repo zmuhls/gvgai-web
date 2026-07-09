@@ -118,7 +118,7 @@ function baitPromptFor(state) {
   });
 }
 
-function gridTargetPromptFor(state) {
+function gridTargetPromptFor(state, protocolOverrides = {}) {
   return buildPrompt(state, {
     gameName: 'grid-target-test',
     codeProtocol: {
@@ -138,7 +138,8 @@ function gridTargetPromptFor(state) {
       wallItypes: [0],
       dangerSources: ['npc'],
       dangerNonTargets: true,
-      dangerRadius: 0
+      dangerRadius: 0,
+      ...protocolOverrides
     }
   });
 }
@@ -546,6 +547,18 @@ test('grid target policy routes around non-target danger', () => {
   assert.equal(prompt.fallbackActionCode, 'U');
   assert.equal(prompt.fallbackAction, 'ACTION_UP');
   assert.match(prompt.userMessage, /B:U/);
+});
+
+test('grid target policy skips targets inside a danger radius when safer targets exist', () => {
+  const prompt = gridTargetPromptFor(createGridTargetState({
+    avatar: [3, 2],
+    targets: [[1, 2, 6], [3, 4, 6]],
+    dangers: [[1, 1, 5]]
+  }), { dangerRadius: 1 });
+
+  assert.equal(prompt.fallbackActionCode, 'D');
+  assert.equal(prompt.fallbackAction, 'ACTION_DOWN');
+  assert.match(prompt.userMessage, /B:D/);
 });
 
 test('macro-enabled game with a strategy asks for a PLAN closing contract', () => {

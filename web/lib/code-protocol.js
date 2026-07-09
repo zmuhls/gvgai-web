@@ -169,12 +169,11 @@ function availableGridMoves(availableActions, codes) {
 }
 
 function addDangerRadius(dangerSet, item, radius) {
-  dangerSet.add(gridKey(item.x, item.y));
-  for (let step = 1; step <= radius; step++) {
-    dangerSet.add(gridKey(item.x + step, item.y));
-    dangerSet.add(gridKey(item.x - step, item.y));
-    dangerSet.add(gridKey(item.x, item.y + step));
-    dangerSet.add(gridKey(item.x, item.y - step));
+  for (let dx = -radius; dx <= radius; dx++) {
+    for (let dy = -radius; dy <= radius; dy++) {
+      if (Math.abs(dx) + Math.abs(dy) > radius) continue;
+      dangerSet.add(gridKey(item.x + dx, item.y + dy));
+    }
   }
 }
 
@@ -463,6 +462,11 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes) {
     }
   }
 
+  const pathTargets = protocol.allowDangerousTargets === true
+    ? targets
+    : targets.filter(target => !dangerSet.has(gridKey(target.x, target.y)));
+  const navigableTargets = pathTargets.length > 0 ? pathTargets : targets;
+
   const start = { x: playerPos[0], y: playerPos[1] };
   const [gridW, gridH] = gridDimensions(sso, blockSize);
   const queue = [{ ...start, path: [] }];
@@ -470,7 +474,8 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes) {
 
   while (queue.length > 0) {
     const current = queue.shift();
-    if (current.path.length > 0 && targetSet.has(gridKey(current.x, current.y))) {
+    const currentKey = gridKey(current.x, current.y);
+    if (current.path.length > 0 && navigableTargets.some(target => gridKey(target.x, target.y) === currentKey)) {
       return {
         code: current.path[0],
         reason: `path to visible target ${current.x},${current.y}`
@@ -484,8 +489,8 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes) {
         y: current.y + move.delta[1]
       }))
       .sort((a, b) => (
-        Math.min(...targets.map(target => manhattan(a, target))) -
-        Math.min(...targets.map(target => manhattan(b, target)))
+        Math.min(...navigableTargets.map(target => manhattan(a, target))) -
+        Math.min(...navigableTargets.map(target => manhattan(b, target)))
       ));
 
     for (const move of nextMoves) {
@@ -494,9 +499,8 @@ function chooseGridTargetCode(sso, protocol, playerPos, codes) {
         (!gridW || (move.x >= 0 && move.x < gridW)) &&
         (!gridH || (move.y >= 0 && move.y < gridH))
       );
-      const isTarget = targetSet.has(key);
       if (!inBounds || wallSet.has(key) || seen.has(key)) continue;
-      if (!isTarget && dangerSet.has(key)) continue;
+      if (dangerSet.has(key)) continue;
       seen.add(key);
       queue.push({
         x: move.x,
