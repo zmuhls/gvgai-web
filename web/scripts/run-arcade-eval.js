@@ -24,9 +24,14 @@ function parseArgs(argv) {
     } else if (arg === '--game-id') {
       options.gameIds = next;
       i++;
+    } else if (arg === '--level-id') {
+      options.levelId = next;
+      i++;
     } else if (arg === '--model') {
       options.modelIds = next;
       i++;
+    } else if (arg === '--all-models') {
+      options.allModels = true;
     } else if (arg === '--ollama-model') {
       options.ollamaModel = next;
       i++;
@@ -82,6 +87,17 @@ async function main() {
 
   console.log(`[Eval] ${result.status}: ${result.results.length}/${result.cases.length} runs completed`);
   console.log(`[Eval] meaningful groups: ${result.comparison.groupsWithMeaningfulDifference}/${result.comparison.comparedGroups}`);
+  if (result.qualification) {
+    const q = result.qualification;
+    console.log(`[Eval] qualifying games: ${q.qualifyingGameCount}/${q.targetGameCount}; threshold ${q.requiredModelPasses}/${q.selectedModelCount} models`);
+    const leading = q.games.slice(0, 10).map(game => {
+      const mark = game.qualified ? 'qualified' : 'pending';
+      return `${game.gameId}:${game.gameName} ${game.modelPasses}/${game.requiredModelPasses} ${mark}`;
+    });
+    for (const line of leading) {
+      console.log(`[Eval] qualification ${line}`);
+    }
+  }
 
   // Per-archetype rollup: games within a class are comparable; across classes
   // the score scales and pacing differ too much for a single average.

@@ -1,5 +1,6 @@
 const EventEmitter = require('events');
 const { buildArcadeEvalPlan, normalizeEvalResult } = require('./eval-plan');
+const { summarizeQualification } = require('./eval-qualification');
 const { getAllModels, resolveModel } = require('./models');
 const defaultTelemetry = require('./telemetry-store');
 const { getConfig } = require('./runtime-config');
@@ -60,12 +61,18 @@ function modelsForIds(modelIds) {
   });
 }
 
+function modelsForOptions(options = {}) {
+  if (options.allModels) return getAllModels();
+  return modelsForIds(options.modelIds);
+}
+
 function buildBatchPlan(options = {}) {
   const gameIds = toIntegerArray(options.gameIds);
   const planOptions = {
     gameCount: positiveInteger(options.gameCount, undefined),
-    models: modelsForIds(options.modelIds),
-    strategies: options.strategies
+    models: modelsForOptions(options),
+    strategies: options.strategies,
+    levelId: options.levelId
   };
   if (gameIds.length > 0) planOptions.gameIds = gameIds;
   return buildArcadeEvalPlan(planOptions);
@@ -345,7 +352,8 @@ async function runArcadeBatchEvaluation(options = {}) {
       cases,
       results: [],
       errors: [],
-      comparison: summarizePromptDifferences([])
+      comparison: summarizePromptDifferences([]),
+      qualification: summarizeQualification([], plan, options)
     };
   }
 
@@ -412,13 +420,15 @@ async function runArcadeBatchEvaluation(options = {}) {
   }
 
   const comparison = summarizePromptDifferences(results, options);
+  const qualification = summarizeQualification(results, plan, options);
   const output = {
     status: errors.length > 0 ? 'completed_with_errors' : 'completed',
     generatedAt: new Date().toISOString(),
     cases,
     results,
     errors,
-    comparison
+    comparison,
+    qualification
   };
 
   telemetry.track({
@@ -429,12 +439,15 @@ async function runArcadeBatchEvaluation(options = {}) {
     payload: {
       status: output.status,
       comparedGroups: comparison.comparedGroups,
-      groupsWithMeaningfulDifference: comparison.groupsWithMeaningfulDifference
+      groupsWithMeaningfulDifference: comparison.groupsWithMeaningfulDifference,
+      qualifyingGames: qualification.qualifyingGameCount,
+      qualificationTargetMet: qualification.targetMet
     },
     metrics: {
       cases: cases.length,
       results: results.length,
-      errors: errors.length
+      errors: errors.length,
+      qualifying_games: qualification.qualifyingGameCount
     }
   });
 

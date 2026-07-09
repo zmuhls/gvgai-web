@@ -129,6 +129,10 @@ function buildArcadeEvalPlan(options = {}) {
     const config = loadGameConfig(gameId);
     const levels = registryEntry.file ? levelIdsForGame(registryEntry, root) : [0];
     const classification = config.classification || getCachedClassification(gameId);
+    const requestedLevelId = Number.parseInt(options.levelId, 10);
+    const levelId = Number.isInteger(requestedLevelId) && levels.includes(requestedLevelId)
+      ? requestedLevelId
+      : (levels.includes(0) ? 0 : levels[0]);
     return {
       id: gameId,
       name: config.gameName || registryEntry.name,
@@ -136,7 +140,7 @@ function buildArcadeEvalPlan(options = {}) {
       category: registryEntry.category,
       classification: classification || null,
       levelIds: levels,
-      levelId: levels.includes(0) ? 0 : levels[0],
+      levelId,
       llmSettings: config.llmSettings || {}
     };
   });
