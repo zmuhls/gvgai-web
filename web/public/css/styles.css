@@ -503,9 +503,9 @@ label {
   padding-right: 34px;
   color: var(--arcade-text-secondary);
   flex-wrap: nowrap;
-  font-size: var(--text-lg);
-  font-weight: 600;
-  line-height: 1.3;
+  font-size: var(--text-md);
+  font-weight: 700;
+  line-height: 1.28;
   white-space: normal;
 }
 
@@ -592,8 +592,8 @@ label {
 }
 
 .room-cloze .companion-subtitle {
-  color: #5a3514;
-  text-shadow: 0 1px 0 rgba(255, 247, 219, 0.72);
+  color: #2c1a08;
+  text-shadow: 0 1px 0 rgba(255, 247, 219, 0.58);
 }
 
 .room-cloze h3 {
@@ -621,8 +621,8 @@ label {
 }
 
 .room-jeopardy .companion-subtitle {
-  color: #d9eaff;
-  text-shadow: 0 1px 0 rgba(2, 18, 67, 0.72);
+  color: #f8fbff;
+  text-shadow: 0 1px 0 rgba(2, 18, 67, 0.78);
 }
 
 .room-jeopardy::after {
@@ -742,8 +742,8 @@ label {
 }
 
 .room-haggle .companion-subtitle {
-  color: #ffe7df;
-  text-shadow: 0 1px 0 rgba(70, 18, 14, 0.6);
+  color: #fff7f3;
+  text-shadow: 0 1px 0 rgba(70, 18, 14, 0.68);
 }
 
 .room-haggle h3 {
@@ -824,8 +824,8 @@ label {
 }
 
 .room-langgames .companion-subtitle {
-  color: #e9f9ff;
-  text-shadow: 0 1px 0 rgba(4, 40, 56, 0.6);
+  color: #06283b;
+  text-shadow: 0 1px 0 rgba(226, 249, 255, 0.46);
 }
 
 .room-langgames h3 {
@@ -2992,16 +2992,16 @@ details[open] > .station-head .station-caret {
   right: var(--marble-popout-inset);
   bottom: var(--marble-popout-inset);
   z-index: 420;
-  width: clamp(320px, min(36vw, 62vh), 720px);
+  width: clamp(340px, min(39vw, 66vh), 760px);
   max-width: calc(100vw - var(--marble-popout-inset) - var(--marble-popout-inset));
   max-height: calc(100dvh - var(--marble-popout-inset) - var(--marble-popout-inset));
   background: #000;
-  border: 1px solid rgba(123, 239, 195, 0.34);
+  border: 1px solid rgba(123, 239, 195, 0.46);
   border-radius: 8px;
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.75),
     0 16px 44px rgba(0, 0, 0, 0.65),
-    0 0 24px rgba(123, 239, 195, 0.1);
+    0 0 30px rgba(123, 239, 195, 0.18);
   overflow: hidden;
   touch-action: pan-y;
 }
@@ -3133,6 +3133,10 @@ details[open] > .station-head .station-caret {
 /* ---------- 9. responsive ---------- */
 
 @media (max-width: 1024px) {
+  .marble-popout {
+    width: min(440px, calc(100vw - var(--marble-popout-inset) - var(--marble-popout-inset)));
+  }
+
   .telemetry-backend-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3308,10 +3312,14 @@ details[open] > .station-head .station-caret {
     right: var(--space-2);
     bottom: var(--space-2);
     width: auto;
-    min-height: 44px;
-    max-height: 44px;
-    border: 1px solid rgba(123, 239, 195, 0.3);
+    min-height: 52px;
+    max-height: 52px;
+    border: 1px solid rgba(123, 239, 195, 0.46);
     border-radius: 8px;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.75),
+      0 14px 36px rgba(0, 0, 0, 0.66),
+      0 0 26px rgba(123, 239, 195, 0.2);
   }
 
   .marble-popout:not(.is-expanded)::before {
@@ -3329,8 +3337,8 @@ details[open] > .station-head .station-caret {
 
   .marble-popout:not(.is-expanded) .marble-popout-chrome {
     position: relative;
-    min-height: 44px;
-    padding: 12px var(--space-2) 6px;
+    min-height: 52px;
+    padding: 14px var(--space-3) 8px;
     opacity: 1;
     border-bottom: 0;
   }
@@ -3368,13 +3376,13 @@ details[open] > .station-head .station-caret {
   }
 
   .marble-popout-title {
-    font-size: var(--text-2xs);
+    font-size: var(--text-xs);
   }
 
   .marble-popout-action {
-    width: 23px;
-    height: 22px;
-    font-size: var(--text-md);
+    width: 28px;
+    height: 26px;
+    font-size: var(--text-lg);
   }
 
   #game-selector .step-note {
