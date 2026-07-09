@@ -141,6 +141,14 @@
       color: var(--label);
     }
 
+    .table {
+      width: min(100%, 42rem);
+      margin: clamp(2rem, 5vh, 3rem) auto 2.4rem;
+      padding: 1.2rem 0 1.35rem;
+      border-top: 1px solid var(--crease);
+      border-bottom: 1px solid var(--crease);
+    }
+
     .eyebrow {
       margin: 0 0 1.3rem;
       text-align: center;
@@ -391,20 +399,37 @@
       </p>
     </header>
 
-    <section class="prose" aria-label="About the game">
-      <p><strong>Cadavre Exquis</strong> is the Surrealist parlor game often called Exquisite Corpse. As <a href="https://www.moma.org/collection/terms/exquisite-corpse" target="_blank" rel="noopener noreferrer">MoMA summarizes it</a>, each player writes or draws on a sheet, folds the page to hide the contribution, and passes only a cue to the next player.</p>
-      <p>This arcade version seats a language model at the table. Human players choose the table size, the model's seat, and the word limit; the browser shows only the latest fold. When the sheet is revealed, the model also writes a short close reading of the finished poem.</p>
+    <section class="sheet" id="sheetSec" aria-label="The sheet">
+      <h2 class="eyebrow">The Sheet</h2>
+      <div class="folds" id="folds" aria-hidden="true"></div>
+      <div class="cue" id="cue">
+        <div class="cue-label" id="cueLabel"></div>
+        <div class="cue-words blank" id="cueWords" aria-live="polite">the sheet is blank - set the table below</div>
+      </div>
+      <form class="entry" id="entryForm">
+        <input id="wordInput" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="your contribution" disabled>
+        <button id="submitBtn" class="primary" type="submit" disabled>fold in</button>
+      </form>
+      <p class="status" id="status" role="status" aria-live="polite">choose the settings below, then begin</p>
+      <div class="sheet-actions">
+        <button id="endBtn" type="button" disabled>reveal the poem</button>
+        <button id="resetBtn" type="button">clear the table</button>
+      </div>
     </section>
 
-    <section class="project-note" aria-label="Project description">
-      <h2>Project description</h2>
-      <p>The AI player is programmed as a completion partner, not a chatbot. The system prompt makes the table rule explicit: answer with only the next one to five words, treat the latest contribution as the immediate cue, preserve local grammar, and avoid explanations until the reveal. That lets the model take one seat at the table while the page enforces the fold, turn order, and word cap.</p>
-      <p>The deployed proxy is server-side at <code>/api/cadavre/chat</code>, so browser clients do not carry API keys. It tries the Cadavre model route configured by environment first, targets <code>gemma-4-31b-it</code> when that hosted Gemma path is available, and can answer through the OpenRouter Gemma fallback, <code>google/gemma-3-27b-it</code>, when the primary route is unavailable. The companion training repo also builds an <code>exquisite-corpse</code> LoRA adapter: public-domain PoetryDB, curated Gutenberg modernist and proto-surrealist volumes, and the Gutenberg Poetry Corpus are cleaned, deduplicated, split by poem, reshaped into next-line chat examples, and trained with Unsloth QLoRA on Gemma 4 E4B before serving through a vLLM adapter path.</p>
-      <p>Its architecture is intentionally small: static HTML/CSS/JS for the room, an Express route that forwards OpenAI-compatible chat messages, local browser state for the pinned wall, and prompt-level rules for the game contract. It is a good AI-operations experiment because the task strongly prefers bounded completions over open-ended dialog, supports quick model swaps, makes failures visible in short text, and produces reusable traces for prompt, adapter, and provider comparisons.</p>
+    <section class="revealed" id="revealSec" hidden aria-label="The poem">
+      <h2 class="eyebrow">The Poem</h2>
+      <div class="poem" id="poem"></div>
+      <div class="reading" id="reading" aria-live="polite"></div>
+      <div class="reveal-actions">
+        <button id="againBtn" class="primary" type="button">play again</button>
+        <button id="exportMdBtn" type="button">save as markdown</button>
+        <button id="printBtn" type="button">print</button>
+      </div>
     </section>
 
     <section class="table" id="tableSec" aria-label="Table setting">
-      <h2 class="eyebrow">The Table</h2>
+      <h2 class="eyebrow">Settings</h2>
       <div class="table-setting">
         a table of
         <select id="playerCount" aria-label="number of players">
@@ -433,33 +458,18 @@
       </div>
     </section>
 
-    <section class="sheet" id="sheetSec" hidden aria-label="The sheet">
-      <h2 class="eyebrow">The Sheet</h2>
-      <div class="folds" id="folds" aria-hidden="true"></div>
-      <div class="cue" id="cue">
-        <div class="cue-label" id="cueLabel"></div>
-        <div class="cue-words blank" id="cueWords" aria-live="polite"></div>
-      </div>
-      <form class="entry" id="entryForm">
-        <input id="wordInput" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="your contribution">
-        <button id="submitBtn" class="primary" type="submit">fold in</button>
-      </form>
-      <p class="status" id="status" role="status" aria-live="polite"></p>
-      <div class="sheet-actions">
-        <button id="endBtn" type="button" disabled>reveal the poem</button>
-        <button id="resetBtn" type="button">clear the table</button>
-      </div>
+    <section class="prose" aria-label="About the game">
+      <p><strong>Cadavre Exquis</strong> is the Surrealist parlor game often called Exquisite Corpse. As <a href="https://www.moma.org/collection/terms/exquisite-corpse" target="_blank" rel="noopener noreferrer">MoMA summarizes it</a>, each player writes or draws on a sheet, folds the page to hide the contribution, and passes only a cue to the next player.</p>
+      <p>This arcade version seats a language model at the table. Human players choose the table size, the model's seat, and the word limit; the browser shows only the latest fold. When the sheet is revealed, the model also writes a short close reading of the finished poem.</p>
+      <p>The fit is structural: the parlor game asks for partial context, associative leaps, and a disciplined handoff. Large language models also operate by completing from a visible context window, so the game turns model behavior into a legible constraint rather than asking the system to impersonate an authorial whole.</p>
     </section>
 
-    <section class="revealed" id="revealSec" hidden aria-label="The poem">
-      <h2 class="eyebrow">The Poem</h2>
-      <div class="poem" id="poem"></div>
-      <div class="reading" id="reading" aria-live="polite"></div>
-      <div class="reveal-actions">
-        <button id="againBtn" class="primary" type="button">play again</button>
-        <button id="exportMdBtn" type="button">save as markdown</button>
-        <button id="printBtn" type="button">print</button>
-      </div>
+    <section class="project-note" aria-label="Project description">
+      <h2>Project description</h2>
+      <p>The AI player is programmed as a completion partner, not a chatbot. The system prompt makes the table rule explicit: answer with only the next one to five words, treat the latest contribution as the immediate cue, preserve local grammar, and avoid explanations until the reveal. That lets the model take one seat at the table while the page enforces the fold, turn order, and word cap.</p>
+      <p>The deployed proxy is server-side at <code>/api/cadavre/chat</code>, so browser clients do not carry API keys. The browser sends requests as <code>cadavre-server</code>; the server tries the Cadavre model route configured by environment first, targets <code>gemma-4-31b-it</code> when that hosted Gemma path is available, and can answer through the OpenRouter Gemma fallback, <code>google/gemma-3-27b-it</code>, when the primary route is unavailable.</p>
+      <p>The companion training pipeline builds an <code>exquisite-corpse</code> LoRA adapter from public-domain PoetryDB, curated Gutenberg modernist and proto-surrealist volumes, and the Gutenberg Poetry Corpus. The data is cleaned, deduplicated, split by poem, reshaped into next-line chat examples, and fine-tuned with Unsloth QLoRA on Gemma 4 E4B before being served through a vLLM adapter path.</p>
+      <p>Surrealist parlor games and large language models meet at the same hinge: neither player sees the total work while contributing, and meaning emerges from constrained continuations. The project uses that overlap as an operations experiment because failures are compact and visible, provider/model swaps are cheap, and each folded turn becomes a reusable trace for prompt, adapter, and fallback comparisons.</p>
     </section>
 
     <footer>
@@ -538,7 +548,7 @@ When asked for a close reading, write 2-4 concrete sentences about the finished 
       const words = el("cueWords");
       if (!entry) {
         el("cueLabel").textContent = "";
-        words.textContent = "the sheet is blank - begin anywhere";
+        words.textContent = gameActive ? "the sheet is blank - begin anywhere" : "the sheet is blank - set the table below";
         words.className = "cue-words blank";
         return;
       }
@@ -742,7 +752,7 @@ When asked for a close reading, write 2-4 concrete sentences about the finished 
       gameActive = true;
       el("folds").innerHTML = "";
       el("endBtn").disabled = true;
-      el("tableSec").hidden = true;
+      el("wordInput").value = "";
       el("revealSec").hidden = true;
       el("sheetSec").hidden = false;
       showCue(null);
@@ -750,13 +760,25 @@ When asked for a close reading, write 2-4 concrete sentences about the finished 
       promptTurn();
     }
 
-    function clearTable() {
+    function setPregameState() {
       gameActive = false;
       contributions = [];
-      el("sheetSec").hidden = true;
+      actorIndex = 0;
+      poemText = "";
+      readingText = "";
+      el("folds").innerHTML = "";
+      el("wordInput").value = "";
+      el("wordInput").disabled = true;
+      el("submitBtn").disabled = true;
+      el("endBtn").disabled = true;
+      el("sheetSec").hidden = false;
       el("revealSec").hidden = true;
-      el("tableSec").hidden = false;
-      setStatus("");
+      showCue(null);
+      setStatus("choose the settings below, then begin");
+    }
+
+    function clearTable() {
+      setPregameState();
     }
 
     el("playerCount").addEventListener("change", syncSeats);
@@ -787,6 +809,7 @@ When asked for a close reading, write 2-4 concrete sentences about the finished 
     }
 
     syncSeats();
+    setPregameState();
   </script>
 </body>
 </html>
