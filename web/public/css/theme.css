@@ -101,9 +101,21 @@
   --space-8: 32px;
 
   /* type */
-  --font-display: 'Silkscreen', 'IBM Plex Mono', monospace;
-  --font-body: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'IBM Plex Mono', 'SFMono-Regular', 'SF Mono', Consolas, monospace;
+  --font-display: var(--font-mono);
+  --font-body: var(--font-mono);
+
+  /* modular type scale — 16px base, 1.25 ratio (major third).
+     Every font-size in the app references one of these tokens. */
+  --text-2xs: 0.625rem;   /* 10px  — micro labels, badges, pins */
+  --text-xs:  0.688rem;   /* 11px  — tiny meta, timestamps, kickers */
+  --text-sm:  0.75rem;    /* 12px  — secondary labels, form text */
+  --text-md:  0.875rem;   /* 14px  — body text, controls, card text */
+  --text-lg:  1rem;       /* 16px  — primary headings, status values */
+  --text-xl:  1.25rem;    /* 20px  — section headings */
+  --text-2xl: 1.5rem;     /* 24px  — page titles, companion headings */
+  --text-3xl: 1.875rem;   /* 30px  — display, setup-game */
+  --text-4xl: 2rem;       /* 32px  — hero display */
 
   /* shape & motion — square panels, quick machine transitions */
   --radius-sm: 0;
@@ -223,7 +235,7 @@ body {
   align-items: center;
   gap: 6px;
   font-family: var(--font-display);
-  font-size: 0.6rem;
+  font-size: var(--text-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--foam-dim);
@@ -289,13 +301,13 @@ body {
 
 .titlebar-mark {
   color: var(--mint);
-  font-size: 1rem;
+  font-size: var(--text-lg);
   text-shadow: var(--lamp-glow);
 }
 
 .titlebar-title {
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: var(--text-lg);
   letter-spacing: 0.12em;
   color: var(--foam);
   white-space: nowrap;
@@ -303,7 +315,7 @@ body {
 
 .titlebar-sub {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: var(--text-2xs);
   letter-spacing: 0.08em;
   text-transform: none;
   color: var(--arcade-text-dim);
@@ -323,7 +335,7 @@ body {
   background: transparent;
   padding: 0 var(--space-5);
   font-family: var(--font-display);
-  font-size: 0.68rem;
+  font-size: var(--text-sm);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--foam-dim);
@@ -352,7 +364,7 @@ body {
 
 .titlebar-backend {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: var(--text-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--foam-dim);
@@ -362,7 +374,7 @@ body {
 
 .titlebar-clock {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
   color: var(--foam-dim);
 }
@@ -373,7 +385,7 @@ body {
   border: 0;
   color: var(--foam-dim);
   font-family: var(--font-display);
-  font-size: 0.8rem;
+  font-size: var(--text-md);
   line-height: 1;
   width: 24px;
   height: 24px;
@@ -426,7 +438,7 @@ body {
 
 .boot-logo {
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: var(--text-xl);
   letter-spacing: 0.16em;
   color: var(--mint);
   text-shadow: var(--lamp-glow);
@@ -437,7 +449,7 @@ body {
   flex-direction: column;
   gap: var(--space-1);
   font-family: var(--font-mono);
-  font-size: 0.74rem;
+  font-size: var(--text-sm);
   color: var(--foam-dim);
 }
 
@@ -457,7 +469,7 @@ body {
   border: 1px solid var(--mint-dim);
   color: var(--foam-dim);
   font-family: var(--font-display);
-  font-size: 0.6rem;
+  font-size: var(--text-2xs);
   letter-spacing: 0.12em;
   padding: 6px 12px;
   cursor: pointer;
