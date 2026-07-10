@@ -12,7 +12,6 @@ const state = {
   selectedLevel: 0,
   processId: null,
   runId: null,
-  showingAllGames: false,
   lastSummary: null,
   traceLog: [],
   traceStartedAt: null,
@@ -86,23 +85,19 @@ const GENERIC_TACTIC_WORDS = new Set(['avoid', 'dodge', 'defend', 'defensive', '
 
 const PREVIEW_GAMES = [
   { id: 0, name: 'aliens', category: 'gridphysics', archetype: 'shooter-lane', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 1 },
-  { id: 14, name: 'cakybaky', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 2 },
-  { id: 18, name: 'chase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 3 },
-  { id: 13, name: 'butterflies', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 4 },
-  { id: 19, name: 'chipschallenge', category: 'gridphysics', archetype: 'pusher-puzzle', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 5 },
-  { id: 20, name: 'chopper', category: 'gridphysics', archetype: 'shooter-roaming', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 6 },
-  { id: 30, name: 'digdug', category: 'gridphysics', archetype: 'navigator', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 7 },
-  { id: 68, name: 'pacman', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 8 },
-  { id: 44, name: 'frogs', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 9 },
-  { id: 50, name: 'hungrybirds', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 10 },
-  { id: 15, name: 'camelRace', category: 'gridphysics', archetype: 'collector', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 11 },
-  { id: 26, name: 'crossfire', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 12 },
-  { id: 63, name: 'link', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 13 }
+  { id: 18, name: 'chase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 2 },
+  { id: 13, name: 'butterflies', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 3 },
+  { id: 20, name: 'chopper', category: 'gridphysics', archetype: 'shooter-roaming', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 4 },
+  { id: 30, name: 'digdug', category: 'gridphysics', archetype: 'navigator', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 5 },
+  { id: 68, name: 'pacman', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 6 },
+  { id: 50, name: 'hungrybirds', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 7 },
+  { id: 15, name: 'camelRace', category: 'gridphysics', archetype: 'collector', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 8 },
+  { id: 26, name: 'crossfire', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 9 },
+  { id: 63, name: 'link', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 10 }
 ];
 
-const FEATURED_CABINET_COUNT = 13;
-const FEATURED_ORDER_IDS = [0, 14, 18, 13, 19, 20, 30, 68, 44, 50, 15, 26, 63];
-const SINGLE_PLAYER_CABINET_COUNT = 122;
+const FEATURED_CABINET_COUNT = 10;
+const FEATURED_ORDER_IDS = [0, 18, 13, 20, 30, 68, 50, 15, 26, 63];
 
 const PREVIEW_MODELS = [
   {
@@ -166,7 +161,6 @@ const strategyText = document.getElementById('strategy-text');
 const strategyFormGroup = document.getElementById('strategy-form-group');
 const modelFormGroup = document.getElementById('model-form-group');
 const modelRunSetup = document.getElementById('model-run-setup');
-const toggleBrowseAllBtn = document.getElementById('toggle-browse-all');
 const gamesModeLabel = document.getElementById('games-mode-label');
 const strategyActive = document.getElementById('strategy-active');
 const steerForm = document.getElementById('steer-form');
@@ -289,22 +283,11 @@ async function loadStaticGameCatalog() {
   return fetchGameCatalog('/data/games.json');
 }
 
-// Load games from API, then fall back to the static catalog for file previews.
+// Load the curated library from the API, then fall back to its static mirror.
 async function loadGames() {
   try {
-    let games = await fetchGameCatalog('/api/games');
-    let source = 'api';
-    if (games.length < 20) {
-      try {
-        const staticGames = await loadStaticGameCatalog();
-        if (staticGames.length > games.length) {
-          games = staticGames;
-          source = 'static catalog';
-        }
-      } catch (fallbackError) {
-        console.warn('[App] Static game catalog unavailable:', fallbackError.message);
-      }
-    }
+    const games = await fetchGameCatalog('/api/games');
+    const source = 'api';
     state.games = games;
     state.featuredShowcase = null;
     const featuredCount = state.games.filter(g => g.featured).length;
@@ -332,21 +315,13 @@ async function loadGames() {
   }
 }
 
-// Render featured-only or all games depending on the current toggle
 function renderCurrentGameList() {
   updateCatalogLabels();
-  renderGames(state.showingAllGames ? state.games : getFeaturedShowcase());
+  renderGames(getFeaturedShowcase());
 }
 
 function updateCatalogLabels() {
-  const catalogTotal = state.games.length >= 20 ? state.games.length : SINGLE_PLAYER_CABINET_COUNT;
-  if (state.showingAllGames) {
-    gamesModeLabel.textContent = `all ${catalogTotal} cabinets`;
-    toggleBrowseAllBtn.textContent = '★ Show featured only';
-  } else {
-    gamesModeLabel.textContent = 'featured cabinets';
-    toggleBrowseAllBtn.textContent = `Browse all ${catalogTotal} →`;
-  }
+  gamesModeLabel.textContent = `${state.games.length || FEATURED_CABINET_COUNT} selected cabinets`;
 }
 
 function getFeaturedShowcase() {
@@ -1023,28 +998,12 @@ function setupEventListeners() {
       renderCurrentGameList();
       return;
     }
-    // Searching always spans all 122 games
+    // Searching spans the complete curated library.
     const filtered = state.games.filter(g =>
       g.name.toLowerCase().includes(search)
     );
     renderGames(filtered);
     trackSearch(search, filtered.length);
-  });
-
-  // Toggle between featured-only and the full browsable list
-  toggleBrowseAllBtn.addEventListener('click', () => {
-    state.showingAllGames = !state.showingAllGames;
-    if (state.showingAllGames) {
-      gameSearch.classList.remove('hidden');
-    } else {
-      gameSearch.classList.add('hidden');
-      gameSearch.value = '';
-    }
-    updateCatalogLabels();
-    renderCurrentGameList();
-    trackUx('catalog_mode_changed', {
-      showingAllGames: state.showingAllGames
-    }, {}, { eventFamily: 'clickthrough' });
   });
 
   startGameBtn.addEventListener('click', startGame);

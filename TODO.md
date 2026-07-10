@@ -63,11 +63,11 @@ Source scope: pasted task log in `/Users/milwright/.codex/attachments/cc2bc348-6
 - [x] Prevent the hero subtitle from wrapping on desktop.
   - Evidence: `web/public/css/styles.css` applies `#game-selector .step-note { white-space: nowrap; }` above `760px`.
 
-- [x] Show roughly 15 featured cabinets with pinned first row and randomized cached rows after that.
-  - Evidence: `web/public/js/app.js` uses `FEATURED_CABINET_COUNT = 15`, `FEATURED_FIRST_ROW_IDS`, `shuffleGames`, and `state.featuredShowcase`.
+- [x] Limit the public arcade library to the ten evidence-backed cabinets.
+  - Evidence: `web/data/featured.json`, the API route, static catalog, and preview fallback expose the same ten ranked games.
 
-- [x] Make `Browse all 122` unfold to the real catalog in static preview.
-  - Evidence: `web/public/data/games.json` serves 122 games, and `web/public/js/app.js` falls back to it when `/api/games` returns only the five-card preview stub.
+- [x] Preserve the 122-game VGDL source corpus without exposing unqualified games in the public library.
+  - Evidence: source files remain available to evaluation tooling while the browser catalog has no browse-all escape hatch.
 
 - [x] Make companion room subtitles exact and non-wrapping.
   - Evidence: `web/public/index.html` uses `Fill-in-the-Blank Game Engine` and `Jeopardy! Board Clue Generator`, and CSS keeps `.companion-subtitle` on one line with ellipsis fallback.

@@ -79,7 +79,7 @@ router.get('/', (req, res) => {
         featured: featuredRanks.has(gameId),
         featuredRank: featuredRanks.get(gameId) || null
       };
-    });
+    }).filter(game => featuredRanks.has(game.id));
 
     res.json(games);
   } catch (error) {
@@ -89,7 +89,7 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/games/:id/digest — the game's rules, derived straight from its VGDL,
-// as discrete "unfold" facets for the prompting-field scaffold. All 122 games,
+// as discrete "unfold" facets for the prompting-field scaffold. Source games,
 // zero authoring: the same vgdl-digest that seeds each game's customOverride.
 router.get('/:id/digest', (req, res) => {
   try {

@@ -8,7 +8,7 @@ const FEATURED_MODEL_IDS = [
   'ministral-3:8b',
   'devstral-small-2:24b'
 ];
-const FEATURED_GAME_IDS = [0, 14, 18, 13, 19, 20, 30, 68, 44, 50, 15, 26, 63];
+const FEATURED_GAME_IDS = [0, 18, 13, 20, 30, 68, 50, 15, 26, 63];
 
 function loadEvalPlan() {
   try {
@@ -23,10 +23,10 @@ test('arcade eval plan covers the featured models across three arcade games', ()
   const plan = buildArcadeEvalPlan({ gameCount: 3 });
 
   assert.deepEqual(plan.modelIds, FEATURED_MODEL_IDS);
-  assert.deepEqual(plan.gameIds, [0, 14, 18]);
+  assert.deepEqual(plan.gameIds, [0, 18, 13]);
   assert.equal(plan.games[0].name, 'aliens');
-  assert.equal(plan.games[1].name, 'cakybaky');
-  assert.equal(plan.games[2].name, 'chase');
+  assert.equal(plan.games[1].name, 'chase');
+  assert.equal(plan.games[2].name, 'butterflies');
   assert.ok(plan.strategies.length >= 2);
   assert.equal(plan.cases.length, plan.modelIds.length * plan.gameIds.length * plan.strategies.length);
 
@@ -44,7 +44,7 @@ test('arcade eval plan can include more games without changing model coverage', 
   const plan = buildArcadeEvalPlan({ gameCount: 5 });
 
   assert.deepEqual(plan.modelIds, FEATURED_MODEL_IDS);
-  assert.deepEqual(plan.gameIds, [0, 14, 18, 13, 19]);
+  assert.deepEqual(plan.gameIds, [0, 18, 13, 20, 30]);
   assert.equal(plan.cases.length, plan.modelIds.length * plan.gameIds.length * plan.strategies.length);
 });
 
@@ -63,16 +63,16 @@ test('arcade eval plan interleaves games and models for marquee rotation', () =>
   const openingCases = plan.cases.slice(0, FEATURED_MODEL_IDS.length);
 
   assert.deepEqual(openingCases.map(evalCase => evalCase.modelId), FEATURED_MODEL_IDS);
-  assert.deepEqual(openingCases.map(evalCase => evalCase.gameId), [0, 14, 18, 13, 19]);
+  assert.deepEqual(openingCases.map(evalCase => evalCase.gameId), [0, 18, 13, 20, 30]);
 });
 
 test('arcade eval plan can cover the full model-native starter set', () => {
   const { buildArcadeEvalPlan } = loadEvalPlan();
   const plan = buildArcadeEvalPlan({ gameCount: 10 });
 
-  assert.deepEqual(plan.gameIds, [0, 14, 18, 13, 19, 20, 30, 68, 44, 50]);
-  assert.equal(plan.games[5].name, 'chopper');
-  assert.equal(plan.games[9].name, 'hungrybirds');
+  assert.deepEqual(plan.gameIds, FEATURED_GAME_IDS);
+  assert.equal(plan.games[5].name, 'pacman');
+  assert.equal(plan.games[9].name, 'link');
   assert.equal(plan.cases.length, plan.modelIds.length * plan.gameIds.length * plan.strategies.length);
 });
 
@@ -126,7 +126,7 @@ test('eval case filtering targets games, models, strategies, and caps run count'
   const plan = buildArcadeEvalPlan({ gameCount: 5 });
 
   const cases = filterEvalCases(plan, {
-    gameIds: [0, 14],
+    gameIds: [0, 18],
     modelIds: ['gemma3:27b'],
     strategyIds: ['safe', 'puzzle'],
     maxCases: 3
@@ -134,6 +134,6 @@ test('eval case filtering targets games, models, strategies, and caps run count'
 
   assert.equal(cases.length, 3);
   assert.deepEqual([...new Set(cases.map(evalCase => evalCase.modelId))], ['gemma3:27b']);
-  assert.ok(cases.every(evalCase => [0, 14].includes(evalCase.gameId)));
+  assert.ok(cases.every(evalCase => [0, 18].includes(evalCase.gameId)));
   assert.ok(cases.every(evalCase => ['safe', 'puzzle'].includes(evalCase.strategyId)));
 });
