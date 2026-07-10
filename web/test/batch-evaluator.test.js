@@ -19,6 +19,21 @@ test('batch plan defaults to featured arcade games and prompt strategies', () =>
   assert.deepEqual(cases.map(evalCase => evalCase.strategyId), ['safe', 'points', 'puzzle']);
 });
 
+test('batch plan can select combinatorial movement strategies', () => {
+  const plan = buildBatchPlan({
+    gameCount: 1,
+    modelIds: 'gpt-oss:120b',
+    combinatorialStrategies: true
+  });
+
+  assert.deepEqual(plan.strategies.map(strategy => strategy.id), [
+    'left-right-up',
+    'right-left-down',
+    'four-way-sweep'
+  ]);
+  assert.ok(plan.strategies.every(strategy => /LEFT|RIGHT|UP|DOWN/.test(strategy.text)));
+});
+
 test('dry run returns selected cases without starting games', async () => {
   const result = await runArcadeBatchEvaluation({
     dryRun: true,
@@ -31,6 +46,7 @@ test('dry run returns selected cases without starting games', async () => {
   assert.equal(result.cases.length, 2);
   assert.equal(result.results.length, 0);
   assert.equal(result.errors.length, 0);
+  assert.equal(result.qualification.targetGameCount, 1);
 });
 
 test('offline batch produces prompt-dependent game outcomes', async () => {

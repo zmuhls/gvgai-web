@@ -12,6 +12,8 @@ function parseArgs(argv) {
     const next = argv[i + 1];
     if (arg === '--dry-run') {
       options.dryRun = true;
+    } else if (arg === '--combinatorial-strategies') {
+      options.combinatorialStrategies = true;
     } else if (arg === '--offline') {
       options.offline = true;
     } else if (arg === '--ollama-offline') {

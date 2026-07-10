@@ -34,7 +34,9 @@ function summarizeQualification(results = [], plan = {}, options = {}) {
       ? options.requiredModelPasses
       : Math.ceil(modelCount / 2)
   );
-  const targetGameCount = Number.isInteger(options.targetGameCount) ? options.targetGameCount : 15;
+  const targetGameCount = Number.isInteger(options.targetGameCount)
+    ? options.targetGameCount
+    : Math.max(1, Array.isArray(plan.games) ? plan.games.length : 0);
   const gameSummaries = new Map();
 
   for (const game of plan.games || []) {

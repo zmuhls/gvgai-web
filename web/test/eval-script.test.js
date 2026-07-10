@@ -7,6 +7,7 @@ const { parseArgs } = require('../scripts/run-arcade-eval');
 test('arcade eval script parses dry-run, selection, and timeout options', () => {
   const options = parseArgs([
     '--dry-run',
+    '--combinatorial-strategies',
     '--ollama-offline',
     '--game-count', '3',
     '--game-id', '0,4',
@@ -23,6 +24,7 @@ test('arcade eval script parses dry-run, selection, and timeout options', () => 
   ]);
 
   assert.equal(options.dryRun, true);
+  assert.equal(options.combinatorialStrategies, true);
   assert.equal(options.ollamaOffline, true);
   assert.equal(options.gameCount, '3');
   assert.equal(options.gameIds, '0,4');

@@ -1,5 +1,9 @@
 const EventEmitter = require('events');
-const { buildArcadeEvalPlan, normalizeEvalResult } = require('./eval-plan');
+const {
+  COMBINATORIAL_STRATEGIES,
+  buildArcadeEvalPlan,
+  normalizeEvalResult
+} = require('./eval-plan');
 const { summarizeQualification } = require('./eval-qualification');
 const { getAllModels, resolveModel } = require('./models');
 const defaultTelemetry = require('./telemetry-store');
@@ -71,7 +75,7 @@ function buildBatchPlan(options = {}) {
   const planOptions = {
     gameCount: positiveInteger(options.gameCount, undefined),
     models: modelsForOptions(options),
-    strategies: options.strategies,
+    strategies: options.combinatorialStrategies ? COMBINATORIAL_STRATEGIES : options.strategies,
     levelId: options.levelId
   };
   if (gameIds.length > 0) planOptions.gameIds = gameIds;

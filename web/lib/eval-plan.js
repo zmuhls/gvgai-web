@@ -26,6 +26,24 @@ const DEFAULT_STRATEGIES = [
   }
 ];
 
+const COMBINATORIAL_STRATEGIES = [
+  {
+    id: 'left-right-up',
+    label: 'Left, right, up weave',
+    text: 'Use short movement combinations in this order: LEFT, RIGHT, UP. Try every legal step before repeating one direction. If a step is blocked or does not change position, advance immediately to the next step; use the action button when movement alone cannot make progress.'
+  },
+  {
+    id: 'right-left-down',
+    label: 'Right, left, down weave',
+    text: 'Use short movement combinations in this order: RIGHT, LEFT, DOWN. Try every legal step before repeating one direction. If a step is blocked or does not change position, advance immediately to the next step; use the action button when movement alone cannot make progress.'
+  },
+  {
+    id: 'four-way-sweep',
+    label: 'Four-way sweep',
+    text: 'Explore with short four-step routes that combine UP, LEFT, DOWN, and RIGHT. Rotate the route after any blocked move, avoid staying on one axis, and use the action button when it clears a threat or opens the goal path.'
+  }
+];
+
 function projectRoot() {
   return path.resolve(__dirname, '..', '..');
 }
@@ -282,6 +300,7 @@ module.exports = {
   MIN_SURVIVAL_TICKS,
   NIL_LOOP_THRESHOLD,
   DEFAULT_STRATEGIES,
+  COMBINATORIAL_STRATEGIES,
   buildArcadeEvalPlan,
   filterEvalCases,
   normalizeEvalResult,

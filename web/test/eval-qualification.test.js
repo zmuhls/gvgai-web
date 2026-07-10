@@ -43,6 +43,19 @@ test('summarizeQualification requires at least half of selected models per game'
   assert.equal(qualification.games[1].qualified, false);
 });
 
+test('qualification target defaults to the selected game catalog', () => {
+  const qualification = summarizeQualification([], {
+    models: [{ id: 'm1', name: 'Model 1' }],
+    games: [
+      { id: 0, name: 'aliens', levelId: 1 },
+      { id: 20, name: 'chopper', levelId: 1 },
+      { id: 68, name: 'pacman', levelId: 1 }
+    ]
+  });
+
+  assert.equal(qualification.targetGameCount, 3);
+});
+
 test('buildBatchPlan can target level 1 and all catalog models', () => {
   const plan = buildBatchPlan({ gameIds: '0', levelId: '1', allModels: true });
 
