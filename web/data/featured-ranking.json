@@ -1,0 +1,772 @@
+{
+  "generatedAt": "2026-07-10T16:39:14.995Z",
+  "selectedGameCount": 10,
+  "selectedModelCount": 5,
+  "requiredModelPasses": 3,
+  "qualifyingGameCount": 10,
+  "rankingCriteria": [
+    "qualified at the half-catalog threshold",
+    "distinct model wins",
+    "distinct model passes",
+    "qualifying strategy breadth",
+    "lower mean ticks for wins",
+    "action diversity",
+    "stable game id tie-break"
+  ],
+  "models": [
+    "gemma3:27b",
+    "qwen3-coder-next",
+    "ministral-3:14b",
+    "ministral-3:8b",
+    "devstral-small-2:24b"
+  ],
+  "sources": [
+    "web/data/eval-runs/qualification-hungrybirds-all-models.json",
+    "web/data/eval-runs/qualification-crossfire-all-models.json",
+    "web/data/eval-runs/qualification-camelrace-all-models.json",
+    "web/data/eval-runs/qualification-butterflies-all-models-limit6.json",
+    "web/data/eval-runs/qualification-chase-all-models-limit6.json",
+    "web/data/eval-runs/qualification-digdug-all-models-limit6.json",
+    "web/data/eval-runs/qualification-link-all-models-limit6.json",
+    "web/data/eval-runs/featured-level1-qwen-safe-gap-qualification-2026-07-10.json",
+    "web/data/eval-runs/featured-combinatorial-lru-models-2026-07-10.json",
+    "web/data/eval-runs/featured-combinatorial-qwen-alternates-2026-07-10.json"
+  ],
+  "games": [
+    {
+      "rank": 1,
+      "gameId": 50,
+      "gameName": "hungrybirds",
+      "qualified": true,
+      "modelPasses": 5,
+      "modelWins": 5,
+      "modelsTested": 5,
+      "qualifyingStrategies": [
+        "safe"
+      ],
+      "meanWinTicks": 21,
+      "maxActionDiversity": 3,
+      "nilLoopRuns": 0,
+      "errorCount": 0,
+      "evidence": [
+        {
+          "modelId": "gemma3:27b",
+          "runId": "arcade-g50-l1-gemma3-27b-s0",
+          "source": "web/data/eval-runs/qualification-hungrybirds-all-models.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 100,
+          "ticks": 21,
+          "decisions": 22,
+          "nilActionLoop": false,
+          "actionDiversity": 3
+        },
+        {
+          "modelId": "qwen3-coder-next",
+          "runId": "arcade-g50-l1-qwen3-coder-next-s0",
+          "source": "web/data/eval-runs/qualification-hungrybirds-all-models.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 100,
+          "ticks": 21,
+          "decisions": 22,
+          "nilActionLoop": false,
+          "actionDiversity": 3
+        },
+        {
+          "modelId": "ministral-3:14b",
+          "runId": "arcade-g50-l1-ministral-3-14b-s0",
+          "source": "web/data/eval-runs/qualification-hungrybirds-all-models.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 100,
+          "ticks": 21,
+          "decisions": 22,
+          "nilActionLoop": false,
+          "actionDiversity": 3
+        },
+        {
+          "modelId": "ministral-3:8b",
+          "runId": "arcade-g50-l1-ministral-3-8b-s0",
+          "source": "web/data/eval-runs/qualification-hungrybirds-all-models.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 100,
+          "ticks": 21,
+          "decisions": 22,
+          "nilActionLoop": false,
+          "actionDiversity": 3
+        },
+        {
+          "modelId": "devstral-small-2:24b",
+          "runId": "arcade-g50-l1-devstral-small-2-24b-s0",
+          "source": "web/data/eval-runs/qualification-hungrybirds-all-models.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 100,
+          "ticks": 21,
+          "decisions": 22,
+          "nilActionLoop": false,
+          "actionDiversity": 3
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "gameId": 26,
+      "gameName": "crossfire",
+      "qualified": true,
+      "modelPasses": 5,
+      "modelWins": 5,
+      "modelsTested": 5,
+      "qualifyingStrategies": [
+        "safe"
+      ],
+      "meanWinTicks": 35,
+      "maxActionDiversity": 4,
+      "nilLoopRuns": 0,
+      "errorCount": 0,
+      "evidence": [
+        {
+          "modelId": "gemma3:27b",
+          "runId": "arcade-g26-l1-gemma3-27b-s0",
+          "source": "web/data/eval-runs/qualification-crossfire-all-models.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 5,
+          "ticks": 35,
+          "decisions": 36,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        },
+        {
+          "modelId": "qwen3-coder-next",
+          "runId": "arcade-g26-l1-qwen3-coder-next-s0",
+          "source": "web/data/eval-runs/qualification-crossfire-all-models.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 5,
+          "ticks": 35,
+          "decisions": 36,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        },
+        {
+          "modelId": "ministral-3:14b",
+          "runId": "arcade-g26-l1-ministral-3-14b-s0",
+          "source": "web/data/eval-runs/qualification-crossfire-all-models.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 5,
+          "ticks": 35,
+          "decisions": 36,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        },
+        {
+          "modelId": "ministral-3:8b",
+          "runId": "arcade-g26-l1-ministral-3-8b-s0",
+          "source": "web/data/eval-runs/qualification-crossfire-all-models.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 5,
+          "ticks": 35,
+          "decisions": 36,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        },
+        {
+          "modelId": "devstral-small-2:24b",
+          "runId": "arcade-g26-l1-devstral-small-2-24b-s0",
+          "source": "web/data/eval-runs/qualification-crossfire-all-models.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 5,
+          "ticks": 35,
+          "decisions": 36,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "gameId": 15,
+      "gameName": "camelRace",
+      "qualified": true,
+      "modelPasses": 5,
+      "modelWins": 5,
+      "modelsTested": 5,
+      "qualifyingStrategies": [
+        "safe"
+      ],
+      "meanWinTicks": 44.4,
+      "maxActionDiversity": 2,
+      "nilLoopRuns": 0,
+      "errorCount": 0,
+      "evidence": [
+        {
+          "modelId": "gemma3:27b",
+          "runId": "arcade-g15-l1-gemma3-27b-s0",
+          "source": "web/data/eval-runs/qualification-camelrace-all-models.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 1,
+          "ticks": 46,
+          "decisions": 47,
+          "nilActionLoop": false,
+          "actionDiversity": 2
+        },
+        {
+          "modelId": "qwen3-coder-next",
+          "runId": "arcade-g15-l1-qwen3-coder-next-s0",
+          "source": "web/data/eval-runs/qualification-camelrace-all-models.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 1,
+          "ticks": 44,
+          "decisions": 45,
+          "nilActionLoop": false,
+          "actionDiversity": 1
+        },
+        {
+          "modelId": "ministral-3:14b",
+          "runId": "arcade-g15-l1-ministral-3-14b-s0",
+          "source": "web/data/eval-runs/qualification-camelrace-all-models.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 1,
+          "ticks": 44,
+          "decisions": 45,
+          "nilActionLoop": false,
+          "actionDiversity": 1
+        },
+        {
+          "modelId": "ministral-3:8b",
+          "runId": "arcade-g15-l1-ministral-3-8b-s0",
+          "source": "web/data/eval-runs/qualification-camelrace-all-models.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 1,
+          "ticks": 44,
+          "decisions": 45,
+          "nilActionLoop": false,
+          "actionDiversity": 1
+        },
+        {
+          "modelId": "devstral-small-2:24b",
+          "runId": "arcade-g15-l1-devstral-small-2-24b-s0",
+          "source": "web/data/eval-runs/qualification-camelrace-all-models.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 1,
+          "ticks": 44,
+          "decisions": 45,
+          "nilActionLoop": false,
+          "actionDiversity": 1
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "gameId": 13,
+      "gameName": "butterflies",
+      "qualified": true,
+      "modelPasses": 4,
+      "modelWins": 3,
+      "modelsTested": 4,
+      "qualifyingStrategies": [
+        "safe"
+      ],
+      "meanWinTicks": 68,
+      "maxActionDiversity": 4,
+      "nilLoopRuns": 0,
+      "errorCount": 0,
+      "evidence": [
+        {
+          "modelId": "gemma3:27b",
+          "runId": "arcade-g13-l1-gemma3-27b-s0",
+          "source": "web/data/eval-runs/qualification-butterflies-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 24,
+          "ticks": 69,
+          "decisions": 70,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        },
+        {
+          "modelId": "qwen3-coder-next",
+          "runId": "arcade-g13-l1-qwen3-coder-next-s0",
+          "source": "web/data/eval-runs/qualification-butterflies-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 28,
+          "ticks": 68,
+          "decisions": 69,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        },
+        {
+          "modelId": "ministral-3:14b",
+          "runId": "arcade-g13-l1-ministral-3-14b-s0",
+          "source": "web/data/eval-runs/qualification-butterflies-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 28,
+          "ticks": 68,
+          "decisions": 69,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        },
+        {
+          "modelId": "ministral-3:8b",
+          "runId": "arcade-g13-l1-ministral-3-8b-s0",
+          "source": "web/data/eval-runs/qualification-butterflies-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "won",
+          "winner": "PLAYER_WINS",
+          "finalScore": 28,
+          "ticks": 68,
+          "decisions": 69,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "gameId": 20,
+      "gameName": "chopper",
+      "qualified": true,
+      "modelPasses": 4,
+      "modelWins": 0,
+      "modelsTested": 4,
+      "qualifyingStrategies": [
+        "four-way-sweep",
+        "left-right-up",
+        "right-left-down",
+        "safe"
+      ],
+      "meanWinTicks": null,
+      "maxActionDiversity": 6,
+      "nilLoopRuns": 0,
+      "errorCount": 0,
+      "evidence": [
+        {
+          "modelId": "gemma3:27b",
+          "runId": "arcade-g20-l1-gemma3-27b-s0",
+          "source": "web/data/eval-runs/featured-combinatorial-lru-models-2026-07-10.json",
+          "strategyId": "left-right-up",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 0,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 6
+        },
+        {
+          "modelId": "qwen3-coder-next",
+          "runId": "arcade-g20-l1-qwen3-coder-next-s0",
+          "source": "web/data/eval-runs/featured-level1-qwen-safe-gap-qualification-2026-07-10.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 0,
+          "ticks": 69,
+          "decisions": 70,
+          "nilActionLoop": false,
+          "actionDiversity": 5
+        },
+        {
+          "modelId": "ministral-3:14b",
+          "runId": "arcade-g20-l1-ministral-3-14b-s0",
+          "source": "web/data/eval-runs/featured-combinatorial-lru-models-2026-07-10.json",
+          "strategyId": "left-right-up",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 0,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 5
+        },
+        {
+          "modelId": "ministral-3:8b",
+          "runId": "arcade-g20-l1-ministral-3-8b-s0",
+          "source": "web/data/eval-runs/featured-combinatorial-lru-models-2026-07-10.json",
+          "strategyId": "left-right-up",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 0,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "gameId": 68,
+      "gameName": "pacman",
+      "qualified": true,
+      "modelPasses": 4,
+      "modelWins": 0,
+      "modelsTested": 4,
+      "qualifyingStrategies": [
+        "four-way-sweep",
+        "left-right-up",
+        "right-left-down",
+        "safe"
+      ],
+      "meanWinTicks": null,
+      "maxActionDiversity": 5,
+      "nilLoopRuns": 0,
+      "errorCount": 0,
+      "evidence": [
+        {
+          "modelId": "gemma3:27b",
+          "runId": "arcade-g68-l1-gemma3-27b-s0",
+          "source": "web/data/eval-runs/featured-combinatorial-lru-models-2026-07-10.json",
+          "strategyId": "left-right-up",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 1,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        },
+        {
+          "modelId": "qwen3-coder-next",
+          "runId": "arcade-g68-l1-qwen3-coder-next-s0",
+          "source": "web/data/eval-runs/featured-level1-qwen-safe-gap-qualification-2026-07-10.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 7,
+          "ticks": 69,
+          "decisions": 70,
+          "nilActionLoop": false,
+          "actionDiversity": 5
+        },
+        {
+          "modelId": "ministral-3:14b",
+          "runId": "arcade-g68-l1-ministral-3-14b-s0",
+          "source": "web/data/eval-runs/featured-combinatorial-lru-models-2026-07-10.json",
+          "strategyId": "left-right-up",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 7,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        },
+        {
+          "modelId": "ministral-3:8b",
+          "runId": "arcade-g68-l1-ministral-3-8b-s0",
+          "source": "web/data/eval-runs/featured-combinatorial-lru-models-2026-07-10.json",
+          "strategyId": "left-right-up",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 2,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "gameId": 18,
+      "gameName": "chase",
+      "qualified": true,
+      "modelPasses": 4,
+      "modelWins": 0,
+      "modelsTested": 4,
+      "qualifyingStrategies": [
+        "safe"
+      ],
+      "meanWinTicks": null,
+      "maxActionDiversity": 4,
+      "nilLoopRuns": 0,
+      "errorCount": 0,
+      "evidence": [
+        {
+          "modelId": "gemma3:27b",
+          "runId": "arcade-g18-l1-gemma3-27b-s0",
+          "source": "web/data/eval-runs/qualification-chase-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 5,
+          "ticks": 89,
+          "decisions": 90,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        },
+        {
+          "modelId": "qwen3-coder-next",
+          "runId": "arcade-g18-l1-qwen3-coder-next-s0",
+          "source": "web/data/eval-runs/qualification-chase-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 5,
+          "ticks": 89,
+          "decisions": 90,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        },
+        {
+          "modelId": "ministral-3:14b",
+          "runId": "arcade-g18-l1-ministral-3-14b-s0",
+          "source": "web/data/eval-runs/qualification-chase-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 5,
+          "ticks": 89,
+          "decisions": 90,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        },
+        {
+          "modelId": "ministral-3:8b",
+          "runId": "arcade-g18-l1-ministral-3-8b-s0",
+          "source": "web/data/eval-runs/qualification-chase-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 5,
+          "ticks": 89,
+          "decisions": 90,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "gameId": 30,
+      "gameName": "digdug",
+      "qualified": true,
+      "modelPasses": 4,
+      "modelWins": 0,
+      "modelsTested": 4,
+      "qualifyingStrategies": [
+        "safe"
+      ],
+      "meanWinTicks": null,
+      "maxActionDiversity": 4,
+      "nilLoopRuns": 0,
+      "errorCount": 0,
+      "evidence": [
+        {
+          "modelId": "gemma3:27b",
+          "runId": "arcade-g30-l1-gemma3-27b-s0",
+          "source": "web/data/eval-runs/qualification-digdug-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 6,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        },
+        {
+          "modelId": "qwen3-coder-next",
+          "runId": "arcade-g30-l1-qwen3-coder-next-s0",
+          "source": "web/data/eval-runs/qualification-digdug-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 6,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        },
+        {
+          "modelId": "ministral-3:14b",
+          "runId": "arcade-g30-l1-ministral-3-14b-s0",
+          "source": "web/data/eval-runs/qualification-digdug-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 6,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        },
+        {
+          "modelId": "ministral-3:8b",
+          "runId": "arcade-g30-l1-ministral-3-8b-s0",
+          "source": "web/data/eval-runs/qualification-digdug-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 6,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 4
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "gameId": 63,
+      "gameName": "link",
+      "qualified": true,
+      "modelPasses": 4,
+      "modelWins": 0,
+      "modelsTested": 4,
+      "qualifyingStrategies": [
+        "safe"
+      ],
+      "meanWinTicks": null,
+      "maxActionDiversity": 3,
+      "nilLoopRuns": 0,
+      "errorCount": 0,
+      "evidence": [
+        {
+          "modelId": "gemma3:27b",
+          "runId": "arcade-g63-l1-gemma3-27b-s0",
+          "source": "web/data/eval-runs/qualification-link-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 31950,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 3
+        },
+        {
+          "modelId": "qwen3-coder-next",
+          "runId": "arcade-g63-l1-qwen3-coder-next-s0",
+          "source": "web/data/eval-runs/qualification-link-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 31950,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 3
+        },
+        {
+          "modelId": "ministral-3:14b",
+          "runId": "arcade-g63-l1-ministral-3-14b-s0",
+          "source": "web/data/eval-runs/qualification-link-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 31950,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 3
+        },
+        {
+          "modelId": "ministral-3:8b",
+          "runId": "arcade-g63-l1-ministral-3-8b-s0",
+          "source": "web/data/eval-runs/qualification-link-all-models-limit6.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 31950,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 3
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "gameId": 0,
+      "gameName": "aliens",
+      "qualified": true,
+      "modelPasses": 3,
+      "modelWins": 0,
+      "modelsTested": 3,
+      "qualifyingStrategies": [
+        "four-way-sweep",
+        "left-right-up",
+        "right-left-down",
+        "safe"
+      ],
+      "meanWinTicks": null,
+      "maxActionDiversity": 3,
+      "nilLoopRuns": 0,
+      "errorCount": 1,
+      "evidence": [
+        {
+          "modelId": "qwen3-coder-next",
+          "runId": "arcade-g0-l1-qwen3-coder-next-s0",
+          "source": "web/data/eval-runs/featured-level1-qwen-safe-gap-qualification-2026-07-10.json",
+          "strategyId": "safe",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 5,
+          "ticks": 69,
+          "decisions": 70,
+          "nilActionLoop": false,
+          "actionDiversity": 3
+        },
+        {
+          "modelId": "ministral-3:14b",
+          "runId": "arcade-g0-l1-ministral-3-14b-s0",
+          "source": "web/data/eval-runs/featured-combinatorial-lru-models-2026-07-10.json",
+          "strategyId": "left-right-up",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 7,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 3
+        },
+        {
+          "modelId": "ministral-3:8b",
+          "runId": "arcade-g0-l1-ministral-3-8b-s0",
+          "source": "web/data/eval-runs/featured-combinatorial-lru-models-2026-07-10.json",
+          "strategyId": "left-right-up",
+          "reason": "fair-play",
+          "winner": "NO_WINNER",
+          "finalScore": 2,
+          "ticks": 61,
+          "decisions": 62,
+          "nilActionLoop": false,
+          "actionDiversity": 3
+        }
+      ]
+    }
+  ]
+}
