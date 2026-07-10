@@ -8,7 +8,8 @@
     'Qwen3 Coder Next',
     'Ministral 3 14B',
     'Ministral 3 8B',
-    'Devstral Small 2 24B'
+    'Devstral Small 2 24B',
+    'DeepSeek V4 Flash'
   ];
   const socket = io();
   const el = id => document.getElementById(id);

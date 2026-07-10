@@ -135,6 +135,12 @@ const PREVIEW_MODELS = [
     name: 'Devstral Small 2 24B',
     description: 'Open-weight model',
     featured: true
+  },
+  {
+    id: 'deepseek-v4-flash',
+    name: 'DeepSeek V4 Flash',
+    description: 'Tournament champion',
+    featured: true
   }
 ];
 

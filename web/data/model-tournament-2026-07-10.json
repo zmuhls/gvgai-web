@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-10T17:33:04.480Z",
+  "champion": {
+    "modelId": "deepseek-v4-flash",
+    "modelName": "DeepSeek V4 Flash",
+    "reason": "Only finalist to defeat a level, 9 of 10 games qualified, higher total score, and fewer provider errors than the runner-up."
+  },
+  "runnerUp": {
+    "modelId": "qwen3-coder-next",
+    "modelName": "Qwen3 Coder Next",
+    "reason": "Better per-game placement points and movement discipline, but no wins and seven provider errors in the final."
+  },
+  "roster": {
+    "availableModelCount": 34,
+    "canaryCandidateCount": 15,
+    "viableCandidateCount": 11,
+    "officialSources": [
+      "https://ollama.com/library",
+      "https://ollama.com/library/gemma3/tags",
+      "https://ollama.com/library/nemotron-3-nano/tags",
+      "https://ollama.com/library/deepseek-v4-flash/tags",
+      "https://registry.ollama.com/library/gemma4"
+    ]
+  },
+  "methodology": {
+    "levelId": 1,
+    "strategyId": "four-way-sweep",
+    "actionTimeoutMs": 8000,
+    "qualificationMaxActions": 62,
+    "passingCondition": "PLAYER_WINS, or more than the game threshold of survival ticks with decisions and no NIL loop",
+    "stages": [
+      {
+        "name": "canary",
+        "models": 15,
+        "criterion": "usable exact legal action through an available Ollama Cloud endpoint"
+      },
+      {
+        "name": "qualifier",
+        "models": 11,
+        "games": 3,
+        "maxActions": 12,
+        "source": "web/data/eval-runs/model-tournament-qualifiers-2026-07-10.json"
+      },
+      {
+        "name": "semifinal",
+        "models": 4,
+        "games": 7,
+        "maxActions": 12,
+        "source": "web/data/eval-runs/model-tournament-semifinals-2026-07-10.json"
+      },
+      {
+        "name": "final",
+        "models": 2,
+        "games": 10,
+        "maxActions": 62,
+        "source": "web/data/eval-runs/model-tournament-finals-2026-07-10.json"
+      }
+    ]
+  },
+  "qualifierStandings": [
+    { "rank": 1, "modelId": "deepseek-v4-flash", "placementPoints": 25, "score": 5 },
+    { "rank": 2, "modelId": "qwen3-coder-next", "placementPoints": 22, "score": 2 },
+    { "rank": 3, "modelId": "gemma3:27b", "placementPoints": 21, "score": 3 },
+    { "rank": 4, "modelId": "ministral-3:8b", "placementPoints": 21, "score": 3 },
+    { "rank": 5, "modelId": "ministral-3:3b", "placementPoints": 21, "score": 2 },
+    { "rank": 6, "modelId": "ministral-3:14b", "placementPoints": 20, "score": 4 },
+    { "rank": 7, "modelId": "nemotron-3-nano:30b", "placementPoints": 18, "score": 1 },
+    { "rank": 8, "modelId": "devstral-small-2:24b", "placementPoints": 17, "score": 4 },
+    { "rank": 9, "modelId": "gemma3:4b", "placementPoints": 16, "score": 3 },
+    { "rank": 10, "modelId": "gemma4:31b", "placementPoints": 12, "score": 4 },
+    { "rank": 11, "modelId": "gemma3:12b", "placementPoints": 5, "score": 1 }
+  ],
+  "semifinalStandings": [
+    { "rank": 1, "modelId": "deepseek-v4-flash", "placementPoints": 29, "score": 34463 },
+    { "rank": 2, "modelId": "qwen3-coder-next", "placementPoints": 28, "score": 34456 },
+    { "rank": 3, "modelId": "ministral-3:8b", "placementPoints": 22, "score": 34453 },
+    { "rank": 4, "modelId": "gemma3:27b", "placementPoints": 21, "score": 34457 }
+  ],
+  "finalStandings": [
+    {
+      "rank": 1,
+      "modelId": "deepseek-v4-flash",
+      "wins": 1,
+      "qualifiedGames": 9,
+      "losses": 1,
+      "totalScore": 31993,
+      "placementPoints": 14,
+      "meanUniqueActions": 3.4,
+      "meanLongestActionRun": 9.6,
+      "longestActionRun": 31,
+      "nilLoops": 0,
+      "providerErrors": 3,
+      "meanLatencyMs": 1116,
+      "p95LatencyMs": 1573,
+      "validDecisions": 571,
+      "totalDecisions": 571
+    },
+    {
+      "rank": 2,
+      "modelId": "qwen3-coder-next",
+      "wins": 0,
+      "qualifiedGames": 9,
+      "losses": 2,
+      "totalScore": 31982,
+      "placementPoints": 16,
+      "meanUniqueActions": 3.6,
+      "meanLongestActionRun": 9.1,
+      "longestActionRun": 19,
+      "nilLoops": 0,
+      "providerErrors": 7,
+      "meanLatencyMs": 1162,
+      "p95LatencyMs": 2997,
+      "validDecisions": 571,
+      "totalDecisions": 572
+    }
+  ],
+  "finalGames": [
+    { "gameId": 50, "gameName": "hungrybirds", "qualifiedModels": 2, "winner": null },
+    { "gameId": 26, "gameName": "crossfire", "qualifiedModels": 2, "winner": null },
+    { "gameId": 15, "gameName": "camelRace", "qualifiedModels": 2, "winner": "deepseek-v4-flash" },
+    { "gameId": 13, "gameName": "butterflies", "qualifiedModels": 2, "winner": null },
+    { "gameId": 20, "gameName": "chopper", "qualifiedModels": 2, "winner": null },
+    { "gameId": 68, "gameName": "pacman", "qualifiedModels": 2, "winner": null },
+    { "gameId": 18, "gameName": "chase", "qualifiedModels": 2, "winner": null },
+    { "gameId": 30, "gameName": "digdug", "qualifiedModels": 0, "winner": null },
+    { "gameId": 63, "gameName": "link", "qualifiedModels": 2, "winner": null },
+    { "gameId": 0, "gameName": "aliens", "qualifiedModels": 2, "winner": null }
+  ],
+  "qualification": {
+    "qualifyingGameCount": 9,
+    "targetGameCount": 10,
+    "requiredModelPasses": 1,
+    "selectedModelCount": 2,
+    "failedGames": ["digdug"]
+  },
+  "caveats": [
+    "The final establishes a winner among the two finalists, not an exhaustive 62-decision run for all 34 available account models.",
+    "Cross-game score totals are dominated by Link, so wins, qualification, reliability, and per-game placement outrank the raw total.",
+    "Provider errors recovered through configured OpenRouter fallbacks; provider-error counts are retained as a reliability penalty.",
+    "A fair-play pass can include a late PLAYER_LOSES result when the run already exceeded the survival threshold without a NIL loop."
+  ]
+}

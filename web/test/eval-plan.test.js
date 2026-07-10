@@ -6,7 +6,8 @@ const FEATURED_MODEL_IDS = [
   'qwen3-coder-next',
   'ministral-3:14b',
   'ministral-3:8b',
-  'devstral-small-2:24b'
+  'devstral-small-2:24b',
+  'deepseek-v4-flash'
 ];
 const FEATURED_GAME_IDS = [50, 26, 15, 13, 20, 68, 18, 30, 63, 0];
 
@@ -63,7 +64,7 @@ test('arcade eval plan interleaves games and models for marquee rotation', () =>
   const openingCases = plan.cases.slice(0, FEATURED_MODEL_IDS.length);
 
   assert.deepEqual(openingCases.map(evalCase => evalCase.modelId), FEATURED_MODEL_IDS);
-  assert.deepEqual(openingCases.map(evalCase => evalCase.gameId), [50, 26, 15, 13, 20]);
+  assert.deepEqual(openingCases.map(evalCase => evalCase.gameId), [50, 26, 15, 13, 20, 50]);
 });
 
 test('arcade eval plan can cover the full model-native starter set', () => {

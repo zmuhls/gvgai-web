@@ -91,7 +91,7 @@ const MODELS = [
     id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash',
     provider: 'ollama-cloud', fallback: 'deepseek/deepseek-v4-flash', reasoning: true,
     description: 'Frontier · efficient MoE (284B total / 13B active), reasoning',
-    speed: 'slow', cost: 'high', featured: false
+    speed: 'fast', cost: 'high', featured: true
   },
   {
     id: 'qwen3.5:397b', name: 'Qwen 3.5 397B',
