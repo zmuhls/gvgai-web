@@ -22,7 +22,8 @@ const MIN_LLM_INTERVAL_MS = 400;   // provider-protection floor between LLM call
 const REFILL_QUEUE_THRESHOLD = 1;  // fire the next LLM call when this few steps remain
 const MAX_PLAN_STEPS = 6;          // hard cap on queued steps per plan
 const MAX_PLAN_AGE_TICKS = 30;     // stale-plan safety net
-const DEFAULT_TICKS_PER_STEP = 4;  // ticks each plan step is held for
+const DEFAULT_TICKS_PER_STEP = 1;  // grid actions are discrete; one step is one engine tick
+const DEFAULT_DIRECTION_PULSE_TICKS = 1;
 
 // Loop-breaker tuning. Between LLM calls the executor repeats the last action
 // blindly — in wandering games this means the avatar marches in one direction
@@ -65,6 +66,8 @@ class LLMClient {
     this.planSetTick = null;  // Game tick when the plan was set (age invalidation)
     this.planHealthAtSet = null;  // Health when the plan was set (damage invalidation)
     this.planStepHoldRemaining = 0;  // Ticks left before advancing to the next step
+    this.pendingDirectionTicksRemaining = 0;  // Prevent a stale async direction from becoming a key hold
+    this.pendingDirectionPulseAction = null;
     this.levelCount = normalizeLevelId(options.initialLevelId, DEFAULT_INITIAL_LEVEL_ID);  // Current level id
     this.maxLevelId = normalizeLevelId(options.maxLevelId, DEFAULT_MAX_LEVEL_ID);
     this.onSessionEnd = null;  // Callback for session cleanup
@@ -96,6 +99,7 @@ class LLMClient {
     this.strategyRevision = 0;
     this.lastSteeringDecisionTickLogged = null;
     this.lastSteeringDecisionActionLogged = null;
+    this.lastImmediateSteeringRevision = null;
     this.steeringAlternativeCursor = 0;
     this.lastDequeuedActionSource = null;
   }
@@ -519,15 +523,26 @@ class LLMClient {
     return Number.isInteger(n) && n > 0 ? n : DEFAULT_TICKS_PER_STEP;
   }
 
+  directionPulseTicks() {
+    const n = this.promptConfig?.macroActions?.directionPulseTicks;
+    return Number.isInteger(n) && n > 0 ? n : DEFAULT_DIRECTION_PULSE_TICKS;
+  }
+
+  armDirectionPulse(action) {
+    this.pendingDirectionPulseAction = MOVEMENT_ACTIONS.includes(action) ? action : null;
+    this.pendingDirectionTicksRemaining = MOVEMENT_ACTIONS.includes(action)
+      ? this.directionPulseTicks()
+      : 0;
+  }
+
   // Hot path: called synchronously before the ACT tick reply, so no JSON parsing.
-  // Each plan step is held for ticksPerStep ticks so a 4-step plan spans the
-  // real LLM latency gap instead of draining in ~160ms of engine ticks.
+  // Each plan step is held for ticksPerStep ticks. Grid actions default to one
+  // tick because they are discrete cell moves, not analog input with a useful
+  // strength or duration gradient.
   //
-  // Exhausted queue: the classic behavior repeats the last action until the next
-  // LLM result — fine for puzzle games, deadly in gravity/hazard games where a
-  // 2-second provider gap means ~50 blind ticks in one direction. A game config
-  // can set macroActions.exhaustAction: 'wait' to stand still instead, giving the
-  // demo its burst-of-moves-then-thinking cadence.
+  // Exhausted queue: release to NIL unless a game explicitly opts into repeat.
+  // Repeating the final direction turns a one-cell Java action into an
+  // uncontrolled key hold while the next provider response is in flight.
   //
   // Loop breaker: when the queue is exhausted and the state tracker detects
   // stagnation (avatar stuck in a small area, no score progress), the breaker
@@ -548,12 +563,21 @@ class LLMClient {
       this.lastDequeuedActionSource = 'plan';
       return step;
     }
-    if (this.macroEnabled() && this.planLength > 0 &&
-        this.promptConfig?.macroActions?.exhaustAction === 'wait') {
-      this.lastDequeuedActionSource = 'wait';
+    if (this.planLength > 0 && this.promptConfig?.macroActions?.exhaustAction !== 'repeat') {
+      this.lastDequeuedActionSource = 'plan-wait';
       return 'ACTION_NIL';
     }
     const fallback = this.pendingLLMAction || 'ACTION_NIL';
+    if (MOVEMENT_ACTIONS.includes(fallback)) {
+      if (this.pendingDirectionPulseAction !== fallback) {
+        this.armDirectionPulse(fallback);
+      }
+      if (this.pendingDirectionTicksRemaining <= 0) {
+        this.lastDequeuedActionSource = 'pulse-wait';
+        return 'ACTION_NIL';
+      }
+      this.pendingDirectionTicksRemaining -= 1;
+    }
     const breaker = this.resolveLoopBreaker(fallback);
     if (breaker !== fallback) {
       this.pendingLLMAction = breaker;
@@ -753,8 +777,15 @@ class LLMClient {
   resolveImmediateSteeringAction(jsonPayload) {
     const directive = this.parseDirectionalStrategy();
     if (!directive || directive.mode !== 'prefer') return null;
+    if (this.lastImmediateSteeringRevision === this.strategyRevision) return null;
     const sso = this.parseSsoForSteering(jsonPayload);
-    return this.resolveSteeringAction(sso);
+    const steering = this.resolveSteeringAction(sso);
+    if (steering) {
+      this.lastImmediateSteeringRevision = this.strategyRevision;
+      this.pendingDirectionPulseAction = steering.action;
+      this.pendingDirectionTicksRemaining = 0;
+    }
+    return steering;
   }
 
   applySteeringToCandidate(candidateAction, jsonPayload) {
@@ -762,6 +793,12 @@ class LLMClient {
     if (!directive) return { action: candidateAction, steering: null };
 
     const sso = this.parseSsoForSteering(jsonPayload);
+    if (
+      directive.mode === 'prefer' &&
+      (this.lastDequeuedActionSource === 'plan-wait' || this.lastDequeuedActionSource === 'pulse-wait')
+    ) {
+      return { action: candidateAction, steering: null };
+    }
     const actionFromPlan = this.lastDequeuedActionSource === 'plan' || this.lastDequeuedActionSource === 'plan-hold';
     const steering = this.resolveSteeringAction(sso, candidateAction, {
       blindRepeat: this.lastDequeuedActionSource === 'fallback',
@@ -884,6 +921,8 @@ class LLMClient {
     this.planSetTick = null;
     this.planHealthAtSet = null;
     this.planStepHoldRemaining = 0;
+    this.pendingDirectionTicksRemaining = 0;
+    this.pendingDirectionPulseAction = null;
     this.lastLoopBreakTick = -STAGNATION_BREAK_INTERVAL;
   }
 
@@ -1373,6 +1412,7 @@ class LLMClient {
     this.lastProvider = steering.steering ? 'steering-direct' : usedProvider;
     this.lastModelUsed = usedModel;
     this.pendingLLMAction = action;
+    this.armDirectionPulse(action);
 
     if (this.macroEnabled() && responseMode !== 'code') {
       this.setPlan(planActions, sso);
@@ -1696,6 +1736,7 @@ class LLMClient {
     this.lastLLMCallTime = 0;
     this.lastSteeringDecisionTickLogged = null;
     this.lastSteeringDecisionActionLogged = null;
+    this.lastImmediateSteeringRevision = null;
     this.steeringAlternativeCursor = 0;
     if (this.io) {
       this.io.emit('strategy-updated', {

@@ -229,6 +229,7 @@ test('aliens code protocol feeds a compact GV1 tape instead of paragraph rules',
   });
   assert.equal(prompt.systemMessage, null);
   assert.match(prompt.userMessage, /^GV1\n/);
+  assert.match(prompt.userMessage, /Reply with exactly ONE code/);
   assert.match(prompt.userMessage, /G:aliens L:0 T:423 S:22 HP:100/);
   assert.match(prompt.userMessage, /A:N,L,R,U/);
   assert.match(prompt.userMessage, /P:16,10/);
@@ -243,6 +244,23 @@ test('aliens code protocol feeds a compact GV1 tape instead of paragraph rules',
   assert.doesNotMatch(prompt.userMessage, /controller|Return exactly|No words/);
   assert.doesNotMatch(prompt.userMessage, /Space invaders variant/);
   assert.doesNotMatch(prompt.userMessage, /Aliens scroll horizontally/);
+});
+
+test('code protocol carries the live combinatorial tactic into the compact tape', () => {
+  const prompt = buildPrompt(createAliensState(), {
+    gameName: 'aliens',
+    codeProtocol: {
+      enabled: true,
+      actionCodes: {
+        N: 'ACTION_NIL',
+        L: 'ACTION_LEFT',
+        R: 'ACTION_RIGHT',
+        U: 'ACTION_USE'
+      }
+    }
+  }, null, 'Rotate LEFT, RIGHT, and SHOOT instead of holding one direction.');
+
+  assert.match(prompt.userMessage, /T:Rotate LEFT, RIGHT, and SHOOT/);
 });
 
 test('aliens code protocol recommends shooting when aligned and safe', () => {

@@ -2,14 +2,14 @@
   "_comment": "Per-archetype runtime defaults, applied by lib/class-defaults.js. Precedence: env kill switches > explicit per-game config fields > config.classification.archetypeOverride > archetype entry here > pace overlay > code constants. Archetypes come from lib/game-classifier.js. Macro-enabled archetypes need maxTokens >= 320 so the PLAN contract has headroom.",
   "archetypes": {
     "pusher-puzzle": {
-      "macroActions": { "enabled": true, "maxSteps": 4, "ticksPerStep": 4 },
+      "macroActions": { "enabled": true, "maxSteps": 4, "ticksPerStep": 1, "exhaustAction": "wait" },
       "llmSettings": { "maxTokens": 320 },
       "eval": { "minSurvivalTicks": 80, "nilLoopThreshold": 5 },
       "memoryGate": { "scoreGain": 1, "tickGain": 15 },
       "strategyPresetRank": ["Goal test", "Survive first"]
     },
     "collector": {
-      "macroActions": { "enabled": true, "maxSteps": 4, "ticksPerStep": 4 },
+      "macroActions": { "enabled": true, "maxSteps": 4, "ticksPerStep": 1, "exhaustAction": "wait" },
       "llmSettings": { "maxTokens": 320 },
       "eval": { "minSurvivalTicks": 60, "nilLoopThreshold": 4 },
       "memoryGate": { "scoreGain": 2, "tickGain": 25 },

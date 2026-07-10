@@ -562,7 +562,7 @@ function macroClient(macroActions = { enabled: true, ticksPerStep: 1 }) {
 
 const nextTickDrain = () => new Promise(resolve => setImmediate(resolve));
 
-test('plan queue is consumed one step per ACT tick, then repeats the last step', async () => {
+test('plan queue consumes the full combination, then releases the final step', async () => {
   const client = macroClient();
   const sent = [];
   client.sendMessageWithId = (msgId, message) => sent.push(message);
@@ -579,10 +579,29 @@ test('plan queue is consumed one step per ACT tick, then repeats the last step',
     'ACTION_LEFT#BOTH',
     'ACTION_LEFT#BOTH',
     'ACTION_USE#BOTH',
-    'ACTION_USE#BOTH', // exhausted queue repeats the last step (classic behavior)
-    'ACTION_USE#BOTH'
+    'ACTION_NIL#BOTH',
+    'ACTION_NIL#BOTH'
   ]);
   assert.equal(client.planStep, 3);
+});
+
+test('single async directions are one-tick pulses while the next model call is in flight', async () => {
+  const client = new LLMClient();
+  const sent = [];
+  client.pendingLLMAction = 'ACTION_LEFT';
+  client.llmCallInProgress = true;
+  client.sendMessageWithId = (msgId, message) => sent.push(message);
+
+  for (let tick = 1; tick <= 3; tick++) {
+    await client.processMessage(`${tick}#${actPayload({ gameTick: tick })}`);
+    await nextTickDrain();
+  }
+
+  assert.deepEqual(sent, [
+    'ACTION_LEFT#BOTH',
+    'ACTION_NIL#BOTH',
+    'ACTION_NIL#BOTH'
+  ]);
 });
 
 test('ticksPerStep holds each plan step for N ticks before advancing', async () => {
@@ -907,8 +926,13 @@ test('go-right steering overrides pending async actions on the next ACT tick', a
   client.updateStrategy('go right');
   await client.processMessage(`4#${actPayload({ gameTick: 4 })}`);
   await nextTickDrain();
+  await client.processMessage(`5#${actPayload({ gameTick: 5 })}`);
+  await nextTickDrain();
 
-  assert.deepEqual(sent, [{ msgId: '4', message: 'ACTION_RIGHT#BOTH' }]);
+  assert.deepEqual(sent, [
+    { msgId: '4', message: 'ACTION_RIGHT#BOTH' },
+    { msgId: '5', message: 'ACTION_NIL#BOTH' }
+  ]);
   assert.equal(client.pendingLLMAction, 'ACTION_RIGHT');
   assert.equal(client.runLog.at(-1).action, 'ACTION_RIGHT');
   assert.ok(emitted.some(entry =>

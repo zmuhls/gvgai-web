@@ -552,7 +552,7 @@ function formatHistory(stateTracker, actionCodes) {
   }).join(',');
 }
 
-function buildCodePrompt(sso, promptConfig = {}, stateTracker) {
+function buildCodePrompt(sso, promptConfig = {}, stateTracker, sessionStrategy = null) {
   const protocol = promptConfig.codeProtocol || {};
   const id = protocol.id || 'GV1';
   const blockSize = sso.blockSize || 1;
@@ -601,6 +601,7 @@ function buildCodePrompt(sso, promptConfig = {}, stateTracker) {
   const history = formatHistory(stateTracker, codes);
   const lines = [
     id,
+    `Choose the best legal action code. Reply with exactly ONE code from [${actionList}] and nothing else.`,
     `G:${gameName} L:${level} T:${sso.gameTick || 0} S:${sso.gameScore || 0} HP:${sso.avatarHealthPoints || 0}`,
     `A:${actionList}`,
     `P:${playerPos ? `${playerPos[0]},${playerPos[1]}` : '-'}`,
@@ -611,6 +612,7 @@ function buildCodePrompt(sso, promptConfig = {}, stateTracker) {
     `D:target=${targetText} dx=${dxText} fire=${fire} dodge=${dodge}`,
     `B:${best}`,
     `M:${history}`,
+    sessionStrategy ? `T:${String(sessionStrategy).slice(0, 240)}` : null,
     `ANS=[${actionList.replace(/,/g, '|')}]`,
     'ANS:'
   ].filter(Boolean);
