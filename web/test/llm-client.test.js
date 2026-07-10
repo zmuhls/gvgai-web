@@ -376,6 +376,70 @@ test('requestLLMAction sends GV1 code tape and maps compact output to GVGAI acti
   }
 });
 
+test('async compact protocol queues a model-authored action combination', async () => {
+  const originalFetch = global.fetch;
+  const client = new LLMClient({ actionTimeoutMs: 1000 });
+  client.model = 'gemma3:27b';
+  client.gameId = 0;
+  client.levelCount = 0;
+  client.promptConfig = {
+    gameName: 'aliens',
+    llmSettings: { maxTokens: 100, temperature: 0 },
+    codeProtocol: {
+      enabled: true,
+      planSteps: 4,
+      actionCodes: {
+        N: 'ACTION_NIL',
+        L: 'ACTION_LEFT',
+        R: 'ACTION_RIGHT',
+        U: 'ACTION_USE'
+      }
+    }
+  };
+
+  global.fetch = async (url, options) => {
+    const body = JSON.parse(options.body);
+    assert.equal(body.max_tokens, 24);
+    assert.match(body.messages[0].content, /PLAN:<4 comma-separated codes/);
+    return {
+      ok: true,
+      async json() {
+        return { choices: [{ message: { content: 'PLAN:L, R, U, L' } }] };
+      }
+    };
+  };
+
+  try {
+    const result = await client.requestLLMAction(actPayload());
+    assert.equal(result.action, 'ACTION_LEFT');
+    assert.deepEqual(client.planQueue, [
+      'ACTION_LEFT',
+      'ACTION_RIGHT',
+      'ACTION_USE',
+      'ACTION_LEFT'
+    ]);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('async compact plans default on only for non-authoritative live clients', () => {
+  const live = new LLMClient();
+  live.promptConfig = { codeProtocol: { enabled: true } };
+  live.configureAsyncCodePlans();
+  assert.equal(live.promptConfig.codeProtocol.planSteps, 4);
+
+  const synchronous = new LLMClient({ synchronousActions: true });
+  synchronous.promptConfig = { codeProtocol: { enabled: true } };
+  synchronous.configureAsyncCodePlans();
+  assert.equal(synchronous.promptConfig.codeProtocol.planSteps, undefined);
+
+  const authoritative = new LLMClient();
+  authoritative.promptConfig = { codeProtocol: { enabled: true, authoritative: true } };
+  authoritative.configureAsyncCodePlans();
+  assert.equal(authoritative.promptConfig.codeProtocol.planSteps, undefined);
+});
+
 test('requestLLMAction uses encoded best action when compact output is invalid', async () => {
   const originalFetch = global.fetch;
   const client = new LLMClient({ actionTimeoutMs: 1000 });
@@ -487,7 +551,7 @@ test('requestLLMAction can let authoritative game code override a valid model ac
   const originalFetch = global.fetch;
   const client = new LLMClient({ actionTimeoutMs: 1000 });
 
-  client.model = 'gemma4:31b';
+  client.model = 'gemma3:27b';
   client.gameId = 0;
   client.levelCount = 0;
   client.promptConfig = {
@@ -622,6 +686,60 @@ test('ticksPerStep holds each plan step for N ticks before advancing', async () 
     'ACTION_LEFT#BOTH',
     'ACTION_USE#BOTH',
     'ACTION_USE#BOTH'
+  ]);
+});
+
+test('late async plans start aging from the latest observed Java state', () => {
+  const client = macroClient();
+  client.lastSso = {
+    gameTick: 80,
+    avatarHealthPoints: 60,
+    availableActions: ['ACTION_NIL', 'ACTION_LEFT', 'ACTION_RIGHT']
+  };
+
+  client.setPlan(['ACTION_LEFT', 'ACTION_RIGHT'], {
+    gameTick: 10,
+    avatarHealthPoints: 100,
+    availableActions: ['ACTION_NIL', 'ACTION_LEFT', 'ACTION_RIGHT']
+  });
+
+  assert.equal(client.planSetTick, 80);
+  assert.equal(client.planHealthAtSet, 60);
+  assert.deepEqual(client.planQueue, ['ACTION_LEFT', 'ACTION_RIGHT']);
+});
+
+test('async compact executor replays varied plans while the next call is in flight', () => {
+  const client = new LLMClient();
+  client.promptConfig = {
+    codeProtocol: { enabled: true, planSteps: 4 },
+    macroActions: { ticksPerStep: 1 }
+  };
+  const sso = {
+    gameTick: 10,
+    avatarHealthPoints: 100,
+    availableActions: ['ACTION_NIL', 'ACTION_UP', 'ACTION_LEFT', 'ACTION_DOWN', 'ACTION_RIGHT']
+  };
+  client.setPlan(['ACTION_UP', 'ACTION_LEFT', 'ACTION_DOWN', 'ACTION_RIGHT'], sso);
+
+  const actions = Array.from({ length: 8 }, () => client.dequeuePlanAction());
+  assert.deepEqual(actions, [
+    'ACTION_UP', 'ACTION_LEFT', 'ACTION_DOWN', 'ACTION_RIGHT',
+    'ACTION_UP', 'ACTION_LEFT', 'ACTION_DOWN', 'ACTION_RIGHT'
+  ]);
+});
+
+test('async compact executor never replays a single-direction plan', () => {
+  const client = new LLMClient();
+  client.promptConfig = { codeProtocol: { enabled: true, planSteps: 4 } };
+  const sso = {
+    gameTick: 10,
+    avatarHealthPoints: 100,
+    availableActions: ['ACTION_NIL', 'ACTION_LEFT']
+  };
+  client.setPlan(['ACTION_LEFT', 'ACTION_LEFT', 'ACTION_LEFT', 'ACTION_LEFT'], sso);
+
+  assert.deepEqual(Array.from({ length: 5 }, () => client.dequeuePlanAction()), [
+    'ACTION_LEFT', 'ACTION_LEFT', 'ACTION_LEFT', 'ACTION_LEFT', 'ACTION_NIL'
   ]);
 });
 

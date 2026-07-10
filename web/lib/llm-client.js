@@ -22,8 +22,10 @@ const MIN_LLM_INTERVAL_MS = 400;   // provider-protection floor between LLM call
 const REFILL_QUEUE_THRESHOLD = 1;  // fire the next LLM call when this few steps remain
 const MAX_PLAN_STEPS = 6;          // hard cap on queued steps per plan
 const MAX_PLAN_AGE_TICKS = 30;     // stale-plan safety net
+const MAX_ASYNC_CODE_PLAN_AGE_TICKS = 120;
 const DEFAULT_TICKS_PER_STEP = 1;  // grid actions are discrete; one step is one engine tick
 const DEFAULT_DIRECTION_PULSE_TICKS = 1;
+const DEFAULT_ASYNC_CODE_PLAN_STEPS = 4;
 
 // Loop-breaker tuning. Between LLM calls the executor repeats the last action
 // blindly — in wandering games this means the avatar marches in one direction
@@ -61,6 +63,7 @@ class LLMClient {
     this.llmCallInProgress = false;  // Track if LLM is currently being called
     this.lastLLMCallTime = 0;  // Time-based LLM sampling
     this.planQueue = [];  // Macro-action steps awaiting execution (front-first)
+    this.planTemplate = [];  // Replayable varied combination while the next async call is in flight
     this.planLength = 0;  // Steps in the current plan (for narration)
     this.planStep = 0;  // 1-based step currently executing (for narration)
     this.planSetTick = null;  // Game tick when the plan was set (age invalidation)
@@ -469,6 +472,7 @@ class LLMClient {
     // Reload prompt config for current level (picks up level-specific progression context)
     if (this.gameId != null) {
       this.promptConfig = promptStore.resolveGamePromptConfig(this.gameId, this.levelCount, this.promptConfigOptions);
+      this.configureAsyncCodePlans();
       if (this.promptConfig && !this.promptConfig.gameName) {
         this.promptConfig.gameName = this.gameName;
       }
@@ -518,9 +522,40 @@ class LLMClient {
     return Boolean(this.promptConfig?.macroActions?.enabled);
   }
 
+  configureAsyncCodePlans() {
+    const protocol = this.promptConfig?.codeProtocol;
+    if (
+      this.synchronousActions ||
+      !protocol?.enabled ||
+      protocol.authoritative === true ||
+      Number.isInteger(protocol.planSteps)
+    ) {
+      return;
+    }
+    this.promptConfig = {
+      ...this.promptConfig,
+      codeProtocol: { ...protocol, planSteps: DEFAULT_ASYNC_CODE_PLAN_STEPS }
+    };
+  }
+
   ticksPerStep() {
     const n = this.promptConfig?.macroActions?.ticksPerStep;
     return Number.isInteger(n) && n > 0 ? n : DEFAULT_TICKS_PER_STEP;
+  }
+
+  maxPlanAgeTicks() {
+    const configured = this.promptConfig?.codeProtocol?.maxPlanAgeTicks;
+    if (Number.isInteger(configured) && configured > 0) return configured;
+    return this.promptConfig?.codeProtocol?.planSteps > 1
+      ? MAX_ASYNC_CODE_PLAN_AGE_TICKS
+      : MAX_PLAN_AGE_TICKS;
+  }
+
+  canReplayPlan() {
+    if (this.synchronousActions || this.promptConfig?.codeProtocol?.planSteps <= 1) return false;
+    if (this.promptConfig?.codeProtocol?.repeatPlan === false) return false;
+    const movements = new Set(this.planTemplate.filter(action => MOVEMENT_ACTIONS.includes(action)));
+    return movements.size >= 2;
   }
 
   directionPulseTicks() {
@@ -561,6 +596,16 @@ class LLMClient {
       this.planStepHoldRemaining = this.ticksPerStep() - 1;
       this.pendingLLMAction = step;
       this.lastDequeuedActionSource = 'plan';
+      return step;
+    }
+    if (this.canReplayPlan()) {
+      this.planQueue = [...this.planTemplate];
+      this.planStep = 0;
+      const step = this.planQueue.shift();
+      this.planStep = 1;
+      this.planStepHoldRemaining = this.ticksPerStep() - 1;
+      this.pendingLLMAction = step;
+      this.lastDequeuedActionSource = 'plan-replay';
       return step;
     }
     if (this.planLength > 0 && this.promptConfig?.macroActions?.exhaustAction !== 'repeat') {
@@ -906,16 +951,24 @@ class LLMClient {
     const steps = (Array.isArray(plan) ? plan : [])
       .filter(a => legal.has(a))
       .slice(0, MAX_PLAN_STEPS);
+    const activationState = (
+      this.lastSso &&
+      Number(this.lastSso.gameTick || 0) >= Number(sso.gameTick || 0)
+    ) ? this.lastSso : sso;
     this.planQueue = steps;
+    this.planTemplate = [...steps];
     this.planLength = steps.length;
     this.planStep = 0;
     this.planStepHoldRemaining = 0;
-    this.planSetTick = sso.gameTick || 0;
-    this.planHealthAtSet = Number.isFinite(sso.avatarHealthPoints) ? sso.avatarHealthPoints : null;
+    this.planSetTick = activationState.gameTick || 0;
+    this.planHealthAtSet = Number.isFinite(activationState.avatarHealthPoints)
+      ? activationState.avatarHealthPoints
+      : null;
   }
 
   clearPlan() {
     this.planQueue = [];
+    this.planTemplate = [];
     this.planLength = 0;
     this.planStep = 0;
     this.planSetTick = null;
@@ -937,7 +990,7 @@ class LLMClient {
     let reason = null;
     if (this.planHealthAtSet !== null && health !== null && health < this.planHealthAtSet) {
       reason = 'health-drop';
-    } else if (this.planSetTick !== null && tick - this.planSetTick > MAX_PLAN_AGE_TICKS) {
+    } else if (this.planSetTick !== null && tick - this.planSetTick > this.maxPlanAgeTicks()) {
       reason = 'plan-age';
     } else if (this.stateTracker.detectLoop()) {
       reason = 'loop-detected';
@@ -948,6 +1001,7 @@ class LLMClient {
     if (reason) {
       console.log(`[LLMClient] Plan invalidated (${reason}) with ${this.planQueue.length} steps remaining`);
       this.clearPlan();
+      this.pendingLLMAction = null;
     }
   }
 
@@ -1296,8 +1350,10 @@ class LLMClient {
     const settings = { ...(this.promptConfig?.llmSettings || {}) };
     if (responseMode === 'code') {
       const configuredMaxTokens = Number(settings.maxTokens);
-      if (!Number.isFinite(configuredMaxTokens) || configuredMaxTokens > 8) {
-        settings.maxTokens = 8;
+      const codePlanSteps = Number(this.promptConfig?.codeProtocol?.planSteps || 1);
+      const tokenLimit = codePlanSteps > 1 ? 24 : 8;
+      if (!Number.isFinite(configuredMaxTokens) || configuredMaxTokens > tokenLimit) {
+        settings.maxTokens = tokenLimit;
       }
     }
     const resolved = resolveModel(this.model);
@@ -1366,7 +1422,13 @@ class LLMClient {
       };
     }
 
-    const maxPlanSteps = this.promptConfig?.macroActions?.maxSteps || MAX_PLAN_STEPS;
+    const codePlanSteps = responseMode === 'code'
+      ? Number(this.promptConfig?.codeProtocol?.planSteps || 1)
+      : 1;
+    const codePlanEnabled = codePlanSteps > 1;
+    const maxPlanSteps = codePlanEnabled
+      ? Math.min(codePlanSteps, MAX_PLAN_STEPS)
+      : this.promptConfig?.macroActions?.maxSteps || MAX_PLAN_STEPS;
     const parsed = parseStructured(llmResponse, sso.availableActions, actionCodeMap, { maxPlanSteps });
     let { action, reason } = parsed;
     let decisionSource = parsed.source || 'unknown';
@@ -1375,7 +1437,7 @@ class LLMClient {
       'compact-field',
       'exact-action',
       'canonical-action'
-    ].includes(parsed.source);
+    ].includes(parsed.source) || (codePlanEnabled && parsed.source === 'plan-line');
     if (
       responseMode === 'code' &&
       policyAuthoritative &&
@@ -1398,7 +1460,8 @@ class LLMClient {
     // Queue the multi-step plan for the tick executor. Code-protocol responses
     // never take this path (buildPrompt branches to buildCodePrompt first, and
     // the overrides above rewrite action anyway).
-    let planActions = (this.macroEnabled() && responseMode !== 'code' && Array.isArray(parsed.plan) && parsed.plan.length > 0)
+    const acceptsParsedPlan = (this.macroEnabled() && responseMode !== 'code') || codePlanEnabled;
+    let planActions = (acceptsParsedPlan && parsed.valid !== false && Array.isArray(parsed.plan) && parsed.plan.length > 0)
       ? parsed.plan
       : [action];
     const steering = this.applySteeringToPlan(action, planActions, sso);
@@ -1414,7 +1477,7 @@ class LLMClient {
     this.pendingLLMAction = action;
     this.armDirectionPulse(action);
 
-    if (this.macroEnabled() && responseMode !== 'code') {
+    if ((this.macroEnabled() && responseMode !== 'code') || codePlanEnabled) {
       this.setPlan(planActions, sso);
     }
     const aliases = this.promptConfig?.actionAliases || null;

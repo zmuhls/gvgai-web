@@ -594,6 +594,11 @@ function buildCodePrompt(sso, promptConfig = {}, stateTracker, sessionStrategy =
   const objectives = cleanCodes(protocol.objectiveCodes, ['WIN']);
   const rules = cleanCodes(protocol.ruleCodes, []);
   const actionList = Object.keys(codes).join(',');
+  const requestedPlanSteps = Number(protocol.planSteps || 1);
+  const planSteps = Number.isInteger(requestedPlanSteps)
+    ? Math.max(1, Math.min(requestedPlanSteps, 6))
+    : 1;
+  const planMode = planSteps > 1;
   const gameName = promptConfig.gameName || 'game';
   const level = Number.isInteger(sso.levelId) ? sso.levelId : 0;
   const targetText = target ? `${target.code}${target.x},${target.y}` : '-';
@@ -601,7 +606,9 @@ function buildCodePrompt(sso, promptConfig = {}, stateTracker, sessionStrategy =
   const history = formatHistory(stateTracker, codes);
   const lines = [
     id,
-    `Choose the best legal action code. Reply with exactly ONE code from [${actionList}] and nothing else.`,
+    planMode
+      ? `Choose a short legal action combination. Reply exactly PLAN:<${planSteps} comma-separated codes from [${actionList}]>. Vary directions unless the path requires a repeat.`
+      : `Choose the best legal action code. Reply with exactly ONE code from [${actionList}] and nothing else.`,
     `G:${gameName} L:${level} T:${sso.gameTick || 0} S:${sso.gameScore || 0} HP:${sso.avatarHealthPoints || 0}`,
     `A:${actionList}`,
     `P:${playerPos ? `${playerPos[0]},${playerPos[1]}` : '-'}`,
@@ -614,7 +621,7 @@ function buildCodePrompt(sso, promptConfig = {}, stateTracker, sessionStrategy =
     `M:${history}`,
     sessionStrategy ? `T:${String(sessionStrategy).slice(0, 240)}` : null,
     `ANS=[${actionList.replace(/,/g, '|')}]`,
-    'ANS:'
+    planMode ? 'PLAN:' : 'ANS:'
   ].filter(Boolean);
 
   return {

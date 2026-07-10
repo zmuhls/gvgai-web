@@ -263,6 +263,26 @@ test('code protocol carries the live combinatorial tactic into the compact tape'
   assert.match(prompt.userMessage, /T:Rotate LEFT, RIGHT, and SHOOT/);
 });
 
+test('code protocol can request a compact multi-action plan for async play', () => {
+  const prompt = buildPrompt(createAliensState(), {
+    gameName: 'aliens',
+    codeProtocol: {
+      enabled: true,
+      planSteps: 4,
+      actionCodes: {
+        N: 'ACTION_NIL',
+        L: 'ACTION_LEFT',
+        R: 'ACTION_RIGHT',
+        U: 'ACTION_USE'
+      }
+    }
+  });
+
+  assert.match(prompt.userMessage, /PLAN:<4 comma-separated codes/);
+  assert.match(prompt.userMessage, /PLAN:$/);
+  assert.doesNotMatch(prompt.userMessage, /Reply with exactly ONE code/);
+});
+
 test('aliens code protocol recommends shooting when aligned and safe', () => {
   const prompt = buildPrompt(createAliensState({
     NPCPositionsNum: 1,
