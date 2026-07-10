@@ -12,20 +12,20 @@ const WEB_ROOT = path.resolve(__dirname, '..');
 
 test('public game library contains only the ten retained cabinets', () => {
   assert.deepEqual(readFeaturedIds(path.resolve(WEB_ROOT, '..')), [
-    0, 18, 13, 20, 30, 68, 50, 15, 26, 63
+    50, 26, 15, 13, 20, 68, 18, 30, 63, 0
   ]);
 });
 
 test('games route derives stable featured ranks', () => {
   const ranks = gamesRoute.loadFeaturedRanks();
 
-  assert.equal(ranks.get(0), 1);
+  assert.equal(ranks.get(0), 10);
   assert.equal(ranks.get(14), undefined);
   assert.equal(ranks.get(19), undefined);
   assert.equal(ranks.get(44), undefined);
   assert.equal(ranks.get(22), undefined);
   assert.equal(ranks.get(68), 6);
-  assert.equal(ranks.get(63), 10);
+  assert.equal(ranks.get(63), 9);
   assert.equal(ranks.get(10), undefined);
   assert.equal(ranks.get(4), undefined);
 });

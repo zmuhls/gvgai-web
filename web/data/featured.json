@@ -1,4 +1,4 @@
 {
-  "_comment": "The complete public Inference Arcade library. Cakybaky (14), chipschallenge (19), and frogs (44) were removed after repeat level-1 early losses. Order is the evidence-backed display rank for the ten retained games.",
-  "featured": [0, 18, 13, 20, 30, 68, 50, 15, 26, 63]
+  "_comment": "The complete public Inference Arcade library. Cakybaky (14), chipschallenge (19), and frogs (44) were removed after repeat level-1 early losses. Order follows web/data/featured-ranking.json: wins, model passes, strategy breadth, win speed, and action diversity.",
+  "featured": [50, 26, 15, 13, 20, 68, 18, 30, 63, 0]
 }

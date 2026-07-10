@@ -1,11 +1,11 @@
 [
   {
-    "id": 0,
-    "name": "aliens",
-    "file": "examples/gridphysics/aliens.txt",
+    "id": 50,
+    "name": "hungrybirds",
+    "file": "examples/gridphysics/hungrybirds.txt",
     "category": "gridphysics",
-    "archetype": "shooter-lane",
-    "pace": "reactive",
+    "archetype": "chaser",
+    "pace": "deliberate",
     "levels": [
       0,
       1,
@@ -18,11 +18,11 @@
     "featuredRank": 1
   },
   {
-    "id": 18,
-    "name": "chase",
-    "file": "examples/gridphysics/chase.txt",
+    "id": 26,
+    "name": "crossfire",
+    "file": "examples/gridphysics/crossfire.txt",
     "category": "gridphysics",
-    "archetype": "collector",
+    "archetype": "chaser",
     "pace": "reactive",
     "levels": [
       0,
@@ -34,6 +34,24 @@
     "levelCount": 5,
     "featured": true,
     "featuredRank": 2
+  },
+  {
+    "id": 15,
+    "name": "camelRace",
+    "file": "examples/gridphysics/camelRace.txt",
+    "category": "gridphysics",
+    "archetype": "collector",
+    "pace": "deliberate",
+    "levels": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "levelCount": 5,
+    "featured": true,
+    "featuredRank": 3
   },
   {
     "id": 13,
@@ -51,30 +69,12 @@
     ],
     "levelCount": 5,
     "featured": true,
-    "featuredRank": 3
+    "featuredRank": 4
   },
   {
     "id": 20,
     "name": "chopper",
     "file": "examples/gridphysics/chopper.txt",
-    "category": "gridphysics",
-    "archetype": null,
-    "pace": null,
-    "levels": [
-      0,
-      1,
-      2,
-      3,
-      4
-    ],
-    "levelCount": 5,
-    "featured": true,
-    "featuredRank": 4
-  },
-  {
-    "id": 30,
-    "name": "digdug",
-    "file": "examples/gridphysics/digdug.txt",
     "category": "gridphysics",
     "archetype": null,
     "pace": null,
@@ -108,12 +108,12 @@
     "featuredRank": 6
   },
   {
-    "id": 50,
-    "name": "hungrybirds",
-    "file": "examples/gridphysics/hungrybirds.txt",
+    "id": 18,
+    "name": "chase",
+    "file": "examples/gridphysics/chase.txt",
     "category": "gridphysics",
-    "archetype": "chaser",
-    "pace": "deliberate",
+    "archetype": "collector",
+    "pace": "reactive",
     "levels": [
       0,
       1,
@@ -126,12 +126,12 @@
     "featuredRank": 7
   },
   {
-    "id": 15,
-    "name": "camelRace",
-    "file": "examples/gridphysics/camelRace.txt",
+    "id": 30,
+    "name": "digdug",
+    "file": "examples/gridphysics/digdug.txt",
     "category": "gridphysics",
-    "archetype": "collector",
-    "pace": "deliberate",
+    "archetype": null,
+    "pace": null,
     "levels": [
       0,
       1,
@@ -144,11 +144,11 @@
     "featuredRank": 8
   },
   {
-    "id": 26,
-    "name": "crossfire",
-    "file": "examples/gridphysics/crossfire.txt",
+    "id": 63,
+    "name": "link",
+    "file": "examples/gridphysics/link.txt",
     "category": "gridphysics",
-    "archetype": "chaser",
+    "archetype": "collector",
     "pace": "reactive",
     "levels": [
       0,
@@ -162,11 +162,11 @@
     "featuredRank": 9
   },
   {
-    "id": 63,
-    "name": "link",
-    "file": "examples/gridphysics/link.txt",
+    "id": 0,
+    "name": "aliens",
+    "file": "examples/gridphysics/aliens.txt",
     "category": "gridphysics",
-    "archetype": "collector",
+    "archetype": "shooter-lane",
     "pace": "reactive",
     "levels": [
       0,

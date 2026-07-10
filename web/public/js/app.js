@@ -84,20 +84,20 @@ const TAG_ADVICE = {
 const GENERIC_TACTIC_WORDS = new Set(['avoid', 'dodge', 'defend', 'defensive', 'defensively', 'attack', 'attacking', 'survive', 'survival', 'score', 'scoring', 'points', 'safe', 'safely', 'aggressive', 'careful', 'carefully', 'plan', 'retreat', 'collect', 'explore', 'goal', 'enemy', 'enemies', 'threat', 'threats', 'distance', 'risk', 'risks', 'shoot', 'move', 'wait', 'push']);
 
 const PREVIEW_GAMES = [
-  { id: 0, name: 'aliens', category: 'gridphysics', archetype: 'shooter-lane', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 1 },
-  { id: 18, name: 'chase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 2 },
-  { id: 13, name: 'butterflies', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 3 },
-  { id: 20, name: 'chopper', category: 'gridphysics', archetype: 'shooter-roaming', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 4 },
-  { id: 30, name: 'digdug', category: 'gridphysics', archetype: 'navigator', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 5 },
+  { id: 50, name: 'hungrybirds', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 1 },
+  { id: 26, name: 'crossfire', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 2 },
+  { id: 15, name: 'camelRace', category: 'gridphysics', archetype: 'collector', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 3 },
+  { id: 13, name: 'butterflies', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 4 },
+  { id: 20, name: 'chopper', category: 'gridphysics', archetype: 'shooter-roaming', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 5 },
   { id: 68, name: 'pacman', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 6 },
-  { id: 50, name: 'hungrybirds', category: 'gridphysics', archetype: 'chaser', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 7 },
-  { id: 15, name: 'camelRace', category: 'gridphysics', archetype: 'collector', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 8 },
-  { id: 26, name: 'crossfire', category: 'gridphysics', archetype: 'chaser', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 9 },
-  { id: 63, name: 'link', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 10 }
+  { id: 18, name: 'chase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 7 },
+  { id: 30, name: 'digdug', category: 'gridphysics', archetype: 'navigator', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 8 },
+  { id: 63, name: 'link', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 9 },
+  { id: 0, name: 'aliens', category: 'gridphysics', archetype: 'shooter-lane', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 10 }
 ];
 
 const FEATURED_CABINET_COUNT = 10;
-const FEATURED_ORDER_IDS = [0, 18, 13, 20, 30, 68, 50, 15, 26, 63];
+const FEATURED_ORDER_IDS = [50, 26, 15, 13, 20, 68, 18, 30, 63, 0];
 
 const PREVIEW_MODELS = [
   {
