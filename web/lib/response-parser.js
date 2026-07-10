@@ -37,7 +37,10 @@ function parseActionDetailed(llmResponse, availableActions = VALID_ACTIONS, acti
   // A bare "U" can mean ACTION_USE in GV1, but "Use the right lane" should
   // still fall through to normal prose parsing.
   if (actionCodeMap) {
-    const exactCode = text.replace(/^[`'"]+|[`'".,;:]+$/g, '');
+    const exactCode = text
+      .replace(/<\|(?:IM_END|ENDOF(?:TEXT)?)\|>/g, '')
+      .trim()
+      .replace(/^[`'"]+|[`'".,;:]+$/g, '');
     const mapped = actionCodeMap[exactCode];
     if (mapped && availableActions.includes(mapped)) {
       return { action: mapped, matched: true, source: 'compact-exact' };

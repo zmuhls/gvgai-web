@@ -31,6 +31,18 @@ test('parseStructured accepts an exact compact action code before prose parsing'
   assert.equal(parsed.reason, '');
 });
 
+test('parseStructured accepts a compact code followed by known Ollama end tokens', () => {
+  const parsed = parseStructured(
+    'N<|im_end|>\n<|endoftext|>',
+    ['ACTION_NIL', 'ACTION_LEFT'],
+    { N: 'ACTION_NIL', L: 'ACTION_LEFT' }
+  );
+
+  assert.equal(parsed.action, 'ACTION_NIL');
+  assert.equal(parsed.valid, true);
+  assert.equal(parsed.source, 'compact-exact');
+});
+
 test('parseStructured accepts a compact OUT code response', () => {
   const parsed = parseStructured(
     'OUT: U',

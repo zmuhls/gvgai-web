@@ -10,6 +10,8 @@ const models = require('../lib/models');
 
 test('built-in catalog exposes every stated Ollama Cloud model', () => {
   assert.deepEqual(models.MODELS.map(model => model.id), [
+    'gemma3:4b',
+    'gemma3:12b',
     'gemma3:27b',
     'qwen3-coder-next',
     'ministral-3:14b',
@@ -20,10 +22,12 @@ test('built-in catalog exposes every stated Ollama Cloud model', () => {
     'kimi-k2.7-code',
     'minimax-m3',
     'deepseek-v4-flash',
-    'qwen3.5:397b'
+    'qwen3.5:397b',
+    'nemotron-3-nano:30b',
+    'gemma4:31b'
   ]);
 
-  assert.deepEqual(models.MODELS.map(model => model.provider), Array(11).fill('ollama-cloud'));
+  assert.deepEqual(models.MODELS.map(model => model.provider), Array(15).fill('ollama-cloud'));
   assert.deepEqual(models.MODELS.filter(model => model.featured).map(model => model.id), [
     'gemma3:27b',
     'qwen3-coder-next',
@@ -39,7 +43,15 @@ test('built-in catalog exposes every stated Ollama Cloud model', () => {
   // none featured, so none enter the marble-run rotation.
   const frontier = models.MODELS.filter(model => model.reasoning);
   assert.deepEqual(frontier.map(model => model.id),
-    ['glm-5.2', 'kimi-k2.7-code', 'minimax-m3', 'deepseek-v4-flash', 'qwen3.5:397b']);
+    [
+      'glm-5.2',
+      'kimi-k2.7-code',
+      'minimax-m3',
+      'deepseek-v4-flash',
+      'qwen3.5:397b',
+      'nemotron-3-nano:30b',
+      'gemma4:31b'
+    ]);
   assert.ok(frontier.every(model => !model.featured));
   assert.equal(models.resolveModel('glm-5.2').fallback, 'z-ai/glm-5.2');
   assert.equal(models.resolveModel('deepseek-v4-flash').fallback, 'deepseek/deepseek-v4-flash');

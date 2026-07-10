@@ -13,6 +13,18 @@
 const MODELS = [
   // --- Gemma 3 (Google) ---
   {
+    id: 'gemma3:4b', name: 'Gemma 3 4B',
+    provider: 'ollama-cloud', fallback: null,
+    description: 'Open-weight · compact Gemma 3, low cloud usage',
+    speed: 'fast', cost: 'low', featured: false
+  },
+  {
+    id: 'gemma3:12b', name: 'Gemma 3 12B',
+    provider: 'ollama-cloud', fallback: null,
+    description: 'Open-weight · mid-size Gemma 3, low cloud usage',
+    speed: 'fast', cost: 'low', featured: false
+  },
+  {
     id: 'gemma3:27b', name: 'Gemma 3 27B',
     provider: 'ollama-cloud', fallback: 'google/gemma-3-27b-it',
     description: 'Open-weight · flagship small Gemma, non-reasoning',
@@ -86,6 +98,18 @@ const MODELS = [
     provider: 'ollama-cloud', fallback: 'qwen/qwen3.5-397b-a17b', reasoning: true,
     description: 'Frontier · largest hosted Qwen 3.5, reasoning',
     speed: 'slow', cost: 'high', featured: false
+  },
+  {
+    id: 'nemotron-3-nano:30b', name: 'Nemotron 3 Nano 30B',
+    provider: 'ollama-cloud', fallback: null, reasoning: true,
+    description: 'Open-weight · 30B MoE with 3.5B active parameters, configurable reasoning',
+    speed: 'fast', cost: 'low', featured: false
+  },
+  {
+    id: 'gemma4:31b', name: 'Gemma 4 31B',
+    provider: 'ollama-cloud', fallback: null, reasoning: true,
+    description: 'Open-weight · Google multimodal reasoner with configurable thinking',
+    speed: 'fast', cost: 'high', featured: false
   }
 ];
 
