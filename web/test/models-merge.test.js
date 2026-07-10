@@ -11,7 +11,6 @@ const models = require('../lib/models');
 test('built-in catalog exposes every stated Ollama Cloud model', () => {
   assert.deepEqual(models.MODELS.map(model => model.id), [
     'gemma3:27b',
-    'gemma3:12b',
     'qwen3-coder-next',
     'ministral-3:14b',
     'ministral-3:8b',
@@ -24,10 +23,9 @@ test('built-in catalog exposes every stated Ollama Cloud model', () => {
     'qwen3.5:397b'
   ]);
 
-  assert.deepEqual(models.MODELS.map(model => model.provider), Array(12).fill('ollama-cloud'));
+  assert.deepEqual(models.MODELS.map(model => model.provider), Array(11).fill('ollama-cloud'));
   assert.deepEqual(models.MODELS.filter(model => model.featured).map(model => model.id), [
-    'gemma3:27b',
-    'gemma3:12b'
+    'gemma3:27b'
   ]);
   assert.equal(models.resolveModel('gemma3:27b').fallback, 'google/gemma-3-27b-it');
   assert.equal(models.resolveModel('ministral-3:14b').fallback, 'mistralai/ministral-14b-2512');

@@ -114,12 +114,6 @@ const PREVIEW_MODELS = [
     featured: true
   },
   {
-    id: 'gemma3:12b',
-    name: 'Gemma 3 12B',
-    description: 'Open-weight model',
-    featured: true
-  },
-  {
     id: 'qwen3-coder-next',
     name: 'Qwen3 Coder Next',
     description: 'Open-weight model',

@@ -18,12 +18,6 @@ const MODELS = [
     description: 'Open-weight · flagship small Gemma, non-reasoning',
     speed: 'fast', cost: 'low', featured: true
   },
-  {
-    id: 'gemma3:12b', name: 'Gemma 3 12B',
-    provider: 'ollama-cloud', fallback: 'google/gemma-3-12b-it',
-    description: 'Open-weight · compact Gemma, non-reasoning',
-    speed: 'fast', cost: 'low', featured: true
-  },
   // --- Qwen (Alibaba) ---
   {
     id: 'qwen3-coder-next', name: 'Qwen3 Coder Next',

@@ -5,7 +5,7 @@
 - [x] **Import human play traces** — copied `~/Desktop/traces/arcade-trace-aliens-*.json` (3 files) into `web/data/traces/`
 - [x] **Human-vs-SLM analysis** — `web/data/traces/human-vs-slm-analysis.md`: human aliens play is 80–89% fire at 2–4 decisions/s with fresh state; SLM path is 400ms-gated stale-state intent; roster notes
 - [x] **Model catalog overhaul** (`web/lib/models.js`) — open-weight, non-reasoning, Ollama Cloud-only roster:
-  - [x] gemma3:27b (featured, default), gemma3:12b (featured)
+  - [x] gemma3:27b (featured, default)
   - [x] qwen3-coder-next (only non-thinking Qwen on Ollama Cloud; ~80B MoE)
   - [x] ministral-3:14b / 8b / 3b, devstral-small-2:24b
   - [x] removed residue big models (gpt-oss:120b, deepseek-v3.1:671b, qwen3-coder:480b), OpenRouter frontier entries (gemini-2.5-flash, gpt-4o, claude-sonnet-4.5), and ollama-local entries

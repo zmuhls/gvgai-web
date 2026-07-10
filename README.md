@@ -45,12 +45,11 @@ The visitor's free-text tactic is untrusted input that enters the prompt only af
 
 ## Model routing
 
-Seven open-weight small language models all hosted on Ollama Cloud with none carrying reasoning-token capability, keeping every output token as answer rather than hidden thinking overhead.
+Six open-weight small language models all hosted on Ollama Cloud with none carrying reasoning-token capability, keeping every output token as answer rather than hidden thinking overhead.
 
 | Model | Provider | Fallback (OpenRouter) |
 |---|---|---|
 | Gemma 3 27B (featured, default) | Ollama Cloud | `google/gemma-3-27b-it` |
-| Gemma 3 12B (featured) | Ollama Cloud | `google/gemma-3-12b-it` |
 | Qwen3 Coder Next | Ollama Cloud | `qwen/qwen3-coder-next` |
 | Ministral 3 14B | Ollama Cloud | `mistralai/ministral-14b-2512` |
 | Ministral 3 8B | Ollama Cloud | `mistralai/ministral-8b-2512` |

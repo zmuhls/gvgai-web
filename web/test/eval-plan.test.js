@@ -13,7 +13,7 @@ test('arcade eval plan covers the featured models across three arcade games', ()
   const { buildArcadeEvalPlan } = loadEvalPlan();
   const plan = buildArcadeEvalPlan({ gameCount: 3 });
 
-  assert.deepEqual(plan.modelIds, ['gemma3:27b', 'gemma3:12b']);
+  assert.deepEqual(plan.modelIds, ['gemma3:27b']);
   assert.deepEqual(plan.gameIds, [0, 10, 14]);
   assert.equal(plan.games[0].name, 'aliens');
   assert.equal(plan.games[1].name, 'boulderchase');
@@ -34,7 +34,7 @@ test('arcade eval plan can include more games without changing model coverage', 
   const { buildArcadeEvalPlan } = loadEvalPlan();
   const plan = buildArcadeEvalPlan({ gameCount: 5 });
 
-  assert.deepEqual(plan.modelIds, ['gemma3:27b', 'gemma3:12b']);
+  assert.deepEqual(plan.modelIds, ['gemma3:27b']);
   assert.deepEqual(plan.gameIds, [0, 10, 14, 18, 13]);
   assert.equal(plan.cases.length, plan.modelIds.length * plan.gameIds.length * plan.strategies.length);
 });
