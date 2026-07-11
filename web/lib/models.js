@@ -11,6 +11,13 @@
 // below were verified against OpenRouter /api/v1/models on 2026-07-08.
 
 const MODELS = [
+  // --- Gemma 4 (Google) ---
+  {
+    id: 'gemma4:31b', name: 'Gemma 4 31B',
+    provider: 'ollama-cloud', fallback: 'google/gemma-4-31b-it',
+    description: 'Open-weight · Gemma 4 dense, non-reasoning · fastest on Cloud',
+    speed: 'fast', cost: 'low', featured: true
+  },
   // --- Gemma 3 (Google) ---
   {
     id: 'gemma3:27b', name: 'Gemma 3 27B',

@@ -45,11 +45,12 @@ The visitor's free-text tactic is untrusted input that enters the prompt only af
 
 ## Model routing
 
-The featured marquee rotation uses five open-weight Ollama Cloud models across Google, Alibaba, and Mistral/Devstral. The unavailable 12B Google Gemma tag is intentionally absent.
+The featured marquee rotation uses six open-weight Ollama Cloud models across Google, Alibaba, and Mistral/Devstral. Gemma 4 E4B is intentionally absent (local-only, cannot run on Railway), as is the unavailable 12B Google Gemma tag.
 
 | Model | Provider | Fallback (OpenRouter) |
 |---|---|---|
-| Gemma 3 27B (featured, default) | Ollama Cloud | `google/gemma-3-27b-it` |
+| Gemma 4 31B (featured, default) | Ollama Cloud | `google/gemma-4-31b-it` |
+| Gemma 3 27B (featured) | Ollama Cloud | `google/gemma-3-27b-it` |
 | Qwen3 Coder Next (featured) | Ollama Cloud | `qwen/qwen3-coder-next` |
 | Ministral 3 14B (featured) | Ollama Cloud | `mistralai/ministral-14b-2512` |
 | Ministral 3 8B (featured) | Ollama Cloud | `mistralai/ministral-8b-2512` |

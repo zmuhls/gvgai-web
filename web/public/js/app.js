@@ -106,6 +106,12 @@ const SINGLE_PLAYER_CABINET_COUNT = 122;
 
 const PREVIEW_MODELS = [
   {
+    id: 'gemma4:31b',
+    name: 'Gemma 4 31B',
+    description: 'Open-weight model',
+    featured: true
+  },
+  {
     id: 'gemma3:27b',
     name: 'Gemma 3 27B',
     description: 'Open-weight model',

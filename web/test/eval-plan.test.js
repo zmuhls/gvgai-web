@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 const FEATURED_MODEL_IDS = [
+  'gemma4:31b',
   'gemma3:27b',
   'qwen3-coder-next',
   'ministral-3:14b',
@@ -63,7 +64,7 @@ test('arcade eval plan interleaves games and models for marquee rotation', () =>
   const openingCases = plan.cases.slice(0, FEATURED_MODEL_IDS.length);
 
   assert.deepEqual(openingCases.map(evalCase => evalCase.modelId), FEATURED_MODEL_IDS);
-  assert.deepEqual(openingCases.map(evalCase => evalCase.gameId), [0, 14, 18, 13, 19]);
+  assert.deepEqual(openingCases.map(evalCase => evalCase.gameId), [0, 14, 18, 13, 19, 0]);
 });
 
 test('arcade eval plan can cover the full model-native starter set', () => {
