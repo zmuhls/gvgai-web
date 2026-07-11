@@ -228,6 +228,31 @@ Supabase setup is documented in [`SUPABASE_TELEMETRY.md`](./SUPABASE_TELEMETRY.m
 Use `npm run telemetry:check` after adding Supabase credentials to verify the cloud insert path and rollup view.
 Use `npm run telemetry:backfill` to upload local JSONL fallback events captured before credentials were available.
 
+## Cadavre mirror and model routes
+
+`/cadavre` and `/cadavre/open-sheet` read the canonical interfaces from
+`milwrite/cadavre-exquis` with a 30-second server cache. The tracked files
+`public/cadavre.html` and `public/cadavre-open-sheet.html` serve as cold-start
+fallbacks. Refresh both fallback files after a canonical UI release:
+
+```bash
+npm run sync:cadavre-ui
+```
+
+The browser receives route ids and calls this server:
+
+- `GET /api/cadavre/models` returns the available `legion:<model>` and
+  `ollama:<model>` choices.
+- `POST /api/cadavre/chat` resolves one listed route through a server-owned
+  provider endpoint.
+
+Production uses `OLLAMA_API_KEY` for Ollama Cloud. Add `LEGION_VLLM_URL` when
+the Exquisite Corpse vLLM host has an HTTPS endpoint that Railway can reach;
+`LEGION_API_KEY` supplies its optional bearer token. The browser sees model
+names and completion responses while provider credentials remain in Railway.
+`CADAVRE_OLLAMA_MODEL` can change the default Cloud choice from
+`deepseek-v4-flash`.
+
 ## Model-Native Arcade Path
 
 The first no-Java migration set is configured in `data/featured.json` and

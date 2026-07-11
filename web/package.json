@@ -10,6 +10,7 @@
     "java:prepare": "node scripts/prepare-java-runtime.js",
     "telemetry:check": "node scripts/check-supabase-telemetry.js",
     "telemetry:backfill": "node scripts/backfill-telemetry.js",
+    "sync:cadavre-ui": "node scripts/sync-cadavre-ui.js",
     "eval:arcade": "node scripts/run-arcade-eval.js --dry-run --all",
     "eval:arcade:execute": "node scripts/run-arcade-eval.js",
     "finetune:prepare": "node scripts/prepare-finetune-data.js"
