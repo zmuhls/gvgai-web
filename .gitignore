@@ -25,6 +25,7 @@ production/
 *.class
 *.xml
 *.html
+!web/public/cadavre-open-sheet.html
 *.gif
 *.pyc
 
