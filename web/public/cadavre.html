@@ -96,8 +96,9 @@
     .epigraph {
       margin-top: 0.9rem;
       font-style: italic;
-      font-size: clamp(1.05rem, 1rem + 0.4vw, 1.25rem);
+      font-size: clamp(0.72rem, 3.75vw, 1.25rem);
       color: var(--ash);
+      white-space: nowrap;
     }
 
     .epigraph .attr {
@@ -105,9 +106,10 @@
       margin-top: 0.45rem;
       font-family: var(--mono);
       font-style: normal;
-      font-size: 0.7rem;
-      letter-spacing: 0.14em;
+      font-size: clamp(0.5rem, 2.35vw, 0.7rem);
+      letter-spacing: clamp(0.06em, 0.35vw, 0.14em);
       color: var(--label);
+      white-space: nowrap;
     }
 
     /* ── one compact game surface ──────────────────────────────────────── */
@@ -615,8 +617,7 @@
         </header>
 
         <section class="prose" aria-label="about the game">
-          <p><strong>Exquisite Corpse</strong> is a surrealist parlor game in which each participant takes turns writing or drawing on a sheet of paper, folding it to conceal the contribution, and passing it to the next player.</p>
-          <p>This version seats a language model at the table. Each player adds a few words, and the sheet folds as it passes so the next player sees only the newest contribution. The complete poem appears when someone ends the game.</p>
+          <p><strong>Exquisite Corpse</strong> is a surrealist parlor game in which each participant takes turns writing or drawing on a sheet of paper, folding it to conceal the contribution, and passing it to the next player. This version seats a language model at the table. Each player adds a few words, and the sheet folds as it passes so the next player sees only the newest contribution. The complete poem appears when someone ends the game.</p>
         </section>
       </div>
 
