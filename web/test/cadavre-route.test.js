@@ -115,21 +115,27 @@ test('cadavre aligns every curated Ollama model with its OpenRouter fallback id'
   );
 });
 
-test('cadavre catalog returns the tuned adapter and allowed Ollama models without connection data', async () => {
+test('cadavre catalog returns the tuned adapter and OpenRouter-first model choices without connection data', async () => {
   const originalFetch = global.fetch;
   const previousEndpoint = process.env.CADAVRE_ENDPOINT;
   const previousOllamaKey = process.env.OLLAMA_API_KEY;
   const previousCloudKey = process.env.OLLAMA_CLOUD_API_KEY;
+  const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
   const calls = [];
   try {
     process.env.CADAVRE_ENDPOINT = 'https://legion.example/v1/chat/completions';
     process.env.OLLAMA_API_KEY = 'catalog-test-token';
+    process.env.OPENROUTER_API_KEY = 'openrouter-catalog-test-token';
     delete process.env.OLLAMA_CLOUD_API_KEY;
     global.fetch = async (url, options) => {
       calls.push({ url, authorization: options.headers.Authorization || '' });
-      const data = url.startsWith('https://legion.example')
-        ? [{ id: 'exquisite-corpse' }, { id: 'base-model' }]
-        : [
+      let data;
+      if (url.startsWith('https://legion.example')) {
+        data = [{ id: 'exquisite-corpse' }, { id: 'base-model' }];
+      } else if (url.startsWith('https://openrouter.ai')) {
+        data = [..._private.CADAVRE_OPENROUTER_MODEL_IDS.values()].map((id) => ({ id }));
+      } else {
+        data = [
           { id: 'deepseek-v3.2', name: 'DeepSeek V3.2' },
           { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash' },
           { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro' },
@@ -154,6 +160,7 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
           { id: 'qwen3-coder-next', name: 'Qwen3 Coder Next' },
           { id: 'mistral-large-3:675b' }
         ];
+      }
       return new Response(JSON.stringify({ data }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
@@ -202,7 +209,8 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
       'qwen3.5:397b',
       'qwen3-coder-next'
     ]);
-    assert.match(catalog.models[1].label, /Ollama Cloud/);
+    assert.match(catalog.models[1].label, /OpenRouter; Ollama fallback/);
+    assert.equal(catalog.models[1].provider, 'openrouter');
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:deepseek-v4-pro'), false);
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:mistral-large-3:675b'), false);
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:ministral-3:3b'), false);
@@ -210,10 +218,12 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:gemma3:12b'), false);
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:gemma3:27b'), false);
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:devstral-small-2:24b'), false);
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 3);
     assert.ok(calls.every(({ url }) => url.endsWith('/v1/models')));
     assert.ok(calls.some(({ url, authorization }) =>
       url.startsWith('https://ollama.com/') && authorization === 'Bearer catalog-test-token'));
+    assert.ok(calls.some(({ url, authorization }) =>
+      url.startsWith('https://openrouter.ai/') && authorization === 'Bearer openrouter-catalog-test-token'));
     const serialized = JSON.stringify(catalog);
     assert.doesNotMatch(serialized, /catalog-test-token|https:\/\//);
   } finally {
@@ -221,6 +231,7 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
     restoreEnv('CADAVRE_ENDPOINT', previousEndpoint);
     restoreEnv('OLLAMA_API_KEY', previousOllamaKey);
     restoreEnv('OLLAMA_CLOUD_API_KEY', previousCloudKey);
+    restoreEnv('OPENROUTER_API_KEY', previousOpenRouterKey);
   }
 });
 
@@ -267,7 +278,7 @@ test('cadavre Ollama calls use native chat with thinking disabled and the shared
   }
 });
 
-test('cadavre retries transient Ollama failures before using the OpenRouter equivalent', async () => {
+test('cadavre uses the OpenRouter equivalent before spending an Ollama call', async () => {
   const originalFetch = global.fetch;
   const originalAdmit = usageGuardrail.admitOllamaCall;
   const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
@@ -283,9 +294,6 @@ test('cadavre retries transient Ollama failures before using the OpenRouter equi
     };
     global.fetch = async (url, options) => {
       calls.push({ url, options, body: JSON.parse(options.body) });
-      if (url === 'https://ollama.example/api/chat') {
-        return new Response('busy', { status: 503 });
-      }
       return new Response(JSON.stringify({
         choices: [{ message: { content: 'silver tide' } }]
       }), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -301,14 +309,12 @@ test('cadavre retries transient Ollama failures before using the OpenRouter equi
       sleepImpl: async () => {}
     });
 
-    assert.equal(guardrailCalls, 2);
-    assert.equal(calls.length, 3);
-    assert.equal(calls[0].url, 'https://ollama.example/api/chat');
-    assert.equal(calls[1].url, 'https://ollama.example/api/chat');
-    assert.equal(calls[2].url, 'https://openrouter.ai/api/v1/chat/completions');
-    assert.equal(calls[2].options.headers.Authorization, 'Bearer fallback-test-token');
-    assert.equal(calls[2].options.headers['HTTP-Referer'], 'https://inference-arcade.com/cadavre');
-    assert.equal(calls[2].body.model, 'deepseek/deepseek-v4-flash');
+    assert.equal(guardrailCalls, 0);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, 'https://openrouter.ai/api/v1/chat/completions');
+    assert.equal(calls[0].options.headers.Authorization, 'Bearer fallback-test-token');
+    assert.equal(calls[0].options.headers['HTTP-Referer'], 'https://inference-arcade.com/cadavre');
+    assert.equal(calls[0].body.model, 'deepseek/deepseek-v4-flash');
     assert.equal(result.provider, 'openrouter');
     assert.equal(result.model, 'ollama:deepseek-v4-flash');
     assert.equal(result.content, 'silver tide');
@@ -320,7 +326,7 @@ test('cadavre retries transient Ollama failures before using the OpenRouter equi
   }
 });
 
-test('cadavre completes Ollama retry and fallback inside the browser deadline', async () => {
+test('cadavre falls back to Ollama inside the browser deadline when OpenRouter fails', async () => {
   const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
   let now = 1000;
   const attempts = [];
@@ -338,27 +344,26 @@ test('cadavre completes Ollama retry and fallback inside the browser deadline', 
       callCandidateImpl: async (candidate, messages, settings, options) => {
         attempts.push({ provider: candidate.provider, timeoutMs: options.timeoutMs });
         now += options.timeoutMs;
-        if (candidate.provider === 'ollama-cloud') throw new Error('provider timed out');
+        if (candidate.provider === 'openrouter') throw new Error('provider timed out');
         return { content: 'silver tide', provider: candidate.provider, model: candidate.id };
       }
     });
 
     assert.deepEqual(attempts, [
-      { provider: 'ollama-cloud', timeoutMs: _private.OLLAMA_ATTEMPT_TIMEOUT_MS },
-      { provider: 'ollama-cloud', timeoutMs: _private.OLLAMA_ATTEMPT_TIMEOUT_MS },
       {
         provider: 'openrouter',
-        timeoutMs: _private.CHAT_DEADLINE_MS - (_private.OLLAMA_ATTEMPT_TIMEOUT_MS * 2) - 250
-      }
+        timeoutMs: _private.OPENROUTER_ATTEMPT_TIMEOUT_MS
+      },
+      { provider: 'ollama-cloud', timeoutMs: _private.OLLAMA_ATTEMPT_TIMEOUT_MS }
     ]);
     assert.equal(now, 1000 + _private.CHAT_DEADLINE_MS);
-    assert.equal(result.provider, 'openrouter');
+    assert.equal(result.provider, 'ollama-cloud');
   } finally {
     restoreEnv('OPENROUTER_API_KEY', previousOpenRouterKey);
   }
 });
 
-test('cadavre keeps usage-cap rejections out of provider fallback', async () => {
+test('cadavre reaches the Ollama usage cap only after OpenRouter fails', async () => {
   const originalFetch = global.fetch;
   const originalAdmit = usageGuardrail.admitOllamaCall;
   const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
@@ -372,7 +377,7 @@ test('cadavre keeps usage-cap rejections out of provider fallback', async () => 
     });
     global.fetch = async () => {
       fetchCalls += 1;
-      throw new Error('fetch should not run');
+      return new Response('busy', { status: 503 });
     };
 
     await assert.rejects(
@@ -387,7 +392,7 @@ test('cadavre keeps usage-cap rejections out of provider fallback', async () => 
       }),
       (error) => error.guardrail === true && error.scope === 'hourly'
     );
-    assert.equal(fetchCalls, 0);
+    assert.equal(fetchCalls, 1);
   } finally {
     global.fetch = originalFetch;
     usageGuardrail.admitOllamaCall = originalAdmit;

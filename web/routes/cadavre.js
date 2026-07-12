@@ -36,6 +36,7 @@ const CADAVRE_OPENROUTER_MODEL_IDS = new Map([
 const CADAVRE_CLOUD_MODEL_IDS = new Set(CADAVRE_OPENROUTER_MODEL_IDS.keys());
 const FETCH_TIMEOUT_MS = 60000;
 const CHAT_DEADLINE_MS = 50000;
+const OPENROUTER_ATTEMPT_TIMEOUT_MS = 30000;
 const OLLAMA_ATTEMPT_TIMEOUT_MS = 20000;
 const OLLAMA_MAX_ATTEMPTS = 2;
 const OLLAMA_RETRY_DELAY_MS = 250;
@@ -268,12 +269,17 @@ async function buildModelCatalog() {
   const legionKey = process.env.CADAVRE_API_KEY || process.env.LEGION_API_KEY || '';
   const ollamaUrl = config.ollamaCloud?.apiUrl;
   const ollamaKey = process.env.OLLAMA_CLOUD_API_KEY || process.env.OLLAMA_API_KEY || '';
+  const openRouterUrl = config.openrouter?.apiUrl;
+  const openRouterKey = process.env.OPENROUTER_API_KEY || '';
 
-  const [legion, ollama] = await Promise.all([
+  const [legion, ollama, openRouter] = await Promise.all([
     probeProviderModels(legionUrl, legionKey),
     (!ollamaKey && !isLocalUrl(ollamaUrl))
       ? Promise.resolve({ available: false, models: [] })
-      : probeProviderModels(ollamaUrl, ollamaKey)
+      : probeProviderModels(ollamaUrl, ollamaKey),
+    (!openRouterKey && !isLocalUrl(openRouterUrl))
+      ? Promise.resolve({ available: false, models: [] })
+      : probeProviderModels(openRouterUrl, openRouterKey)
   ]);
   const adapterAvailable = legion.available && legion.models.some(({ id }) => id === adapterModel);
   const models = [{
@@ -284,15 +290,24 @@ async function buildModelCatalog() {
     available: adapterAvailable
   }];
 
-  const cloudModels = ollama.models
-    .filter(({ id }) => CADAVRE_CLOUD_MODEL_IDS.has(id))
+  const ollamaModels = new Map(ollama.models.map((model) => [model.id, model]));
+  const openRouterModels = new Set(openRouter.models.map(({ id }) => id));
+  const cloudModels = [...CADAVRE_OPENROUTER_MODEL_IDS]
+    .filter(([ollamaId, openRouterId]) => openRouterModels.has(openRouterId) || ollamaModels.has(ollamaId))
+    .map(([ollamaId, openRouterId]) => ({
+      id: ollamaId,
+      label: ollamaModels.get(ollamaId)?.label || ollamaId,
+      openRouterAvailable: openRouterModels.has(openRouterId)
+    }))
     .sort((a, b) => a.label.localeCompare(b.label));
   for (const model of cloudModels) {
     models.push({
       id: `ollama:${model.id}`,
       model: model.id,
-      label: `${model.label} (Ollama Cloud)`,
-      provider: 'ollama',
+      label: model.openRouterAvailable
+        ? `${model.label} (OpenRouter; Ollama fallback)`
+        : `${model.label} (Ollama Cloud)`,
+      provider: model.openRouterAvailable ? 'openrouter' : 'ollama',
       available: true
     });
   }
@@ -308,6 +323,7 @@ async function buildModelCatalog() {
     models,
     providers: {
       legion: { available: legion.available, modelAvailable: adapterAvailable },
+      openrouter: { available: openRouter.available, modelCount: openRouter.models.length },
       ollama: { available: ollama.available, modelCount: ollama.models.length }
     }
   };
@@ -615,7 +631,7 @@ async function callCandidateWithRetry(candidate, messages, settings, options = {
         provider: candidate.provider,
         model: candidate.id,
         attempt,
-        fallback: false,
+        fallback: Boolean(options.fallback),
         timeoutMs
       });
       return await callCandidateImpl(candidate, messages, settings, { timeoutMs });
@@ -632,27 +648,36 @@ async function callCandidateReliably(candidate, messages, settings, options = {}
   const nowImpl = options.nowImpl || Date.now;
   const callCandidateImpl = options.callCandidateImpl || callCandidate;
   const deadlineAt = options.deadlineAt || (nowImpl() + CHAT_DEADLINE_MS);
-  try {
-    return await callCandidateWithRetry(candidate, messages, settings, {
+  const primary = openRouterFallbackCandidate(candidate);
+  if (!primary) {
+    return callCandidateWithRetry(candidate, messages, settings, {
       ...options,
       callCandidateImpl,
       nowImpl,
       deadlineAt
     });
-  } catch (error) {
-    if (error.guardrail) throw error;
-    const fallback = openRouterFallbackCandidate(candidate);
-    if (!fallback) throw error;
+  }
+
+  try {
     const remainingMs = deadlineAt - nowImpl();
-    if (remainingMs <= 0) throw new Error(`${fallback.provider} timed out`);
+    if (remainingMs <= 0) throw new Error(`${primary.provider} timed out`);
+    const timeoutMs = Math.min(remainingMs, OPENROUTER_ATTEMPT_TIMEOUT_MS);
     options.onAttempt?.({
-      provider: fallback.provider,
-      model: fallback.id,
+      provider: primary.provider,
+      model: primary.id,
       attempt: 1,
-      fallback: true,
-      timeoutMs: remainingMs
+      fallback: false,
+      timeoutMs
     });
-    return callCandidateImpl(fallback, messages, settings, { timeoutMs: remainingMs });
+    return await callCandidateImpl(primary, messages, settings, { timeoutMs });
+  } catch {
+    return callCandidateWithRetry(candidate, messages, settings, {
+      ...options,
+      callCandidateImpl,
+      nowImpl,
+      deadlineAt,
+      fallback: true
+    });
   }
 }
 
@@ -964,6 +989,7 @@ module.exports._private = {
   ollamaThinkSetting,
   providerTokenUsage,
   CHAT_DEADLINE_MS,
+  OPENROUTER_ATTEMPT_TIMEOUT_MS,
   OLLAMA_ATTEMPT_TIMEOUT_MS,
   callCandidate,
   shouldRetryOllama,
