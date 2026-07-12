@@ -41,6 +41,7 @@ const MODEL_PROBE_TIMEOUT_MS = 5000;
 const MODEL_CATALOG_TTL_MS = 30000;
 const CHAT_RATE_LIMIT = 30;
 const CHAT_RATE_WINDOW_MS = 60000;
+const USAGE_STARTED_AT = new Date().toISOString();
 
 const chatRateBuckets = new Map();
 let catalogCache = null;
@@ -746,6 +747,11 @@ function cadavreUsageSnapshot(now = Date.now()) {
   const settled = chatUsageStats.completed + chatUsageStats.failed;
   const cache = getCatalogCacheStatus(now);
   return {
+    measurement: {
+      scope: 'server_process',
+      startedAt: USAGE_STARTED_AT,
+      measuredAt: new Date(now).toISOString()
+    },
     standards: {
       maxMessages: MAX_MESSAGES,
       maxCharsPerMessage: MAX_CONTENT_CHARS,

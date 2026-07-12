@@ -254,7 +254,9 @@ The browser receives route ids and calls this server:
 Cadavre writes one privacy-safe telemetry event per chat request and one cache
 snapshot per upstream refresh. These records contain counts and timings rather
 than poem or prompt text. The HTML mirror and model catalog coalesce concurrent
-cold reads, while chat completions remain fresh for each turn.
+cold reads, while chat completions remain fresh for each turn. The usage route
+labels its live counters as process-scoped; persisted telemetry combines events
+across server instances and deployments.
 
 ```bash
 npm run test:cadavre

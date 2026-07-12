@@ -95,6 +95,8 @@ test('Cadavre usage telemetry records counts without poem text or connection dat
     assert.doesNotMatch(serialized, /"messages"|"content"|"prompt"|"response"/);
 
     const snapshot = _private.cadavreUsageSnapshot(1250);
+    assert.equal(snapshot.measurement.scope, 'server_process');
+    assert.equal(snapshot.measurement.measuredAt, '1970-01-01T00:00:01.250Z');
     assert.equal(snapshot.chat.requests, 1);
     assert.equal(snapshot.chat.completed, 1);
     assert.equal(snapshot.chat.providerCallsPerCompletion, 3);
