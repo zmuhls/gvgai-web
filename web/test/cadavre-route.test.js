@@ -107,6 +107,10 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
           { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash' },
           { id: 'gemma3:4b', name: 'Gemma 3 4B' },
           { id: 'gemma4:31b', name: 'Gemma 4 31B' },
+          { id: 'kimi-k2.5', name: 'Kimi K2.5' },
+          { id: 'kimi-k2.6', name: 'Kimi K2.6' },
+          { id: 'minimax-m3', name: 'MiniMax M3' },
+          { id: 'qwen3-coder-next', name: 'Qwen3 Coder Next' },
           { id: 'mistral-large-3:675b' }
         ];
       return new Response(JSON.stringify({ data }), {
@@ -122,14 +126,22 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
       'legion:exquisite-corpse',
       'ollama:deepseek-v4-flash',
       'ollama:gemma3:4b',
-      'ollama:gemma4:31b'
+      'ollama:gemma4:31b',
+      'ollama:kimi-k2.5',
+      'ollama:kimi-k2.6',
+      'ollama:minimax-m3',
+      'ollama:qwen3-coder-next'
     ]);
     assert.equal(catalog.models[0].available, true);
     assert.deepEqual(catalog.models.map(({ model }) => model), [
       'exquisite-corpse',
       'deepseek-v4-flash',
       'gemma3:4b',
-      'gemma4:31b'
+      'gemma4:31b',
+      'kimi-k2.5',
+      'kimi-k2.6',
+      'minimax-m3',
+      'qwen3-coder-next'
     ]);
     assert.match(catalog.models[1].label, /Ollama Cloud/);
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:deepseek-v3.2'), false);
