@@ -1,0 +1,20 @@
+{
+  "name": "inference-arcade-common-wall-backup",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Daily verified Common Wall backups for Railway Postgres",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "backup": "node index.js",
+    "verify": "node restore.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1085.0",
+    "pg": "^8.22.0"
+  }
+}
