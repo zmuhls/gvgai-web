@@ -29,6 +29,10 @@ supabase db push
 
 The migrations create `public.telemetry_events`, `public.telemetry_minute_rollups`, `public.telemetry_completed_runs`, `public.telemetry_run_leaderboard`, `public.telemetry_model_usage`, and `public.telemetry_session_activity`. They also add composite indexes for dashboard filters, JSONB indexes for trace details, and RLS with no anon or authenticated table access. Server writes use the service role key.
 
+`/api/cadavre/wall` stores shared wall pins as `system/cadavre_wall_post` records in the existing `public.telemetry_events` table, using the same server-only service role key. The existing `(event_type, created_at)` and `event_id` indexes cover wall reads and removals. Public wall posts carry no browser credential; each new post receives a random delete capability that the page keeps only in the browser that created it, while the event payload stores its SHA-256 hash.
+
+Production also sets `CADAVRE_WALL_FALLBACK_PATH` to a mounted Railway volume. The wall mirrors every successful Supabase write to that file and uses it whenever Supabase is unavailable, so pins remain available across application deployments and restarts. `CADAVRE_WALL_SUPABASE_TIMEOUT_MS` bounds each Supabase attempt before the volume takes over.
+
 ## Cloud Readiness Check
 
 After the migration is applied and the root `.env` has Supabase credentials, run:

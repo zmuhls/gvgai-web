@@ -1,10 +1,12 @@
 const express = require('express');
 const { getConfig } = require('../lib/runtime-config');
 const { resolveModel } = require('../lib/models');
+const { CadavreWallStore } = require('../lib/cadavre-wall-store');
 const telemetry = require('../lib/telemetry-store');
 const usageGuardrail = require('../lib/usage-guardrail');
 
 const router = express.Router();
+const wallStore = new CadavreWallStore();
 
 const MAX_MESSAGES = 14;
 const MAX_CONTENT_CHARS = 9000;
@@ -807,6 +809,39 @@ router.get('/models', async (req, res) => {
 
 router.get('/usage', (req, res) => {
   res.json(cadavreUsageSnapshot());
+});
+
+router.get('/wall', async (req, res) => {
+  try {
+    const page = await wallStore.list({ limit: req.query.limit, cursor: req.query.cursor });
+    res.set('Cache-Control', 'no-store').json(page);
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message || 'Unable to load the shared wall.' });
+  }
+});
+
+router.post('/wall', rateLimitChat, async (req, res) => {
+  try {
+    const created = await wallStore.create(req.body || {});
+    res.set('Cache-Control', 'no-store').status(201).json(created);
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message || 'Unable to pin this corpse.' });
+  }
+});
+
+// POST works with the existing GitHub Pages CORS policy and keeps the delete
+// capability in a JSON body rather than a URL or server log.
+router.post('/wall/:id/remove', rateLimitChat, async (req, res) => {
+  try {
+    const removed = await wallStore.remove(req.params.id, req.body?.deleteToken);
+    if (!removed) {
+      res.status(404).json({ error: 'This pin is unavailable or belongs to another browser.' });
+      return;
+    }
+    res.status(204).end();
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message || 'Unable to remove this pin.' });
+  }
 });
 
 router.post('/chat', rateLimitChat, async (req, res) => {
