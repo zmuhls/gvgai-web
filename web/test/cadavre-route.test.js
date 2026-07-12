@@ -105,11 +105,18 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
         : [
           { id: 'deepseek-v3.2' },
           { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash' },
+          { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro' },
+          { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview' },
           { id: 'gemma3:4b', name: 'Gemma 3 4B' },
           { id: 'gemma4:31b', name: 'Gemma 4 31B' },
           { id: 'kimi-k2.5', name: 'Kimi K2.5' },
           { id: 'kimi-k2.6', name: 'Kimi K2.6' },
+          { id: 'minimax-m2.7', name: 'MiniMax M2.7' },
           { id: 'minimax-m3', name: 'MiniMax M3' },
+          { id: 'ministral-3:3b', name: 'Ministral 3 3B' },
+          { id: 'ministral-3:8b', name: 'Ministral 3 8B' },
+          { id: 'ministral-3:14b', name: 'Ministral 3 14B' },
+          { id: 'qwen3.5:397b', name: 'Qwen 3.5 397B' },
           { id: 'qwen3-coder-next', name: 'Qwen3 Coder Next' },
           { id: 'mistral-large-3:675b' }
         ];
@@ -125,27 +132,39 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
     assert.deepEqual(catalog.models.map(({ id }) => id), [
       'legion:exquisite-corpse',
       'ollama:deepseek-v4-flash',
+      'ollama:deepseek-v4-pro',
+      'ollama:gemini-3-flash-preview',
       'ollama:gemma3:4b',
       'ollama:gemma4:31b',
       'ollama:kimi-k2.5',
       'ollama:kimi-k2.6',
+      'ollama:minimax-m2.7',
       'ollama:minimax-m3',
+      'ollama:ministral-3:14b',
+      'ollama:qwen3.5:397b',
       'ollama:qwen3-coder-next'
     ]);
     assert.equal(catalog.models[0].available, true);
     assert.deepEqual(catalog.models.map(({ model }) => model), [
       'exquisite-corpse',
       'deepseek-v4-flash',
+      'deepseek-v4-pro',
+      'gemini-3-flash-preview',
       'gemma3:4b',
       'gemma4:31b',
       'kimi-k2.5',
       'kimi-k2.6',
+      'minimax-m2.7',
       'minimax-m3',
+      'ministral-3:14b',
+      'qwen3.5:397b',
       'qwen3-coder-next'
     ]);
     assert.match(catalog.models[1].label, /Ollama Cloud/);
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:deepseek-v3.2'), false);
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:mistral-large-3:675b'), false);
+    assert.equal(catalog.models.some(({ id }) => id === 'ollama:ministral-3:3b'), false);
+    assert.equal(catalog.models.some(({ id }) => id === 'ollama:ministral-3:8b'), false);
     assert.equal(calls.length, 2);
     assert.ok(calls.every(({ url }) => url.endsWith('/v1/models')));
     assert.ok(calls.some(({ url, authorization }) =>

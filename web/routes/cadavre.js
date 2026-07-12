@@ -15,6 +15,7 @@ const DEFAULT_OLLAMA_MODEL = 'deepseek-v4-flash';
 const DEFAULT_ROUTE_MODEL = `legion:${DEFAULT_ADAPTER_MODEL}`;
 const CADAVRE_CLOUD_MODEL_IDS = new Set([
   'deepseek-v4-flash',
+  'deepseek-v4-pro',
   'gemini-3-flash-preview',
   'gemma3:4b',
   'gemma3:12b',
@@ -22,12 +23,12 @@ const CADAVRE_CLOUD_MODEL_IDS = new Set([
   'gemma4:31b',
   'kimi-k2.5',
   'kimi-k2.6',
+  'minimax-m2.7',
   'minimax-m3',
   'qwen3-coder-next',
+  'qwen3.5:397b',
   'devstral-small-2:24b',
   'gpt-oss:20b',
-  'ministral-3:3b',
-  'ministral-3:8b',
   'ministral-3:14b',
   'nemotron-3-nano:30b'
 ]);
