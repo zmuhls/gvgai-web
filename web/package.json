@@ -9,7 +9,6 @@
     "test": "node --test test/*.test.js",
     "test:cadavre": "node --test test/cadavre-*.test.js",
     "wall:migrate": "node scripts/migrate-cadavre-wall.js",
-    "wall:import-volume": "node scripts/import-cadavre-wall-volume.js",
     "java:prepare": "node scripts/prepare-java-runtime.js",
     "telemetry:check": "node scripts/check-supabase-telemetry.js",
     "telemetry:backfill": "node scripts/backfill-telemetry.js",

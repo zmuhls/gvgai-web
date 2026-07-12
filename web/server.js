@@ -16,7 +16,6 @@ const cadavreMirror = createCadavreMirror();
 
 const telemetry = require('./lib/telemetry-store');
 const cadavreRoutes = require('./routes/cadavre');
-const { importVolume } = require('./scripts/import-cadavre-wall-volume');
 cadavreRoutes.setMirrorCacheStatusProvider((now) => cadavreMirror.getCacheStatus(now));
 
 let gameManager = null;
@@ -568,10 +567,6 @@ async function startServer() {
   const configStatus = getConfigLoadStatus();
   if (configStatus.fallback) {
     console.warn(`[Server] using runtime config defaults because config.json did not load within ${configStatus.timeoutMs}ms`);
-  }
-
-  if (process.env.CADAVRE_WALL_FALLBACK_PATH) {
-    await importVolume();
   }
 
   telemetry.configure({

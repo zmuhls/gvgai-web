@@ -1,13 +1,9 @@
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
 const test = require('node:test');
 
 const { CadavreWallStore, _private } = require('../lib/cadavre-wall-store');
 const { boundedInteger } = require('../lib/postgres-pool');
-const { importVolume, normalizeLegacyRow } = require('../scripts/import-cadavre-wall-volume');
 
 function fakePool(query) {
   return { query };
@@ -111,119 +107,6 @@ test('shared wall rejects malformed cursors and missing database configuration',
   );
   const store = new CadavreWallStore({});
   await assert.rejects(() => store.list(), { status: 503 });
-});
-
-test('legacy volume rows normalize without exposing their delete hash', () => {
-  const normalized = normalizeLegacyRow({
-    event_id: '123e4567-e89b-42d3-a456-426614174000',
-    created_at: '2026-07-11T12:00:00.000Z',
-    payload: {
-      name: '  Volume   Writer ',
-      poem: 'the copper orchard',
-      analysis: '',
-      delete_token_hash: 'b'.repeat(64)
-    }
-  });
-  assert.deepEqual(normalized, {
-    id: '123e4567-e89b-42d3-a456-426614174000',
-    createdAt: '2026-07-11T12:00:00.000Z',
-    authorName: 'Volume Writer',
-    poem: 'the copper orchard',
-    analysis: null,
-    deleteTokenHash: 'b'.repeat(64)
-  });
-});
-
-test('volume import records its file digest and does not resurrect rows on restart', async (t) => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cadavre-wall-import-'));
-  const filePath = path.join(directory, 'cadavre-wall.json');
-  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  fs.writeFileSync(filePath, JSON.stringify([{
-    event_id: '123e4567-e89b-42d3-a456-426614174000',
-    created_at: '2026-07-11T12:00:00.000Z',
-    payload: {
-      name: 'Volume Writer',
-      poem: 'the copper orchard',
-      analysis: null,
-      delete_token_hash: 'c'.repeat(64)
-    }
-  }]));
-
-  const ledgers = new Map();
-  const handledIds = new Set();
-  let wallInserts = 0;
-  const client = {
-    async query(sql, values = []) {
-      if (/SELECT source_row_count/.test(sql)) {
-        const ledger = ledgers.get(values[0]);
-        return { rows: ledger ? [ledger] : [] };
-      }
-      if (/SELECT wall_post_id/.test(sql)) {
-        return { rows: handledIds.has(values[0]) ? [{ wall_post_id: values[0] }] : [] };
-      }
-      if (/INSERT INTO wall_posts/.test(sql)) {
-        wallInserts += 1;
-        return { rows: [], rowCount: 1 };
-      }
-      if (/INSERT INTO wall_volume_imports/.test(sql)) {
-        ledgers.set(values[0], { source_row_count: values[2], imported_row_count: values[3] });
-        return { rows: [], rowCount: 1 };
-      }
-      if (/INSERT INTO wall_volume_imported_rows/.test(sql)) {
-        handledIds.add(values[0]);
-        return { rows: [], rowCount: 1 };
-      }
-      return { rows: [], rowCount: 0 };
-    },
-    release() {}
-  };
-  const pool = { async connect() { return client; } };
-
-  const first = await importVolume({ filePath, pool });
-  assert.deepEqual(first, {
-    found: 1, imported: 1, previouslyImported: 0, skipped: 0, alreadyImported: false
-  });
-  assert.equal(wallInserts, 1);
-
-  // This represents a later database deletion. The import ledger, rather than
-  // the presence of the row, prevents a restart from recreating it.
-  const second = await importVolume({ filePath, pool });
-  assert.deepEqual(second, {
-    found: 1, imported: 0, previouslyImported: 1, skipped: 1, alreadyImported: true
-  });
-  assert.equal(wallInserts, 1);
-
-  const expanded = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  expanded.push({
-    event_id: '123e4567-e89b-42d3-a456-426614174001',
-    created_at: '2026-07-11T12:01:00.000Z',
-    payload: {
-      name: 'Later Volume Writer',
-      poem: 'a second orchard',
-      analysis: null,
-      delete_token_hash: 'd'.repeat(64)
-    }
-  });
-  fs.writeFileSync(filePath, JSON.stringify(expanded));
-  const changed = await importVolume({ filePath, pool });
-  assert.deepEqual(changed, {
-    found: 2, imported: 1, previouslyImported: 0, skipped: 1, alreadyImported: false
-  });
-  assert.equal(wallInserts, 2);
-});
-
-test('volume import stops when any legacy row is malformed', async (t) => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cadavre-wall-invalid-'));
-  const filePath = path.join(directory, 'cadavre-wall.json');
-  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  fs.writeFileSync(filePath, '[{}]\n');
-  let connected = false;
-
-  await assert.rejects(
-    () => importVolume({ filePath, pool: { async connect() { connected = true; } } }),
-    /invalid row\(s\) at index 0/
-  );
-  assert.equal(connected, false);
 });
 
 test('database pool settings stay within the configured bounds', () => {

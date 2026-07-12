@@ -167,7 +167,7 @@ The eval harness enumerates game × model × strategy cases with each case carry
 
 ## Deployment
 
-The arcade is live at **https://inference-arcade.com** with Cloudflare proxied at the apex CNAME to Railway. Railway builds from the root `Dockerfile` via GitHub push-to-deploy so every push to `master` on `zmuhls/gvgai-web` triggers a full rebuild. Supabase telemetry is configured and live. See `CLAUDE.md` for the full deployment manifest, environment variables, operational notes.
+The arcade is live at **https://inference-arcade.com** with Cloudflare proxied at the apex CNAME to Railway. Railway builds from the root `Dockerfile` via GitHub push-to-deploy so every push to `master` on `zmuhls/gvgai-web` triggers a full rebuild. The Common Wall uses the project Postgres service over Railway's private network, while a separate daily cron service writes checksum-verified logical backups to a private Railway bucket. Supabase remains the telemetry store. See `CLAUDE.md` for the full deployment manifest, environment variables, operational notes.
 
 ## Project layout
 

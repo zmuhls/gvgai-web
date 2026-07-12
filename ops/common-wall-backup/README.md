@@ -18,6 +18,8 @@ The daily schedule is `06:15 UTC`. Backups remain for 35 days by default, and cl
 
 Bucket credentials belong only to this cron service. The application and browser do not receive them.
 
+`railway-run.json` provides the same image without a cron schedule for a one-time Railway recovery check. It is intended for a temporary service with the same private variable references; remove that service after its receipt and bucket objects are verified.
+
 ## Recovery
 
 `npm run verify` downloads and restore-checks the latest backup without changing persistent rows. To select an older object, set `BACKUP_KEY` to its full key under `BACKUP_PREFIX`.
