@@ -811,6 +811,19 @@ router.get('/usage', (req, res) => {
   res.json(cadavreUsageSnapshot());
 });
 
+router.get('/wall/health', async (req, res) => {
+  try {
+    const health = await wallStore.health();
+    res.set('Cache-Control', 'no-store').json(health);
+  } catch (error) {
+    console.error('[Cadavre wall] health check failed:', error.cause?.message || error.message);
+    res.set('Cache-Control', 'no-store').status(503).json({
+      status: 'unavailable',
+      storage: 'postgres'
+    });
+  }
+});
+
 router.get('/wall', async (req, res) => {
   try {
     const page = await wallStore.list({ limit: req.query.limit, cursor: req.query.cursor });
@@ -926,6 +939,7 @@ function resetForTest() {
 
 module.exports = router;
 module.exports.setMirrorCacheStatusProvider = setMirrorCacheStatusProvider;
+module.exports.closeWallStore = () => wallStore.close();
 module.exports._private = {
   cleanMessages,
   providerCandidates,

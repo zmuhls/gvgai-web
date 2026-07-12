@@ -16,6 +16,7 @@ const cadavreMirror = createCadavreMirror();
 
 const telemetry = require('./lib/telemetry-store');
 const cadavreRoutes = require('./routes/cadavre');
+const { importVolume } = require('./scripts/import-cadavre-wall-volume');
 cadavreRoutes.setMirrorCacheStatusProvider((now) => cadavreMirror.getCacheStatus(now));
 
 let gameManager = null;
@@ -513,8 +514,22 @@ io.on('connection', (socket) => {
 });
 
 // Cleanup on server shutdown
-function shutdown(signal) {
+let shutdownStarted = false;
+
+async function shutdown(signal) {
+  if (shutdownStarted) return;
+  shutdownStarted = true;
   console.log(`\n[Server] Shutting down (${signal})...`);
+
+  const forcedExit = setTimeout(() => {
+    console.error('[Server] shutdown exceeded 15 seconds; exiting.');
+    process.exit(1);
+  }, 15000);
+  forcedExit.unref();
+  const httpClosed = server.listening
+    ? new Promise(resolve => server.close(resolve))
+    : Promise.resolve();
+  io.disconnectSockets(true);
 
   // Stop all games
   for (const [processId, game] of activeGames) {
@@ -531,7 +546,13 @@ function shutdown(signal) {
     eventType: 'server_stopped',
     source: 'server'
   });
-  telemetry.flush().finally(() => process.exit(0));
+  await Promise.allSettled([
+    httpClosed,
+    telemetry.flush()
+  ]);
+  await Promise.allSettled([cadavreRoutes.closeWallStore()]);
+  clearTimeout(forcedExit);
+  process.exit(0);
 }
 
 process.on('SIGINT', () => shutdown('SIGINT'));
@@ -547,6 +568,10 @@ async function startServer() {
   const configStatus = getConfigLoadStatus();
   if (configStatus.fallback) {
     console.warn(`[Server] using runtime config defaults because config.json did not load within ${configStatus.timeoutMs}ms`);
+  }
+
+  if (process.env.CADAVRE_WALL_FALLBACK_PATH) {
+    await importVolume();
   }
 
   telemetry.configure({

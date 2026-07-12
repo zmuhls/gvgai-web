@@ -1,12 +1,8 @@
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
 const test = require('node:test');
 
 const usageGuardrail = require('../lib/usage-guardrail');
 const { _private } = require('../routes/cadavre');
-const { CadavreWallStore, _private: wallPrivate } = require('../lib/cadavre-wall-store');
 
 function restoreEnv(name, value) {
   if (value === undefined) delete process.env[name];
@@ -483,69 +479,4 @@ test('cadavre route clamps numeric settings', () => {
   assert.equal(_private.clampNumber(999, 160, 16, 500), 500);
   assert.equal(_private.clampNumber(-5, 160, 16, 500), 16);
   assert.equal(_private.clampNumber('bad', 160, 16, 500), 160);
-});
-
-test('shared wall validates posts and keeps delete capabilities out of public rows', async () => {
-  const originalFetch = global.fetch;
-  const requests = [];
-  global.fetch = async (url, options) => {
-    requests.push({ url, options });
-    return new Response(JSON.stringify([{
-      event_id: '123e4567-e89b-42d3-a456-426614174000',
-      payload: { name: 'A. Writer', poem: 'a brass bird', analysis: null },
-      created_at: '2026-07-11T12:00:00.000Z'
-    }]), { status: 201, headers: { 'Content-Type': 'application/json' } });
-  };
-  try {
-    const store = new CadavreWallStore({
-      SUPABASE_URL: 'https://example.supabase.co',
-      SUPABASE_SERVICE_ROLE_KEY: 'service-role-key'
-    });
-    const created = await store.create({ name: '  A.   Writer ', poem: 'a brass bird' });
-    assert.equal(created.item.name, 'A. Writer');
-    assert.equal(created.item.analysis, '');
-    assert.match(created.deleteToken, /^[0-9a-f]{64}$/);
-    assert.doesNotMatch(JSON.stringify(created.item), /deleteToken/i);
-    const body = JSON.parse(requests[0].options.body);
-    assert.equal(body.event_family, 'system');
-    assert.equal(body.event_type, 'cadavre_wall_post');
-    assert.equal(body.source, 'cadavre');
-    assert.equal(body.payload.name, 'A. Writer');
-    assert.match(body.payload.delete_token_hash, /^[0-9a-f]{64}$/);
-    assert.notEqual(body.payload.delete_token_hash, created.deleteToken);
-  } finally {
-    global.fetch = originalFetch;
-  }
-});
-
-test('shared wall uses a created-at and id cursor and rejects malformed capabilities', () => {
-  const cursor = wallPrivate.encodeCursor({
-    event_id: '123e4567-e89b-42d3-a456-426614174000',
-    created_at: '2026-07-11T12:00:00.000Z'
-  });
-  assert.deepEqual(wallPrivate.decodeCursor(cursor), {
-    id: '123e4567-e89b-42d3-a456-426614174000',
-    createdAt: '2026-07-11T12:00:00.000Z'
-  });
-  assert.throws(() => wallPrivate.decodeCursor('not-a-cursor'), { status: 400 });
-  assert.throws(() => wallPrivate.cleanText('', { field: 'poem', maxLength: 12000, required: true }), { status: 400 });
-});
-
-test('shared wall persists through a fresh store when Railway volume fallback is configured', async (t) => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cadavre-wall-'));
-  const fallbackPath = path.join(directory, 'wall.json');
-  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-
-  const first = new CadavreWallStore({ CADAVRE_WALL_FALLBACK_PATH: fallbackPath });
-  const created = await first.create({ name: 'Persistent Writer', poem: 'the copper orchard' });
-  assert.equal(fs.existsSync(fallbackPath), true);
-
-  const second = new CadavreWallStore({ CADAVRE_WALL_FALLBACK_PATH: fallbackPath });
-  const page = await second.list({ limit: 40 });
-  assert.equal(page.items.some(item => item.id === created.item.id && item.poem === 'the copper orchard'), true);
-  assert.equal(await second.remove(created.item.id, '0'.repeat(64)), false);
-  assert.equal(await second.remove(created.item.id, created.deleteToken), true);
-
-  const third = new CadavreWallStore({ CADAVRE_WALL_FALLBACK_PATH: fallbackPath });
-  assert.equal((await third.list({ limit: 40 })).items.some(item => item.id === created.item.id), false);
 });

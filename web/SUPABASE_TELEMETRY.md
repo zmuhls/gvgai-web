@@ -29,9 +29,9 @@ supabase db push
 
 The migrations create `public.telemetry_events`, `public.telemetry_minute_rollups`, `public.telemetry_completed_runs`, `public.telemetry_run_leaderboard`, `public.telemetry_model_usage`, and `public.telemetry_session_activity`. They also add composite indexes for dashboard filters, JSONB indexes for trace details, and RLS with no anon or authenticated table access. Server writes use the service role key.
 
-`/api/cadavre/wall` stores shared wall pins as `system/cadavre_wall_post` records in the existing `public.telemetry_events` table, using the same server-only service role key. The existing `(event_type, created_at)` and `event_id` indexes cover wall reads and removals. Public wall posts carry no browser credential; each new post receives a random delete capability that the page keeps only in the browser that created it, while the event payload stores its SHA-256 hash.
+`/api/cadavre/wall` uses Railway Postgres through the server-only `DATABASE_URL`. Browser requests continue through Express, and Railway resolves the database connection over its private network. The browser receives neither database credentials nor deletion hashes. Each new post receives a random delete capability that remains in its creating browser while Postgres stores its SHA-256 hash.
 
-Production also sets `CADAVRE_WALL_FALLBACK_PATH` to a mounted Railway volume. The wall mirrors every successful Supabase write to that file and uses it whenever Supabase is unavailable, so pins remain available across application deployments and restarts. `CADAVRE_WALL_SUPABASE_TIMEOUT_MS` bounds each Supabase attempt before the volume takes over.
+Run `npm run wall:migrate` to apply the ordered SQL files in [web/postgres/migrations](./postgres/migrations/). Production runs this command before each deployment and checks `/api/cadavre/wall/health` before promoting the new container. During the transition, startup reads the old `CADAVRE_WALL_FALLBACK_PATH` file after the volume mounts and inserts its rows without overwriting matching Postgres records. A source-file digest prevents a restart from importing the same file again. `npm run wall:import-volume` performs the same import manually. The volume can be detached after its row count and live persistence have been verified.
 
 ## Cloud Readiness Check
 
