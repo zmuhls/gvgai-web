@@ -26,6 +26,8 @@ const CADAVRE_CLOUD_MODEL_IDS = new Set([
   'nemotron-3-nano:30b'
 ]);
 const FETCH_TIMEOUT_MS = 60000;
+const CHAT_DEADLINE_MS = 50000;
+const OLLAMA_ATTEMPT_TIMEOUT_MS = 20000;
 const OLLAMA_MAX_ATTEMPTS = 2;
 const OLLAMA_RETRY_DELAY_MS = 250;
 const MODEL_PROBE_TIMEOUT_MS = 5000;
@@ -353,7 +355,7 @@ function ollamaThinkSetting(model) {
   return /^gpt-oss(?::|$)/i.test(model || '') ? 'low' : false;
 }
 
-async function callCandidate(candidate, messages, settings) {
+async function callCandidate(candidate, messages, settings, options = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (candidate.apiKey) headers.Authorization = `Bearer ${candidate.apiKey}`;
   if (candidate.provider === 'openrouter') {
@@ -398,7 +400,7 @@ async function callCandidate(candidate, messages, settings) {
       method: 'POST',
       headers,
       body: JSON.stringify(body)
-    }, FETCH_TIMEOUT_MS);
+    }, options.timeoutMs || FETCH_TIMEOUT_MS);
   } catch (error) {
     if (error.name === 'AbortError') throw new Error(`${candidate.provider} timed out`);
     throw error;
@@ -435,11 +437,21 @@ function shouldRetryOllama(candidate, error, attempt) {
 
 async function callCandidateWithRetry(candidate, messages, settings, options = {}) {
   const sleepImpl = options.sleepImpl || ((delay) => new Promise((resolve) => setTimeout(resolve, delay)));
+  const callCandidateImpl = options.callCandidateImpl || callCandidate;
+  const nowImpl = options.nowImpl || Date.now;
+  const deadlineAt = options.deadlineAt || (nowImpl() + CHAT_DEADLINE_MS);
   for (let attempt = 1; attempt <= OLLAMA_MAX_ATTEMPTS; attempt += 1) {
+    const remainingMs = deadlineAt - nowImpl();
+    if (remainingMs <= 0) throw new Error(`${candidate.provider} timed out`);
+    const timeoutMs = Math.min(
+      remainingMs,
+      candidate.provider === 'ollama-cloud' ? OLLAMA_ATTEMPT_TIMEOUT_MS : FETCH_TIMEOUT_MS
+    );
     try {
-      return await callCandidate(candidate, messages, settings);
+      return await callCandidateImpl(candidate, messages, settings, { timeoutMs });
     } catch (error) {
       if (!shouldRetryOllama(candidate, error, attempt)) throw error;
+      if (deadlineAt - nowImpl() <= OLLAMA_RETRY_DELAY_MS) throw error;
       await sleepImpl(OLLAMA_RETRY_DELAY_MS);
     }
   }
@@ -447,13 +459,23 @@ async function callCandidateWithRetry(candidate, messages, settings, options = {
 }
 
 async function callCandidateReliably(candidate, messages, settings, options = {}) {
+  const nowImpl = options.nowImpl || Date.now;
+  const callCandidateImpl = options.callCandidateImpl || callCandidate;
+  const deadlineAt = options.deadlineAt || (nowImpl() + CHAT_DEADLINE_MS);
   try {
-    return await callCandidateWithRetry(candidate, messages, settings, options);
+    return await callCandidateWithRetry(candidate, messages, settings, {
+      ...options,
+      callCandidateImpl,
+      nowImpl,
+      deadlineAt
+    });
   } catch (error) {
     if (error.guardrail) throw error;
     const fallback = openRouterFallbackCandidate(candidate);
     if (!fallback) throw error;
-    return callCandidate(fallback, messages, settings);
+    const remainingMs = deadlineAt - nowImpl();
+    if (remainingMs <= 0) throw new Error(`${fallback.provider} timed out`);
+    return callCandidateImpl(fallback, messages, settings, { timeoutMs: remainingMs });
   }
 }
 
@@ -532,6 +554,8 @@ module.exports._private = {
   clientIp,
   rateLimitChat,
   ollamaThinkSetting,
+  CHAT_DEADLINE_MS,
+  OLLAMA_ATTEMPT_TIMEOUT_MS,
   callCandidate,
   shouldRetryOllama,
   callCandidateWithRetry,

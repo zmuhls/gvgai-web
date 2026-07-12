@@ -234,6 +234,44 @@ test('cadavre retries transient Ollama failures before using the OpenRouter equi
   }
 });
 
+test('cadavre completes Ollama retry and fallback inside the browser deadline', async () => {
+  const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
+  let now = 1000;
+  const attempts = [];
+  try {
+    process.env.OPENROUTER_API_KEY = 'fallback-test-token';
+    const result = await _private.callCandidateReliably({
+      id: 'ollama:deepseek-v4-flash',
+      provider: 'ollama-cloud',
+      apiUrl: 'https://ollama.example/v1/chat/completions',
+      model: 'deepseek-v4-flash',
+      apiKey: 'ollama-test-token'
+    }, [{ role: 'user', content: 'silver' }], { maxTokens: 40, temperature: 0.6 }, {
+      nowImpl: () => now,
+      sleepImpl: async (delay) => { now += delay; },
+      callCandidateImpl: async (candidate, messages, settings, options) => {
+        attempts.push({ provider: candidate.provider, timeoutMs: options.timeoutMs });
+        now += options.timeoutMs;
+        if (candidate.provider === 'ollama-cloud') throw new Error('provider timed out');
+        return { content: 'silver tide', provider: candidate.provider, model: candidate.id };
+      }
+    });
+
+    assert.deepEqual(attempts, [
+      { provider: 'ollama-cloud', timeoutMs: _private.OLLAMA_ATTEMPT_TIMEOUT_MS },
+      { provider: 'ollama-cloud', timeoutMs: _private.OLLAMA_ATTEMPT_TIMEOUT_MS },
+      {
+        provider: 'openrouter',
+        timeoutMs: _private.CHAT_DEADLINE_MS - (_private.OLLAMA_ATTEMPT_TIMEOUT_MS * 2) - 250
+      }
+    ]);
+    assert.equal(now, 1000 + _private.CHAT_DEADLINE_MS);
+    assert.equal(result.provider, 'openrouter');
+  } finally {
+    restoreEnv('OPENROUTER_API_KEY', previousOpenRouterKey);
+  }
+});
+
 test('cadavre keeps usage-cap rejections out of provider fallback', async () => {
   const originalFetch = global.fetch;
   const originalAdmit = usageGuardrail.admitOllamaCall;
