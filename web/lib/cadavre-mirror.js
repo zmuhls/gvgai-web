@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const defaultTelemetry = require('./telemetry-store');
 
 const DEFAULT_CACHE_TTL_MS = 30000;
 const DEFAULT_FALLBACK_CACHE_TTL_MS = 5000;
@@ -80,6 +81,7 @@ function createCadavreMirror(options = {}) {
   };
   const cacheTtlMs = options.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
   const fallbackCacheTtlMs = options.fallbackCacheTtlMs ?? DEFAULT_FALLBACK_CACHE_TTL_MS;
+  const telemetry = options.telemetry === false ? null : (options.telemetry || defaultTelemetry);
   const cache = new Map();
   const refreshes = new Map();
   const stats = {
@@ -100,7 +102,40 @@ function createCadavreMirror(options = {}) {
     return now - entry.fetchedAt < cacheTtlFor(entry);
   }
 
+  function trackCacheSnapshot(page, outcome, latencyMs) {
+    if (!telemetry?.track) return;
+    const reused = stats.cacheHits + stats.coalescedRequests + stats.staleRemoteServed;
+    try {
+      telemetry.track({
+        eventFamily: 'system',
+        eventType: 'cadavre_cache_snapshot',
+        source: 'cadavre-mirror',
+        latencyMs,
+        payload: { cache: 'html_mirror', page, outcome },
+        metrics: {
+          requests: stats.requests,
+          cache_hits: stats.cacheHits,
+          coalesced_requests: stats.coalescedRequests,
+          remote_fetches: stats.remoteFetches,
+          remote_failures: stats.remoteFailures,
+          local_fallback_reads: stats.localFallbackReads,
+          stale_remote_served: stats.staleRemoteServed,
+          upstream_requests_avoided: reused,
+          hit_ratio: stats.requests ? stats.cacheHits / stats.requests : 0,
+          reuse_ratio: stats.requests ? reused / stats.requests : 0,
+          entries: cache.size,
+          ttl_ms: cacheTtlMs,
+          fallback_ttl_ms: fallbackCacheTtlMs
+        }
+      });
+    } catch {
+      // Cache logging stays best-effort so the page response proceeds.
+    }
+  }
+
   async function refreshPage(page, now, cached) {
+    const startedAt = Date.now();
+    let outcome = 'failed';
     stats.remoteFetches += 1;
     try {
       const remote = await fetchHtml(sources[page], {
@@ -109,11 +144,13 @@ function createCadavreMirror(options = {}) {
       });
       const html = injectRuntimeConfig(remote, { rewriteOpenSheet: page === 'main' });
       cache.set(page, { fetchedAt: now, html, origin: 'github' });
+      outcome = 'github';
       return { html, source: 'github' };
     } catch (error) {
       stats.remoteFailures += 1;
       if (cached?.origin === 'github') {
         stats.staleRemoteServed += 1;
+        outcome = 'stale';
         return { html: cached.html, source: 'cache' };
       }
 
@@ -121,7 +158,10 @@ function createCadavreMirror(options = {}) {
       const fallback = await fs.promises.readFile(fallbackPaths[page], 'utf8');
       const html = injectRuntimeConfig(fallback, { rewriteOpenSheet: page === 'main' });
       cache.set(page, { fetchedAt: now, html, origin: 'local' });
+      outcome = 'local';
       return { html, source: 'local' };
+    } finally {
+      trackCacheSnapshot(page, outcome, Date.now() - startedAt);
     }
   }
 

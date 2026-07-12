@@ -1,12 +1,14 @@
 const express = require('express');
 const { getConfig } = require('../lib/runtime-config');
 const { resolveModel } = require('../lib/models');
+const telemetry = require('../lib/telemetry-store');
 const usageGuardrail = require('../lib/usage-guardrail');
 
 const router = express.Router();
 
 const MAX_MESSAGES = 14;
 const MAX_CONTENT_CHARS = 9000;
+const MAX_TOTAL_CONTENT_CHARS = 24000;
 const MAX_MODEL_ID_CHARS = 120;
 const DEFAULT_ADAPTER_MODEL = 'exquisite-corpse';
 const DEFAULT_OLLAMA_MODEL = 'deepseek-v4-flash';
@@ -37,11 +39,53 @@ const CHAT_RATE_WINDOW_MS = 60000;
 
 const chatRateBuckets = new Map();
 let catalogCache = null;
+let catalogRefresh = null;
+let mirrorCacheStatusProvider = null;
+const catalogCacheStats = {
+  requests: 0,
+  hits: 0,
+  misses: 0,
+  refreshes: 0,
+  refreshFailures: 0,
+  coalescedRequests: 0,
+  staleServed: 0
+};
+const chatUsageStats = {
+  requests: 0,
+  completed: 0,
+  failed: 0,
+  inFlight: 0,
+  peakInFlight: 0,
+  providerCalls: 0,
+  retries: 0,
+  fallbacks: 0,
+  inputTokens: 0,
+  outputTokens: 0,
+  totalLatencyMs: 0,
+  latencies: []
+};
 
 function clampNumber(value, fallback, min, max) {
   const n = Number(value);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, n));
+}
+
+function finiteMetric(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function compactMetrics(metrics) {
+  return Object.fromEntries(Object.entries(metrics).filter(([, value]) => value !== null && value !== undefined));
+}
+
+function percentile(values, requested) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.ceil((requested / 100) * sorted.length) - 1);
+  return sorted[Math.max(0, index)];
 }
 
 function cleanMessages(rawMessages) {
@@ -51,13 +95,20 @@ function cleanMessages(rawMessages) {
     throw err;
   }
 
-  return rawMessages.slice(-MAX_MESSAGES).map((message) => {
+  const messages = rawMessages.slice(-MAX_MESSAGES).map((message) => {
     const role = ['system', 'user', 'assistant'].includes(message?.role)
       ? message.role
       : 'user';
     const content = String(message?.content || '').slice(0, MAX_CONTENT_CHARS);
     return { role, content };
   }).filter((message) => message.content.trim());
+  const totalChars = messages.reduce((sum, message) => sum + message.content.length, 0);
+  if (totalChars > MAX_TOTAL_CONTENT_CHARS) {
+    const error = new Error(`messages exceed the ${MAX_TOTAL_CONTENT_CHARS}-character request limit`);
+    error.status = 413;
+    throw error;
+  }
+  return messages;
 }
 
 function isLocalUrl(url) {
@@ -253,13 +304,91 @@ async function buildModelCatalog() {
   };
 }
 
+function getCatalogCacheStatus(now = Date.now()) {
+  const reused = catalogCacheStats.hits + catalogCacheStats.coalescedRequests + catalogCacheStats.staleServed;
+  return {
+    requests: catalogCacheStats.requests,
+    hits: catalogCacheStats.hits,
+    misses: catalogCacheStats.misses,
+    refreshes: catalogCacheStats.refreshes,
+    refreshFailures: catalogCacheStats.refreshFailures,
+    coalescedRequests: catalogCacheStats.coalescedRequests,
+    staleServed: catalogCacheStats.staleServed,
+    upstreamRequestsAvoided: reused,
+    hitRatio: catalogCacheStats.requests ? catalogCacheStats.hits / catalogCacheStats.requests : 0,
+    reuseRatio: catalogCacheStats.requests ? reused / catalogCacheStats.requests : 0,
+    ageMs: catalogCache ? Math.max(0, now - catalogCache.createdAt) : null,
+    ttlMs: MODEL_CATALOG_TTL_MS,
+    refreshing: Boolean(catalogRefresh),
+    entries: catalogCache ? 1 : 0
+  };
+}
+
+function trackCatalogRefresh(outcome, latencyMs) {
+  const status = getCatalogCacheStatus();
+  try {
+    telemetry.track({
+      eventFamily: 'system',
+      eventType: 'cadavre_cache_snapshot',
+      source: 'cadavre-route',
+      latencyMs,
+      payload: { cache: 'model_catalog', outcome },
+      metrics: compactMetrics({
+        requests: status.requests,
+        hits: status.hits,
+        misses: status.misses,
+        refreshes: status.refreshes,
+        refresh_failures: status.refreshFailures,
+        coalesced_requests: status.coalescedRequests,
+        stale_served: status.staleServed,
+        upstream_requests_avoided: status.upstreamRequestsAvoided,
+        hit_ratio: status.hitRatio,
+        reuse_ratio: status.reuseRatio,
+        age_ms: status.ageMs,
+        ttl_ms: status.ttlMs,
+        entries: status.entries
+      })
+    });
+  } catch {
+    // Usage logging stays best-effort so the model catalog proceeds.
+  }
+}
+
 async function getModelCatalog(now = Date.now()) {
+  catalogCacheStats.requests += 1;
   if (catalogCache && now - catalogCache.createdAt < MODEL_CATALOG_TTL_MS) {
+    catalogCacheStats.hits += 1;
     return catalogCache.value;
   }
-  const value = await buildModelCatalog();
-  catalogCache = { createdAt: now, value };
-  return value;
+  if (catalogRefresh) {
+    catalogCacheStats.coalescedRequests += 1;
+    return catalogRefresh;
+  }
+
+  catalogCacheStats.misses += 1;
+  catalogCacheStats.refreshes += 1;
+  const stale = catalogCache;
+  const startedAt = Date.now();
+  catalogRefresh = (async () => {
+    try {
+      const value = await buildModelCatalog();
+      catalogCache = { createdAt: now, value };
+      trackCatalogRefresh('refreshed', Date.now() - startedAt);
+      return value;
+    } catch (error) {
+      catalogCacheStats.refreshFailures += 1;
+      if (stale) {
+        catalogCacheStats.staleServed += 1;
+        trackCatalogRefresh('stale', Date.now() - startedAt);
+        return stale.value;
+      }
+      trackCatalogRefresh('failed', Date.now() - startedAt);
+      throw error;
+    } finally {
+      catalogRefresh = null;
+    }
+  })();
+  return catalogRefresh;
 }
 
 async function resolveListedRouteModel(routeModel) {
@@ -355,6 +484,30 @@ function ollamaThinkSetting(model) {
   return /^gpt-oss(?::|$)/i.test(model || '') ? 'low' : false;
 }
 
+function providerTokenUsage(candidate, data) {
+  const usage = data?.usage || {};
+  const inputTokens = finiteMetric(candidate.provider === 'ollama-cloud'
+    ? data?.prompt_eval_count
+    : usage.prompt_tokens ?? usage.input_tokens);
+  const outputTokens = finiteMetric(candidate.provider === 'ollama-cloud'
+    ? data?.eval_count
+    : usage.completion_tokens ?? usage.output_tokens);
+  const totalTokens = finiteMetric(usage.total_tokens) ?? (
+    inputTokens !== null && outputTokens !== null ? inputTokens + outputTokens : null
+  );
+  const cachedInputTokens = finiteMetric(
+    usage.prompt_tokens_details?.cached_tokens ??
+    usage.input_tokens_details?.cached_tokens ??
+    usage.cache_read_input_tokens
+  );
+  return compactMetrics({
+    inputTokens,
+    outputTokens,
+    totalTokens,
+    cachedInputTokens
+  });
+}
+
 async function callCandidate(candidate, messages, settings, options = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (candidate.apiKey) headers.Authorization = `Bearer ${candidate.apiKey}`;
@@ -423,7 +576,8 @@ async function callCandidate(candidate, messages, settings, options = {}) {
   return {
     content: String(content).trim(),
     provider: candidate.provider,
-    model: candidate.id
+    model: candidate.id,
+    usage: providerTokenUsage(candidate, data)
   };
 }
 
@@ -448,6 +602,13 @@ async function callCandidateWithRetry(candidate, messages, settings, options = {
       candidate.provider === 'ollama-cloud' ? OLLAMA_ATTEMPT_TIMEOUT_MS : FETCH_TIMEOUT_MS
     );
     try {
+      options.onAttempt?.({
+        provider: candidate.provider,
+        model: candidate.id,
+        attempt,
+        fallback: false,
+        timeoutMs
+      });
       return await callCandidateImpl(candidate, messages, settings, { timeoutMs });
     } catch (error) {
       if (!shouldRetryOllama(candidate, error, attempt)) throw error;
@@ -475,8 +636,151 @@ async function callCandidateReliably(candidate, messages, settings, options = {}
     if (!fallback) throw error;
     const remainingMs = deadlineAt - nowImpl();
     if (remainingMs <= 0) throw new Error(`${fallback.provider} timed out`);
+    options.onAttempt?.({
+      provider: fallback.provider,
+      model: fallback.id,
+      attempt: 1,
+      fallback: true,
+      timeoutMs: remainingMs
+    });
     return callCandidateImpl(fallback, messages, settings, { timeoutMs: remainingMs });
   }
+}
+
+function beginChatUsage(now = Date.now()) {
+  chatUsageStats.requests += 1;
+  chatUsageStats.inFlight += 1;
+  chatUsageStats.peakInFlight = Math.max(chatUsageStats.peakInFlight, chatUsageStats.inFlight);
+  return {
+    startedAt: now,
+    inFlightAtStart: chatUsageStats.inFlight
+  };
+}
+
+function classifyCadavreError(error) {
+  if (error?.guardrail) return 'guardrail';
+  if (/timed out|abort/i.test(error?.message || '')) return 'timeout';
+  if (/empty content/i.test(error?.message || '')) return 'empty_response';
+  if (Number(error?.providerStatus) >= 500) return 'http_5xx';
+  if (Number(error?.providerStatus) >= 400) return 'http_4xx';
+  return 'provider_error';
+}
+
+function guardrailRatios() {
+  const status = usageGuardrail.getStatus();
+  if (status.disabled) return {};
+  return compactMetrics({
+    guardrail_hour_ratio: status.limits.hourly ? status.hourCount / status.limits.hourly : null,
+    guardrail_day_ratio: status.limits.daily ? status.dayCount / status.limits.daily : null
+  });
+}
+
+function recordChatUsage({ context, candidate, messages, settings, attempts, result, error }, now = Date.now()) {
+  const latencyMs = Math.max(0, now - context.startedAt);
+  const primaryAttempts = attempts.filter((attempt) => !attempt.fallback).length;
+  const fallbackUsed = attempts.some((attempt) => attempt.fallback);
+  const providerCalls = Math.max(0, attempts.length - (error?.guardrail ? 1 : 0));
+  const retryCount = error?.guardrail ? 0 : Math.max(0, primaryAttempts - 1);
+  const inputTokens = finiteMetric(result?.usage?.inputTokens);
+  const outputTokens = finiteMetric(result?.usage?.outputTokens);
+
+  chatUsageStats.inFlight = Math.max(0, chatUsageStats.inFlight - 1);
+  if (result) chatUsageStats.completed += 1;
+  else chatUsageStats.failed += 1;
+  chatUsageStats.providerCalls += providerCalls;
+  chatUsageStats.retries += retryCount;
+  if (fallbackUsed) chatUsageStats.fallbacks += 1;
+  chatUsageStats.inputTokens += inputTokens || 0;
+  chatUsageStats.outputTokens += outputTokens || 0;
+  chatUsageStats.totalLatencyMs += latencyMs;
+  chatUsageStats.latencies.push(latencyMs);
+  if (chatUsageStats.latencies.length > 1000) chatUsageStats.latencies.shift();
+
+  const promptChars = messages.reduce((sum, message) => sum + message.content.length, 0);
+  const finalProvider = result?.provider || attempts.at(-1)?.provider || candidate.provider;
+  try {
+    return telemetry.track({
+      eventFamily: 'model_telemetry',
+      eventType: result ? 'llm_decision' : 'cadavre_chat_failed',
+      source: 'cadavre-route',
+      modelId: candidate.id,
+      provider: finalProvider,
+      latencyMs,
+      payload: compactMetrics({
+        surface: 'cadavre',
+        purpose: settings.maxTokens > 100 ? 'reading' : 'turn',
+        outcome: result ? 'completed' : 'failed',
+        error_class: error ? classifyCadavreError(error) : null,
+        fallback_used: fallbackUsed
+      }),
+      metrics: compactMetrics({
+        message_count: messages.length,
+        prompt_chars: promptChars,
+        response_chars: result?.content?.length ?? 0,
+        max_tokens: settings.maxTokens,
+        provider_calls: providerCalls,
+        attempt_count: attempts.length,
+        retry_count: retryCount,
+        fallback_used: fallbackUsed ? 1 : 0,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        total_tokens: finiteMetric(result?.usage?.totalTokens),
+        cached_input_tokens: finiteMetric(result?.usage?.cachedInputTokens),
+        inflight_at_start: context.inFlightAtStart,
+        ...guardrailRatios()
+      })
+    });
+  } catch {
+    return null;
+  }
+}
+
+function cadavreUsageSnapshot(now = Date.now()) {
+  const requests = chatUsageStats.requests;
+  const settled = chatUsageStats.completed + chatUsageStats.failed;
+  const cache = getCatalogCacheStatus(now);
+  return {
+    standards: {
+      maxMessages: MAX_MESSAGES,
+      maxCharsPerMessage: MAX_CONTENT_CHARS,
+      maxTotalInputChars: MAX_TOTAL_CONTENT_CHARS,
+      outputTokens: { min: 16, max: 500 },
+      chatDeadlineMs: CHAT_DEADLINE_MS,
+      ollamaAttempts: OLLAMA_MAX_ATTEMPTS,
+      fallbackAttempts: 1,
+      rateLimit: { requests: configuredRateLimit(), windowMs: CHAT_RATE_WINDOW_MS },
+      modelCatalogCacheTtlMs: MODEL_CATALOG_TTL_MS
+    },
+    chat: {
+      requests,
+      completed: chatUsageStats.completed,
+      failed: chatUsageStats.failed,
+      successRate: settled ? chatUsageStats.completed / settled : 0,
+      inFlight: chatUsageStats.inFlight,
+      peakInFlight: chatUsageStats.peakInFlight,
+      providerCalls: chatUsageStats.providerCalls,
+      providerCallsPerCompletion: chatUsageStats.completed
+        ? chatUsageStats.providerCalls / chatUsageStats.completed
+        : 0,
+      retries: chatUsageStats.retries,
+      retryRate: requests ? chatUsageStats.retries / requests : 0,
+      fallbacks: chatUsageStats.fallbacks,
+      fallbackRate: requests ? chatUsageStats.fallbacks / requests : 0,
+      averageLatencyMs: settled ? chatUsageStats.totalLatencyMs / settled : 0,
+      p95LatencyMs: percentile(chatUsageStats.latencies, 95),
+      inputTokens: chatUsageStats.inputTokens,
+      outputTokens: chatUsageStats.outputTokens
+    },
+    caches: {
+      modelCatalog: cache,
+      htmlMirror: mirrorCacheStatusProvider ? mirrorCacheStatusProvider(now) : null
+    },
+    guardrail: usageGuardrail.getStatus()
+  };
+}
+
+function setMirrorCacheStatusProvider(provider) {
+  mirrorCacheStatusProvider = typeof provider === 'function' ? provider : null;
 }
 
 router.use(cadavreCors);
@@ -487,6 +791,10 @@ router.get('/models', async (req, res) => {
   } catch {
     res.status(503).json({ error: 'Cadavre model catalog is unavailable.' });
   }
+});
+
+router.get('/usage', (req, res) => {
+  res.json(cadavreUsageSnapshot());
 });
 
 router.post('/chat', rateLimitChat, async (req, res) => {
@@ -504,9 +812,21 @@ router.post('/chat', rateLimitChat, async (req, res) => {
     maxTokens: clampNumber(req.body?.max_tokens ?? req.body?.maxTokens, 160, 16, 500),
     temperature: clampNumber(req.body?.temperature, 0.8, 0, 1.4)
   };
+  const usageContext = beginChatUsage();
+  const attempts = [];
 
   try {
-    const result = await callCandidateReliably(candidate, messages, settings);
+    const result = await callCandidateReliably(candidate, messages, settings, {
+      onAttempt: (attempt) => attempts.push(attempt)
+    });
+    recordChatUsage({
+      context: usageContext,
+      candidate,
+      messages,
+      settings,
+      attempts,
+      result
+    });
     res.json({
       id: `cadavre-${Date.now()}`,
       object: 'chat.completion',
@@ -519,6 +839,14 @@ router.post('/chat', rateLimitChat, async (req, res) => {
       }]
     });
   } catch (error) {
+    recordChatUsage({
+      context: usageContext,
+      candidate,
+      messages,
+      settings,
+      attempts,
+      error
+    });
     if (error.guardrail) {
       res.status(429).json({ error: `Ollama Cloud usage guardrail: ${error.message}` });
       return;
@@ -530,10 +858,27 @@ router.post('/chat', rateLimitChat, async (req, res) => {
 function resetForTest() {
   chatRateBuckets.clear();
   catalogCache = null;
+  catalogRefresh = null;
+  Object.keys(catalogCacheStats).forEach((key) => { catalogCacheStats[key] = 0; });
+  Object.assign(chatUsageStats, {
+    requests: 0,
+    completed: 0,
+    failed: 0,
+    inFlight: 0,
+    peakInFlight: 0,
+    providerCalls: 0,
+    retries: 0,
+    fallbacks: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    totalLatencyMs: 0,
+    latencies: []
+  });
   usageGuardrail.resetForTest();
 }
 
 module.exports = router;
+module.exports.setMirrorCacheStatusProvider = setMirrorCacheStatusProvider;
 module.exports._private = {
   cleanMessages,
   providerCandidates,
@@ -548,17 +893,23 @@ module.exports._private = {
   probeProviderModels,
   buildModelCatalog,
   getModelCatalog,
+  getCatalogCacheStatus,
   resolveListedRouteModel,
   isAllowedOrigin,
   cadavreCors,
   clientIp,
   rateLimitChat,
   ollamaThinkSetting,
+  providerTokenUsage,
   CHAT_DEADLINE_MS,
   OLLAMA_ATTEMPT_TIMEOUT_MS,
   callCandidate,
   shouldRetryOllama,
   callCandidateWithRetry,
   callCandidateReliably,
+  beginChatUsage,
+  recordChatUsage,
+  cadavreUsageSnapshot,
+  setMirrorCacheStatusProvider,
   resetForTest
 };

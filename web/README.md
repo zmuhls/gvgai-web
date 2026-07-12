@@ -243,8 +243,22 @@ The browser receives route ids and calls this server:
 
 - `GET /api/cadavre/models` returns the available `legion:<model>` and
   `ollama:<model>` choices.
+- `GET /api/cadavre/usage` reports the active request limits, chat volume,
+  latency, provider-call ratio, token counts, guardrail use, and cache
+  efficiency for the model catalog and HTML mirror.
 - `POST /api/cadavre/chat` resolves one listed route through a server-owned
-  provider endpoint.
+  provider endpoint. Transient Ollama failures receive one retry inside a
+  shared 50-second deadline, followed by the configured OpenRouter equivalent
+  when that model has one.
+
+Cadavre writes one privacy-safe telemetry event per chat request and one cache
+snapshot per upstream refresh. These records contain counts and timings rather
+than poem or prompt text. The HTML mirror and model catalog coalesce concurrent
+cold reads, while chat completions remain fresh for each turn.
+
+```bash
+npm run test:cadavre
+```
 
 Production uses `OLLAMA_API_KEY` for Ollama Cloud. Add `LEGION_VLLM_URL` when
 the Exquisite Corpse vLLM host has an HTTPS endpoint that Railway can reach;

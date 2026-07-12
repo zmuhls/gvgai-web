@@ -15,6 +15,8 @@ const config = getConfig();
 const cadavreMirror = createCadavreMirror();
 
 const telemetry = require('./lib/telemetry-store');
+const cadavreRoutes = require('./routes/cadavre');
+cadavreRoutes.setMirrorCacheStatusProvider((now) => cadavreMirror.getCacheStatus(now));
 
 let gameManager = null;
 let LLMClient = null;
@@ -240,7 +242,7 @@ app.use('/api/telemetry', require('./routes/telemetry'));
 app.use('/api/marble', require('./routes/marble'));
 app.use('/api/traces', require('./routes/traces-local'));
 app.use('/api/finetune', require('./routes/finetune'));
-app.use('/api/cadavre', require('./routes/cadavre'));
+app.use('/api/cadavre', cadavreRoutes);
 
 // Clean URL for the embeddable spectator page (also served as /marquee.html).
 app.get('/marquee', (req, res) => res.sendFile(path.join(__dirname, 'public', 'marquee.html')));

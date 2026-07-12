@@ -27,6 +27,16 @@ test('cadavre route keeps only valid, bounded chat messages', () => {
   assert.equal(messages[2].content.length, 9000);
 });
 
+test('cadavre route rejects oversized aggregate prompts', () => {
+  assert.throws(
+    () => _private.cleanMessages(Array.from({ length: 3 }, () => ({
+      role: 'user',
+      content: 'x'.repeat(9000)
+    }))),
+    (error) => error.status === 413 && /24000-character request limit/.test(error.message)
+  );
+});
+
 test('cadavre route resolves route-aware models only through server configuration', () => {
   const previousEndpoint = process.env.CADAVRE_ENDPOINT;
   const previousModel = process.env.CADAVRE_MODEL;
