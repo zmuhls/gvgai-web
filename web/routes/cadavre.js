@@ -1,5 +1,6 @@
 const express = require('express');
 const { getConfig } = require('../lib/runtime-config');
+const { resolveModel } = require('../lib/models');
 const usageGuardrail = require('../lib/usage-guardrail');
 
 const router = express.Router();
@@ -25,6 +26,8 @@ const CADAVRE_CLOUD_MODEL_IDS = new Set([
   'nemotron-3-nano:30b'
 ]);
 const FETCH_TIMEOUT_MS = 60000;
+const OLLAMA_MAX_ATTEMPTS = 2;
+const OLLAMA_RETRY_DELAY_MS = 250;
 const MODEL_PROBE_TIMEOUT_MS = 5000;
 const MODEL_CATALOG_TTL_MS = 30000;
 const CHAT_RATE_LIMIT = 30;
@@ -129,6 +132,21 @@ function providerCandidates(requestedModel) {
   } catch {
     return [];
   }
+}
+
+function openRouterFallbackCandidate(candidate) {
+  if (candidate?.provider !== 'ollama-cloud') return null;
+  const config = getConfig();
+  const model = resolveModel(candidate.model).fallback || process.env.CADAVRE_FALLBACK_MODEL;
+  const apiKey = process.env.OPENROUTER_API_KEY || '';
+  if (!model || !config.openrouter?.apiUrl || !apiKey) return null;
+  return {
+    id: candidate.id,
+    provider: 'openrouter',
+    apiUrl: config.openrouter.apiUrl,
+    model,
+    apiKey
+  };
 }
 
 function endpointUrl(apiUrl, pathname) {
@@ -338,6 +356,10 @@ function ollamaThinkSetting(model) {
 async function callCandidate(candidate, messages, settings) {
   const headers = { 'Content-Type': 'application/json' };
   if (candidate.apiKey) headers.Authorization = `Bearer ${candidate.apiKey}`;
+  if (candidate.provider === 'openrouter') {
+    headers['HTTP-Referer'] = 'https://inference-arcade.com/cadavre';
+    headers['X-Title'] = 'Cadavre Exquis';
+  }
 
   let apiUrl = candidate.apiUrl;
   let body = {
@@ -354,6 +376,7 @@ async function callCandidate(candidate, messages, settings) {
       const error = new Error(verdict.reason);
       error.status = 429;
       error.guardrail = true;
+      error.scope = verdict.scope;
       throw error;
     }
     apiUrl = ollamaChatUrl(candidate.apiUrl);
@@ -383,7 +406,9 @@ async function callCandidate(candidate, messages, settings) {
 
   if (!response.ok) {
     await response.text();
-    throw new Error(`${candidate.provider} returned ${response.status}`);
+    const error = new Error(`${candidate.provider} returned ${response.status}`);
+    error.providerStatus = response.status;
+    throw error;
   }
 
   const data = await response.json();
@@ -398,6 +423,38 @@ async function callCandidate(candidate, messages, settings) {
     provider: candidate.provider,
     model: candidate.id
   };
+}
+
+function shouldRetryOllama(candidate, error, attempt) {
+  if (candidate.provider !== 'ollama-cloud' || error.guardrail || attempt >= OLLAMA_MAX_ATTEMPTS) {
+    return false;
+  }
+  if (!error.providerStatus) return true;
+  return [408, 425, 500, 502, 503, 504].includes(error.providerStatus);
+}
+
+async function callCandidateWithRetry(candidate, messages, settings, options = {}) {
+  const sleepImpl = options.sleepImpl || ((delay) => new Promise((resolve) => setTimeout(resolve, delay)));
+  for (let attempt = 1; attempt <= OLLAMA_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await callCandidate(candidate, messages, settings);
+    } catch (error) {
+      if (!shouldRetryOllama(candidate, error, attempt)) throw error;
+      await sleepImpl(OLLAMA_RETRY_DELAY_MS);
+    }
+  }
+  throw new Error('Ollama Cloud retry loop ended unexpectedly');
+}
+
+async function callCandidateReliably(candidate, messages, settings, options = {}) {
+  try {
+    return await callCandidateWithRetry(candidate, messages, settings, options);
+  } catch (error) {
+    if (error.guardrail) throw error;
+    const fallback = openRouterFallbackCandidate(candidate);
+    if (!fallback) throw error;
+    return callCandidate(fallback, messages, settings);
+  }
 }
 
 router.use(cadavreCors);
@@ -427,7 +484,7 @@ router.post('/chat', rateLimitChat, async (req, res) => {
   };
 
   try {
-    const result = await callCandidate(candidate, messages, settings);
+    const result = await callCandidateReliably(candidate, messages, settings);
     res.json({
       id: `cadavre-${Date.now()}`,
       object: 'chat.completion',
@@ -459,6 +516,7 @@ module.exports._private = {
   cleanMessages,
   providerCandidates,
   resolveRouteModel,
+  openRouterFallbackCandidate,
   isLocalUrl,
   isSafeModelName,
   CADAVRE_CLOUD_MODEL_IDS,
@@ -475,5 +533,8 @@ module.exports._private = {
   rateLimitChat,
   ollamaThinkSetting,
   callCandidate,
+  shouldRetryOllama,
+  callCandidateWithRetry,
+  callCandidateReliably,
   resetForTest
 };

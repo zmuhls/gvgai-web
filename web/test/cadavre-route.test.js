@@ -181,6 +181,96 @@ test('cadavre Ollama calls use native chat with thinking disabled and the shared
   }
 });
 
+test('cadavre retries transient Ollama failures before using the OpenRouter equivalent', async () => {
+  const originalFetch = global.fetch;
+  const originalAdmit = usageGuardrail.admitOllamaCall;
+  const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
+  const previousFallbackModel = process.env.CADAVRE_FALLBACK_MODEL;
+  const calls = [];
+  let guardrailCalls = 0;
+  try {
+    process.env.OPENROUTER_API_KEY = 'fallback-test-token';
+    delete process.env.CADAVRE_FALLBACK_MODEL;
+    usageGuardrail.admitOllamaCall = () => {
+      guardrailCalls += 1;
+      return { allowed: true };
+    };
+    global.fetch = async (url, options) => {
+      calls.push({ url, options, body: JSON.parse(options.body) });
+      if (url === 'https://ollama.example/api/chat') {
+        return new Response('busy', { status: 503 });
+      }
+      return new Response(JSON.stringify({
+        choices: [{ message: { content: 'silver tide' } }]
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    };
+
+    const result = await _private.callCandidateReliably({
+      id: 'ollama:deepseek-v4-flash',
+      provider: 'ollama-cloud',
+      apiUrl: 'https://ollama.example/v1/chat/completions',
+      model: 'deepseek-v4-flash',
+      apiKey: 'ollama-test-token'
+    }, [{ role: 'user', content: 'silver' }], { maxTokens: 40, temperature: 0.6 }, {
+      sleepImpl: async () => {}
+    });
+
+    assert.equal(guardrailCalls, 2);
+    assert.equal(calls.length, 3);
+    assert.equal(calls[0].url, 'https://ollama.example/api/chat');
+    assert.equal(calls[1].url, 'https://ollama.example/api/chat');
+    assert.equal(calls[2].url, 'https://openrouter.ai/api/v1/chat/completions');
+    assert.equal(calls[2].options.headers.Authorization, 'Bearer fallback-test-token');
+    assert.equal(calls[2].options.headers['HTTP-Referer'], 'https://inference-arcade.com/cadavre');
+    assert.equal(calls[2].body.model, 'deepseek/deepseek-v4-flash');
+    assert.equal(result.provider, 'openrouter');
+    assert.equal(result.model, 'ollama:deepseek-v4-flash');
+    assert.equal(result.content, 'silver tide');
+  } finally {
+    global.fetch = originalFetch;
+    usageGuardrail.admitOllamaCall = originalAdmit;
+    restoreEnv('OPENROUTER_API_KEY', previousOpenRouterKey);
+    restoreEnv('CADAVRE_FALLBACK_MODEL', previousFallbackModel);
+  }
+});
+
+test('cadavre keeps usage-cap rejections out of provider fallback', async () => {
+  const originalFetch = global.fetch;
+  const originalAdmit = usageGuardrail.admitOllamaCall;
+  const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
+  let fetchCalls = 0;
+  try {
+    process.env.OPENROUTER_API_KEY = 'fallback-test-token';
+    usageGuardrail.admitOllamaCall = () => ({
+      allowed: false,
+      reason: 'Ollama hourly usage limit reached',
+      scope: 'hourly'
+    });
+    global.fetch = async () => {
+      fetchCalls += 1;
+      throw new Error('fetch should not run');
+    };
+
+    await assert.rejects(
+      _private.callCandidateReliably({
+        id: 'ollama:deepseek-v4-flash',
+        provider: 'ollama-cloud',
+        apiUrl: 'https://ollama.example/v1/chat/completions',
+        model: 'deepseek-v4-flash',
+        apiKey: 'ollama-test-token'
+      }, [{ role: 'user', content: 'silver' }], { maxTokens: 40, temperature: 0.6 }, {
+        sleepImpl: async () => {}
+      }),
+      (error) => error.guardrail === true && error.scope === 'hourly'
+    );
+    assert.equal(fetchCalls, 0);
+  } finally {
+    global.fetch = originalFetch;
+    usageGuardrail.admitOllamaCall = originalAdmit;
+    restoreEnv('OPENROUTER_API_KEY', previousOpenRouterKey);
+  }
+});
+
 test('cadavre uses low thinking for gpt-oss and disables thinking for other Ollama models', () => {
   assert.equal(_private.ollamaThinkSetting('gpt-oss:120b'), 'low');
   assert.equal(_private.ollamaThinkSetting('GPT-OSS:20b'), 'low');
