@@ -10,6 +10,20 @@ const MAX_MODEL_ID_CHARS = 120;
 const DEFAULT_ADAPTER_MODEL = 'exquisite-corpse';
 const DEFAULT_OLLAMA_MODEL = 'deepseek-v4-flash';
 const DEFAULT_ROUTE_MODEL = `legion:${DEFAULT_ADAPTER_MODEL}`;
+const CADAVRE_CLOUD_MODEL_IDS = new Set([
+  'deepseek-v4-flash',
+  'gemini-3-flash-preview',
+  'gemma3:4b',
+  'gemma3:12b',
+  'gemma3:27b',
+  'gemma4:31b',
+  'devstral-small-2:24b',
+  'gpt-oss:20b',
+  'ministral-3:3b',
+  'ministral-3:8b',
+  'ministral-3:14b',
+  'nemotron-3-nano:30b'
+]);
 const FETCH_TIMEOUT_MS = 60000;
 const MODEL_PROBE_TIMEOUT_MS = 5000;
 const MODEL_CATALOG_TTL_MS = 30000;
@@ -190,7 +204,9 @@ async function buildModelCatalog() {
     available: adapterAvailable
   }];
 
-  const cloudModels = [...ollama.models].sort((a, b) => a.label.localeCompare(b.label));
+  const cloudModels = ollama.models
+    .filter(({ id }) => CADAVRE_CLOUD_MODEL_IDS.has(id))
+    .sort((a, b) => a.label.localeCompare(b.label));
   for (const model of cloudModels) {
     models.push({
       id: `ollama:${model.id}`,
@@ -445,6 +461,7 @@ module.exports._private = {
   resolveRouteModel,
   isLocalUrl,
   isSafeModelName,
+  CADAVRE_CLOUD_MODEL_IDS,
   clampNumber,
   modelsUrl,
   ollamaChatUrl,

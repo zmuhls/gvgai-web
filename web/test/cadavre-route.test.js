@@ -78,7 +78,7 @@ test('cadavre route derives provider discovery and native Ollama endpoints', () 
   );
 });
 
-test('cadavre catalog returns the tuned adapter and authenticated Ollama models without connection data', async () => {
+test('cadavre catalog returns the tuned adapter and allowed Ollama models without connection data', async () => {
   const originalFetch = global.fetch;
   const previousEndpoint = process.env.CADAVRE_ENDPOINT;
   const previousOllamaKey = process.env.OLLAMA_API_KEY;
@@ -92,7 +92,13 @@ test('cadavre catalog returns the tuned adapter and authenticated Ollama models 
       calls.push({ url, authorization: options.headers.Authorization || '' });
       const data = url.startsWith('https://legion.example')
         ? [{ id: 'exquisite-corpse' }, { id: 'base-model' }]
-        : [{ id: 'gemma4:latest', name: 'Gemma 4' }, { id: 'qwen3.5:cloud' }];
+        : [
+          { id: 'deepseek-v3.2' },
+          { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash' },
+          { id: 'gemma3:4b', name: 'Gemma 3 4B' },
+          { id: 'gemma4:31b', name: 'Gemma 4 31B' },
+          { id: 'mistral-large-3:675b' }
+        ];
       return new Response(JSON.stringify({ data }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
@@ -104,16 +110,20 @@ test('cadavre catalog returns the tuned adapter and authenticated Ollama models 
     assert.equal(catalog.defaultModel, 'legion:exquisite-corpse');
     assert.deepEqual(catalog.models.map(({ id }) => id), [
       'legion:exquisite-corpse',
-      'ollama:gemma4:latest',
-      'ollama:qwen3.5:cloud'
+      'ollama:deepseek-v4-flash',
+      'ollama:gemma3:4b',
+      'ollama:gemma4:31b'
     ]);
     assert.equal(catalog.models[0].available, true);
     assert.deepEqual(catalog.models.map(({ model }) => model), [
       'exquisite-corpse',
-      'gemma4:latest',
-      'qwen3.5:cloud'
+      'deepseek-v4-flash',
+      'gemma3:4b',
+      'gemma4:31b'
     ]);
     assert.match(catalog.models[1].label, /Ollama Cloud/);
+    assert.equal(catalog.models.some(({ id }) => id === 'ollama:deepseek-v3.2'), false);
+    assert.equal(catalog.models.some(({ id }) => id === 'ollama:mistral-large-3:675b'), false);
     assert.equal(calls.length, 2);
     assert.ok(calls.every(({ url }) => url.endsWith('/v1/models')));
     assert.ok(calls.some(({ url, authorization }) =>
