@@ -86,6 +86,10 @@ test('cadavre route derives provider discovery and native Ollama endpoints', () 
     _private.ollamaChatUrl('https://ollama.example/v1/chat/completions'),
     'https://ollama.example/api/chat'
   );
+  assert.equal(
+    _private.openRouterModelsUrl('https://openrouter.ai/api/v1/chat/completions'),
+    'https://openrouter.ai/api/v1/models'
+  );
 });
 
 test('cadavre aligns every curated Ollama model with its OpenRouter fallback id', () => {
@@ -223,7 +227,7 @@ test('cadavre catalog returns the tuned adapter and OpenRouter-first model choic
     assert.ok(calls.some(({ url, authorization }) =>
       url.startsWith('https://ollama.com/') && authorization === 'Bearer catalog-test-token'));
     assert.ok(calls.some(({ url, authorization }) =>
-      url.startsWith('https://openrouter.ai/') && authorization === 'Bearer openrouter-catalog-test-token'));
+      url === 'https://openrouter.ai/api/v1/models' && authorization === 'Bearer openrouter-catalog-test-token'));
     const serialized = JSON.stringify(catalog);
     assert.doesNotMatch(serialized, /catalog-test-token|https:\/\//);
   } finally {

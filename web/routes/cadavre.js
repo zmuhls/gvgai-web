@@ -224,6 +224,10 @@ function modelsUrl(apiUrl) {
   return endpointUrl(apiUrl, '/v1/models');
 }
 
+function openRouterModelsUrl(apiUrl) {
+  return endpointUrl(apiUrl, '/api/v1/models');
+}
+
 function ollamaChatUrl(apiUrl) {
   return endpointUrl(apiUrl, '/api/chat');
 }
@@ -238,13 +242,17 @@ async function fetchWithTimeout(url, options, timeoutMs) {
   }
 }
 
-async function probeProviderModels(apiUrl, apiKey = '') {
+async function probeProviderModels(apiUrl, apiKey = '', modelListUrl = '') {
   if (!apiUrl) return { available: false, models: [] };
   const headers = { Accept: 'application/json' };
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
 
   try {
-    const response = await fetchWithTimeout(modelsUrl(apiUrl), { headers }, MODEL_PROBE_TIMEOUT_MS);
+    const response = await fetchWithTimeout(
+      modelListUrl || modelsUrl(apiUrl),
+      { headers },
+      MODEL_PROBE_TIMEOUT_MS
+    );
     if (!response.ok) return { available: false, models: [] };
     const data = await response.json();
     const rawModels = Array.isArray(data?.data) ? data.data : [];
@@ -279,7 +287,7 @@ async function buildModelCatalog() {
       : probeProviderModels(ollamaUrl, ollamaKey),
     (!openRouterKey && !isLocalUrl(openRouterUrl))
       ? Promise.resolve({ available: false, models: [] })
-      : probeProviderModels(openRouterUrl, openRouterKey)
+      : probeProviderModels(openRouterUrl, openRouterKey, openRouterModelsUrl(openRouterUrl))
   ]);
   const adapterAvailable = legion.available && legion.models.some(({ id }) => id === adapterModel);
   const models = [{
@@ -976,6 +984,7 @@ module.exports._private = {
   CADAVRE_OPENROUTER_MODEL_IDS,
   clampNumber,
   modelsUrl,
+  openRouterModelsUrl,
   ollamaChatUrl,
   probeProviderModels,
   buildModelCatalog,
