@@ -108,7 +108,12 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
           { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro' },
           { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview' },
           { id: 'gemma3:4b', name: 'Gemma 3 4B' },
+          { id: 'gemma3:12b', name: 'Gemma 3 12B' },
+          { id: 'gemma3:27b', name: 'Gemma 3 27B' },
           { id: 'gemma4:31b', name: 'Gemma 4 31B' },
+          { id: 'devstral-small-2:24b', name: 'Devstral Small 2 24B' },
+          { id: 'gpt-oss:20b', name: 'GPT-OSS 20B' },
+          { id: 'gpt-oss:120b', name: 'GPT-OSS 120B' },
           { id: 'kimi-k2.5', name: 'Kimi K2.5' },
           { id: 'kimi-k2.6', name: 'Kimi K2.6' },
           { id: 'minimax-m2.7', name: 'MiniMax M2.7' },
@@ -116,6 +121,8 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
           { id: 'ministral-3:3b', name: 'Ministral 3 3B' },
           { id: 'ministral-3:8b', name: 'Ministral 3 8B' },
           { id: 'ministral-3:14b', name: 'Ministral 3 14B' },
+          { id: 'nemotron-3-nano:30b', name: 'Nemotron 3 Nano 30B' },
+          { id: 'nemotron-3-super', name: 'Nemotron 3 Super' },
           { id: 'qwen3.5:397b', name: 'Qwen 3.5 397B' },
           { id: 'qwen3-coder-next', name: 'Qwen3 Coder Next' },
           { id: 'mistral-large-3:675b' }
@@ -136,11 +143,15 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
       'ollama:gemini-3-flash-preview',
       'ollama:gemma3:4b',
       'ollama:gemma4:31b',
+      'ollama:gpt-oss:120b',
+      'ollama:gpt-oss:20b',
       'ollama:kimi-k2.5',
       'ollama:kimi-k2.6',
       'ollama:minimax-m2.7',
       'ollama:minimax-m3',
       'ollama:ministral-3:14b',
+      'ollama:nemotron-3-nano:30b',
+      'ollama:nemotron-3-super',
       'ollama:qwen3.5:397b',
       'ollama:qwen3-coder-next'
     ]);
@@ -152,11 +163,15 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
       'gemini-3-flash-preview',
       'gemma3:4b',
       'gemma4:31b',
+      'gpt-oss:120b',
+      'gpt-oss:20b',
       'kimi-k2.5',
       'kimi-k2.6',
       'minimax-m2.7',
       'minimax-m3',
       'ministral-3:14b',
+      'nemotron-3-nano:30b',
+      'nemotron-3-super',
       'qwen3.5:397b',
       'qwen3-coder-next'
     ]);
@@ -165,6 +180,9 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:mistral-large-3:675b'), false);
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:ministral-3:3b'), false);
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:ministral-3:8b'), false);
+    assert.equal(catalog.models.some(({ id }) => id === 'ollama:gemma3:12b'), false);
+    assert.equal(catalog.models.some(({ id }) => id === 'ollama:gemma3:27b'), false);
+    assert.equal(catalog.models.some(({ id }) => id === 'ollama:devstral-small-2:24b'), false);
     assert.equal(calls.length, 2);
     assert.ok(calls.every(({ url }) => url.endsWith('/v1/models')));
     assert.ok(calls.some(({ url, authorization }) =>

@@ -18,8 +18,6 @@ const CADAVRE_CLOUD_MODEL_IDS = new Set([
   'deepseek-v4-flash',
   'gemini-3-flash-preview',
   'gemma3:4b',
-  'gemma3:12b',
-  'gemma3:27b',
   'gemma4:31b',
   'kimi-k2.5',
   'kimi-k2.6',
@@ -27,10 +25,11 @@ const CADAVRE_CLOUD_MODEL_IDS = new Set([
   'minimax-m3',
   'qwen3-coder-next',
   'qwen3.5:397b',
-  'devstral-small-2:24b',
   'gpt-oss:20b',
+  'gpt-oss:120b',
   'ministral-3:14b',
-  'nemotron-3-nano:30b'
+  'nemotron-3-nano:30b',
+  'nemotron-3-super'
 ]);
 const FETCH_TIMEOUT_MS = 60000;
 const CHAT_DEADLINE_MS = 50000;
