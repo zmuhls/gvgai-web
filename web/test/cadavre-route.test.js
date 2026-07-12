@@ -103,7 +103,7 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
       const data = url.startsWith('https://legion.example')
         ? [{ id: 'exquisite-corpse' }, { id: 'base-model' }]
         : [
-          { id: 'deepseek-v3.2' },
+          { id: 'deepseek-v3.2', name: 'DeepSeek V3.2' },
           { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash' },
           { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro' },
           { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview' },
@@ -131,8 +131,8 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
     assert.equal(catalog.defaultModel, 'legion:exquisite-corpse');
     assert.deepEqual(catalog.models.map(({ id }) => id), [
       'legion:exquisite-corpse',
+      'ollama:deepseek-v3.2',
       'ollama:deepseek-v4-flash',
-      'ollama:deepseek-v4-pro',
       'ollama:gemini-3-flash-preview',
       'ollama:gemma3:4b',
       'ollama:gemma4:31b',
@@ -147,8 +147,8 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
     assert.equal(catalog.models[0].available, true);
     assert.deepEqual(catalog.models.map(({ model }) => model), [
       'exquisite-corpse',
+      'deepseek-v3.2',
       'deepseek-v4-flash',
-      'deepseek-v4-pro',
       'gemini-3-flash-preview',
       'gemma3:4b',
       'gemma4:31b',
@@ -161,7 +161,7 @@ test('cadavre catalog returns the tuned adapter and allowed Ollama models withou
       'qwen3-coder-next'
     ]);
     assert.match(catalog.models[1].label, /Ollama Cloud/);
-    assert.equal(catalog.models.some(({ id }) => id === 'ollama:deepseek-v3.2'), false);
+    assert.equal(catalog.models.some(({ id }) => id === 'ollama:deepseek-v4-pro'), false);
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:mistral-large-3:675b'), false);
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:ministral-3:3b'), false);
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:ministral-3:8b'), false);

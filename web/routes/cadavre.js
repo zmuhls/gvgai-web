@@ -14,8 +14,8 @@ const DEFAULT_ADAPTER_MODEL = 'exquisite-corpse';
 const DEFAULT_OLLAMA_MODEL = 'deepseek-v4-flash';
 const DEFAULT_ROUTE_MODEL = `legion:${DEFAULT_ADAPTER_MODEL}`;
 const CADAVRE_CLOUD_MODEL_IDS = new Set([
+  'deepseek-v3.2',
   'deepseek-v4-flash',
-  'deepseek-v4-pro',
   'gemini-3-flash-preview',
   'gemma3:4b',
   'gemma3:12b',
