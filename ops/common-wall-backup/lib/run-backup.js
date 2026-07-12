@@ -4,6 +4,7 @@ const {
   createStorage,
   deleteExpiredBackups,
   deleteObjectQuietly,
+  deleteStalePendingBackups,
   publishVerifiedBackup,
   retentionDays,
   updateLatestManifest,
@@ -50,6 +51,12 @@ async function runBackup(options = {}) {
       prefix,
       backup: published
     });
+    const deletedStalePending = await deleteStalePendingBackups({
+      client: storage.client,
+      bucket: storage.bucket,
+      prefix,
+      now
+    });
     const deletedExpired = await deleteExpiredBackups({
       client: storage.client,
       bucket: storage.bucket,
@@ -68,6 +75,7 @@ async function runBackup(options = {}) {
       migrations: published.summary.migrations,
       restoreCheckedPosts: restoreCheck.restoredPosts,
       retentionDays: days,
+      deletedStalePending,
       deletedExpired
     };
   } finally {

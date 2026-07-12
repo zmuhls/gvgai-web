@@ -20,6 +20,7 @@ const {
 const { applyRestore, readSnapshot, verifyRestorable } = require('../lib/database');
 const {
   deleteExpiredBackups,
+  deleteStalePendingBackups,
   loadLatestBackup,
   publishVerifiedBackup,
   updateLatestManifest,
@@ -254,6 +255,25 @@ test('retention preserves at least seven recovery points after a long outage', a
   });
   assert.equal(deleted, 2);
   assert.equal([...client.objects.keys()].filter(key => key.endsWith('.json.gz')).length, 7);
+});
+
+test('a later run removes stale pending uploads without touching recent ones', async () => {
+  const client = new MemoryS3();
+  client.objects.set('common-wall/daily/pending/stale.json.gz', {
+    body: Buffer.from('stale'), metadata: {}, modifiedAt: new Date('2026-07-10T00:00:00Z')
+  });
+  client.objects.set('common-wall/daily/pending/recent.json.gz', {
+    body: Buffer.from('recent'), metadata: {}, modifiedAt: new Date('2026-07-12T03:30:00Z')
+  });
+  const deleted = await deleteStalePendingBackups({
+    client,
+    bucket: 'test-bucket',
+    prefix: 'common-wall/daily',
+    now: NOW
+  });
+  assert.equal(deleted, 1);
+  assert.equal(client.objects.has('common-wall/daily/pending/stale.json.gz'), false);
+  assert.equal(client.objects.has('common-wall/daily/pending/recent.json.gz'), true);
 });
 
 test('restore selection stays under the configured prefix', () => {

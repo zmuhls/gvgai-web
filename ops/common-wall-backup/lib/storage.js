@@ -281,12 +281,43 @@ async function deleteExpiredBackups({
   return deleted;
 }
 
+async function deleteStalePendingBackups({
+  client,
+  bucket,
+  prefix,
+  now = new Date(),
+  olderThanMillis = 24 * 60 * 60 * 1000
+}) {
+  const pendingPrefix = `${cleanPrefix(prefix)}/pending/`;
+  const cutoff = now.getTime() - olderThanMillis;
+  let continuationToken;
+  let deleted = 0;
+  do {
+    const page = await client.send(new ListObjectsV2Command({
+      Bucket: bucket,
+      Prefix: pendingPrefix,
+      ContinuationToken: continuationToken
+    }));
+    for (const object of page.Contents || []) {
+      const modifiedAt = object.LastModified instanceof Date
+        ? object.LastModified.getTime()
+        : Date.parse(object.LastModified);
+      if (!object.Key?.endsWith('.json.gz') || !Number.isFinite(modifiedAt) || modifiedAt >= cutoff) continue;
+      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: object.Key }));
+      deleted += 1;
+    }
+    continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (continuationToken);
+  return deleted;
+}
+
 module.exports = {
   bodyToBuffer,
   checksum,
   createStorage,
   deleteExpiredBackups,
   deleteObjectQuietly,
+  deleteStalePendingBackups,
   downloadBackup,
   isArchiveKey,
   latestObjectKey,
