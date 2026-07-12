@@ -13,24 +13,25 @@ const MAX_MODEL_ID_CHARS = 120;
 const DEFAULT_ADAPTER_MODEL = 'exquisite-corpse';
 const DEFAULT_OLLAMA_MODEL = 'deepseek-v4-flash';
 const DEFAULT_ROUTE_MODEL = `legion:${DEFAULT_ADAPTER_MODEL}`;
-const CADAVRE_CLOUD_MODEL_IDS = new Set([
-  'deepseek-v3.2',
-  'deepseek-v4-flash',
-  'gemini-3-flash-preview',
-  'gemma3:4b',
-  'gemma4:31b',
-  'kimi-k2.5',
-  'kimi-k2.6',
-  'minimax-m2.7',
-  'minimax-m3',
-  'qwen3-coder-next',
-  'qwen3.5:397b',
-  'gpt-oss:20b',
-  'gpt-oss:120b',
-  'ministral-3:14b',
-  'nemotron-3-nano:30b',
-  'nemotron-3-super'
+const CADAVRE_OPENROUTER_MODEL_IDS = new Map([
+  ['deepseek-v3.2', 'deepseek/deepseek-v3.2'],
+  ['deepseek-v4-flash', 'deepseek/deepseek-v4-flash'],
+  ['gemini-3-flash-preview', 'google/gemini-3-flash-preview'],
+  ['gemma3:4b', 'google/gemma-3-4b-it'],
+  ['gemma4:31b', 'google/gemma-4-31b-it'],
+  ['kimi-k2.5', 'moonshotai/kimi-k2.5'],
+  ['kimi-k2.6', 'moonshotai/kimi-k2.6'],
+  ['minimax-m2.7', 'minimax/minimax-m2.7'],
+  ['minimax-m3', 'minimax/minimax-m3'],
+  ['qwen3-coder-next', 'qwen/qwen3-coder-next'],
+  ['qwen3.5:397b', 'qwen/qwen3.5-397b-a17b'],
+  ['gpt-oss:20b', 'openai/gpt-oss-20b'],
+  ['gpt-oss:120b', 'openai/gpt-oss-120b'],
+  ['ministral-3:14b', 'mistralai/ministral-14b-2512'],
+  ['nemotron-3-nano:30b', 'nvidia/nemotron-3-nano-30b-a3b'],
+  ['nemotron-3-super', 'nvidia/nemotron-3-super-120b-a12b']
 ]);
+const CADAVRE_CLOUD_MODEL_IDS = new Set(CADAVRE_OPENROUTER_MODEL_IDS.keys());
 const FETCH_TIMEOUT_MS = 60000;
 const CHAT_DEADLINE_MS = 50000;
 const OLLAMA_ATTEMPT_TIMEOUT_MS = 20000;
@@ -194,7 +195,8 @@ function providerCandidates(requestedModel) {
 function openRouterFallbackCandidate(candidate) {
   if (candidate?.provider !== 'ollama-cloud') return null;
   const config = getConfig();
-  const model = resolveModel(candidate.model).fallback || process.env.CADAVRE_FALLBACK_MODEL;
+  const model = CADAVRE_OPENROUTER_MODEL_IDS.get(candidate.model) ||
+    resolveModel(candidate.model).fallback || process.env.CADAVRE_FALLBACK_MODEL;
   const apiKey = process.env.OPENROUTER_API_KEY || '';
   if (!model || !config.openrouter?.apiUrl || !apiKey) return null;
   return {
@@ -891,6 +893,7 @@ module.exports._private = {
   isLocalUrl,
   isSafeModelName,
   CADAVRE_CLOUD_MODEL_IDS,
+  CADAVRE_OPENROUTER_MODEL_IDS,
   clampNumber,
   modelsUrl,
   ollamaChatUrl,

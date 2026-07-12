@@ -88,6 +88,33 @@ test('cadavre route derives provider discovery and native Ollama endpoints', () 
   );
 });
 
+test('cadavre aligns every curated Ollama model with its OpenRouter fallback id', () => {
+  const expectedFallbacks = new Map([
+    ['deepseek-v3.2', 'deepseek/deepseek-v3.2'],
+    ['deepseek-v4-flash', 'deepseek/deepseek-v4-flash'],
+    ['gemini-3-flash-preview', 'google/gemini-3-flash-preview'],
+    ['gemma3:4b', 'google/gemma-3-4b-it'],
+    ['gemma4:31b', 'google/gemma-4-31b-it'],
+    ['kimi-k2.5', 'moonshotai/kimi-k2.5'],
+    ['kimi-k2.6', 'moonshotai/kimi-k2.6'],
+    ['minimax-m2.7', 'minimax/minimax-m2.7'],
+    ['minimax-m3', 'minimax/minimax-m3'],
+    ['qwen3-coder-next', 'qwen/qwen3-coder-next'],
+    ['qwen3.5:397b', 'qwen/qwen3.5-397b-a17b'],
+    ['gpt-oss:20b', 'openai/gpt-oss-20b'],
+    ['gpt-oss:120b', 'openai/gpt-oss-120b'],
+    ['ministral-3:14b', 'mistralai/ministral-14b-2512'],
+    ['nemotron-3-nano:30b', 'nvidia/nemotron-3-nano-30b-a3b'],
+    ['nemotron-3-super', 'nvidia/nemotron-3-super-120b-a12b']
+  ]);
+
+  assert.deepEqual(_private.CADAVRE_OPENROUTER_MODEL_IDS, expectedFallbacks);
+  assert.deepEqual(
+    [..._private.CADAVRE_CLOUD_MODEL_IDS],
+    [...expectedFallbacks.keys()]
+  );
+});
+
 test('cadavre catalog returns the tuned adapter and allowed Ollama models without connection data', async () => {
   const originalFetch = global.fetch;
   const previousEndpoint = process.env.CADAVRE_ENDPOINT;
