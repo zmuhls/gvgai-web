@@ -5,7 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Exquisite Corpse — Cadavre Exquis</title>
   <meta name="description" content="Play exquisite corpse, the Surrealist parlor game, at a table that seats a small Gemma fine-tuned on public-domain surrealist and modernist poetry." />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230C0D10'/%3E%3Cpath d='M2 5h12M2 8h12M2 11h12' stroke='%23E7E0D0' stroke-width='1.2'/%3E%3C/svg%3E" />
+  <link rel="canonical" href="https://milwrite.github.io/cadavre-exquis/" />
+  <meta name="theme-color" content="#0C0D10" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Cadavre Exquis" />
+  <meta property="og:title" content="Exquisite Corpse — Cadavre Exquis" />
+  <meta property="og:description" content="Play the Surrealist parlor game with a language model at the table." />
+  <meta property="og:url" content="https://milwrite.github.io/cadavre-exquis/" />
+  <meta property="og:image" content="https://milwrite.github.io/cadavre-exquis/assets/share-card.jpg" />
+  <meta property="og:image:width" content="941" />
+  <meta property="og:image:height" content="412" />
+  <meta property="og:image:alt" content="Exquisite Corpse. The exquisite corpse will drink the new wine. The game's first sentence — Paris, 1925." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Exquisite Corpse — Cadavre Exquis" />
+  <meta name="twitter:description" content="Play the Surrealist parlor game with a language model at the table." />
+  <meta name="twitter:image" content="https://milwrite.github.io/cadavre-exquis/assets/share-card.jpg" />
+  <meta name="twitter:image:alt" content="Exquisite Corpse. The exquisite corpse will drink the new wine. The game's first sentence — Paris, 1925." />
+  <link rel="icon" type="image/png" sizes="32x32" href="https://milwrite.github.io/cadavre-exquis/assets/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="https://milwrite.github.io/cadavre-exquis/assets/favicon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="https://milwrite.github.io/cadavre-exquis/assets/apple-touch-icon.png" />
   <style>
     :root {
       color-scheme: dark;
@@ -98,7 +116,8 @@
       font-style: italic;
       font-size: clamp(0.72rem, 3.75vw, 1.25rem);
       color: var(--ash);
-      white-space: nowrap;
+      max-width: 100%;
+      overflow-wrap: anywhere;
     }
 
     .epigraph .attr {
@@ -109,7 +128,7 @@
       font-size: clamp(0.5rem, 2.35vw, 0.7rem);
       letter-spacing: clamp(0.06em, 0.35vw, 0.14em);
       color: var(--label);
-      white-space: nowrap;
+      overflow-wrap: anywhere;
     }
 
     /* ── one compact game surface ──────────────────────────────────────── */
@@ -457,6 +476,8 @@
       margin: -0.6rem 0 1.6rem;
     }
 
+    .wall-more { margin-top: 1.4rem; text-align: center; }
+
     .pin { border-top: 1px solid var(--crease); padding: 1.5rem 0.2rem; }
 
     .pin-poem { white-space: pre-wrap; font-size: 1.08rem; line-height: 1.55; overflow-wrap: break-word; }
@@ -617,7 +638,7 @@
         </header>
 
         <section class="prose" aria-label="about the game">
-          <p><strong>Exquisite Corpse</strong> is a surrealist parlor game in which each participant takes turns writing or drawing on a sheet of paper, folding it to conceal the contribution, and passing it to the next player. This version seats a language model at the table. Each player adds a few words, and the sheet folds as it passes so the next player sees only the newest contribution. The complete poem appears when someone ends the game.</p>
+          <p><strong>Exquisite Corpse</strong> is a parlor game in which participants take turns writing or drawing on a sheet of paper, then fold it to hide past contributions before passing it to the next player. This version seats a language model at the table. Each player crafts a one- to five-word line from the previous entry. The sheet folds as it passes, so the next player sees only the newest contribution. The complete poem appears when someone ends the game.</p>
         </section>
       </div>
 
@@ -634,8 +655,8 @@
             <label class="setting-field">
               <span class="setting-label">players</span>
               <select id="playerCount" aria-label="number of players">
-                <option value="2">two</option>
-                <option value="3" selected>three</option>
+                <option value="2" selected>two</option>
+                <option value="3">three</option>
                 <option value="4">four</option>
               </select>
             </label>
@@ -651,8 +672,8 @@
               <span class="setting-label">words per turn</span>
               <select id="maxWords" aria-label="words per turn">
                 <option value="1">one word</option>
-                <option value="2" selected>two words</option>
-                <option value="3">three words</option>
+                <option value="2">two words</option>
+                <option value="3" selected>three words</option>
                 <option value="4">four words</option>
                 <option value="5">five words</option>
               </select>
@@ -702,8 +723,9 @@
 
     <section class="wall" id="wallSec" hidden aria-label="the wall">
       <h2 class="eyebrow">The Wall</h2>
-      <p class="wall-note">corpses pinned in this browser</p>
+      <p class="wall-note" id="wallNote">shared corpses, across browsers</p>
       <div id="wallList"></div>
+      <div class="wall-more" id="wallMore" hidden><button id="loadWallMore" type="button">earlier corpses</button></div>
     </section>
 
     <footer>
@@ -717,11 +739,13 @@
   <dialog id="pinDialog">
     <p>pin this corpse to the wall</p>
     <input id="pinName" type="text" placeholder="your name, or an alias" aria-label="your name" />
+    <p id="pinStatus" hidden></p>
     <div class="row">
       <button id="pinCancel" type="button">cancel</button>
       <button id="pinConfirm" class="primary" type="button">pin it</button>
     </div>
   </dialog>
+  <script src="https://milwrite.github.io/cadavre-exquis/assets/cadavre-core.js"></script>
   <script>
     /* ── connection: defaults < config.local.js < URL params (this visit only —
        never persisted, so a crafted link can't poison future visits; keys
@@ -747,6 +771,7 @@
     if (params.get("endpoint")) paramConn.endpoint = params.get("endpoint");
     if (params.get("model")) paramConn.model = params.get("model");
     const CFG = Object.assign({}, DEFAULTS, window.CORPSE_CONFIG || {}, paramConn);
+    const WALL_API = REMOTE_API + "/wall";
     const isHttpEndpoint = (value) => /^https?:$/.test(new URL(value, location.href).protocol);
     try {
       if (!isHttpEndpoint(CFG.endpoint)) throw new Error("bad scheme");
@@ -764,9 +789,10 @@
 
     /* The game lives in the system prompt, so play works against a hosted
        model or a tuned local model. The word cap follows the table setting. */
-    const NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five"];
-    const capPhrase = () => (maxWords === 1 ? "one word" : `one to ${NUMBER_WORDS[maxWords]} words`);
-    const cap0 = () => { const p = capPhrase(); return p[0].toUpperCase() + p.slice(1); };
+    const Core = window.CadavreCore;
+    const NUMBER_WORDS = Core.NUMBER_WORDS;
+    const capPhrase = () => Core.capPhrase(maxWords);
+    const cap0 = () => Core.capitalizedCapPhrase(maxWords);
     const playPrompt = () => `You are one writer in an Exquisite Corpse poem. Each turn adds ${capPhrase()}.
 
 INPUT HANDLING
@@ -776,7 +802,7 @@ INPUT HANDLING
 
 TASK
 
-Continue LATEST FOLD. EARLIER FOLDS provide context.
+Continue the visible fold. You receive only the newest contribution.
 
 Extend grammar first, then deepen an action, object, speaker, or setting already present. Surprise should come from a new relation among existing elements. Introduce a new noun when the syntax calls for an object or complement.
 
@@ -802,20 +828,28 @@ Return only ${capPhrase()}. Use plain text without a label, explanation, alterna
 
 Write one paragraph of 2–4 concrete sentences. Quote specific words and describe how syntax, juxtaposition, line breaks, or pronouns shape the poem. Treat the poem as a finished, single-authored work. Focus on what the language does.`;
 
-    let players = 3, modelSeat = 2, maxWords = 2;
+    let players = 2, modelSeat = 2, maxWords = 3;
     let contributions = [];   // { text, isModel, seat }
     let actorIndex = 0;       // total turns taken so far
     let gameId = 0;           // stale in-flight replies must not join a new game
     let poemText = "", readingText = "";
     let gameActive = false;
     let poemTokens = [];      // { norm, el } per revealed poem word — the reading links to these
-    let wall = JSON.parse(localStorage.getItem("cadavreWall") || "[]");
+    const LEGACY_WALL_KEY = "cadavreWall";
+    const WALL_TOKENS_KEY = "cadavreWallDeleteTokens";
+    let legacyWall = readLegacyWall();
+    let remoteWall = [];
+    let wall = [];
+    let wallCursor = null;
+    let wallLoading = false;
+    let wallTokens = readWallTokens();
     const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     const el = (id) => document.getElementById(id);
-    const currentSeat = () => (actorIndex % players) + 1;
-    const isModelTurn = () => currentSeat() === Number(modelSeat);
-    const round = () => Math.floor(actorIndex / players) + 1;
+    const currentTurn = () => Core.turnInfo({ actorIndex, players, modelSeat });
+    const currentSeat = () => currentTurn().currentSeat;
+    const isModelTurn = () => currentTurn().isModelTurn;
+    const round = () => currentTurn().round;
     const endpointHost = () => new URL(CFG.endpoint, location.href).host;  // always parseable, validated above
     const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -824,11 +858,54 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       el("status").classList.toggle("err", !!isErr);
     }
 
+    function readLegacyWall() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(LEGACY_WALL_KEY) || "[]");
+        if (!Array.isArray(saved)) return [];
+        return saved
+          .filter((item) => item && typeof item.poem === "string")
+          .map((item, index) => ({
+            name: String(item.name || "anonymous"),
+            poem: item.poem,
+            analysis: String(item.analysis || ""),
+            ts: item.ts || new Date(0).toISOString(),
+            legacyKey: `${index}:${item.ts || ""}:${item.poem}`,
+            local: true,
+          }));
+      } catch {
+        return [];
+      }
+    }
+
+    function saveLegacyWall() {
+      localStorage.setItem(LEGACY_WALL_KEY, JSON.stringify(legacyWall.map((item) => ({
+        name: item.name, poem: item.poem, analysis: item.analysis, ts: item.ts,
+      }))));
+    }
+
+    function readWallTokens() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(WALL_TOKENS_KEY) || "{}");
+        return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveWallTokens() {
+      localStorage.setItem(WALL_TOKENS_KEY, JSON.stringify(wallTokens));
+    }
+
+    function rebuildWall() {
+      const remote = remoteWall.map((item) => ({ ...item, remote: true }));
+      wall = [...remote, ...legacyWall].sort((a, b) => Date.parse(b.ts) - Date.parse(a.ts));
+      renderWall();
+    }
+
     /* ── the poem ↔ reading link ─────────────────────────────────────────
        The close reading is instructed to quote the poem's exact words, so a
        quoted phrase can be matched to the poem's own tokens and lit on hover. */
-    const normWord = (w) =>
-      w.toLowerCase().replace(/’/g, "'").replace(/^[^a-z0-9']+|[^a-z0-9']+$/g, "");
+    const normWord = Core.normalizeWord;
 
     // Fill `container` with the poem, one word per <span class="w">.
     // Returns the token list [{ norm, el }] in reading order.
@@ -853,18 +930,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     }
 
     // Find a quoted phrase as a consecutive run of poem tokens; null if absent.
-    function matchPhrase(tokens, phrase) {
-      const want = phrase.split(/\s+/).map(normWord).filter(Boolean);
-      if (!want.length) return null;
-      for (let i = 0; i + want.length <= tokens.length; i++) {
-        let ok = true;
-        for (let k = 0; k < want.length; k++) {
-          if (tokens[i + k].norm !== want[k]) { ok = false; break; }
-        }
-        if (ok) return Array.from({ length: want.length }, (_, k) => i + k);
-      }
-      return null;
-    }
+    const matchPhrase = Core.matchPhrase;
 
     // Render `text` into `targetEl`, wrapping quotes that name poem words as
     // hoverable/focusable links; unmatched quotes stay plain text.
@@ -1024,12 +1090,10 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
 
       const available = routes.filter((route) => route?.id && route.available !== false);
       if (!available.length) { setSingleModelOption(); return; }
-      const requested = [CFG.model, catalog.default, catalog.defaultModel]
-        .find((id) => available.some((route) => route.id === id));
-      CFG.model = requested || available[0].id;
+      const chosen = Core.chooseModel(catalog, [CFG.model]);
+      CFG.model = chosen.id;
       select.value = CFG.model;
       select.disabled = available.length < 2;
-      const chosen = available.find((route) => route.id === CFG.model);
       el("connModel").textContent = chosen?.label || chosen?.name || chosen?.model || CFG.model;
     }
 
@@ -1086,23 +1150,12 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       }
     }
 
-    const isCorrective = (t) => /^one (word|to (two|three|four|five) words)\.?$/i.test(t.trim());
-
     function validContribution(raw) {
-      const text = raw.trim().replace(/[.,;:!?]+$/, "").trim();
-      const words = text ? text.split(/\s+/) : [];
-      const hasFormatting = /[\n\r`*_]/.test(text);
-      return {
-        text,
-        valid: words.length > 0 && words.length <= maxWords && !hasFormatting && !isCorrective(text),
-      };
+      return Core.validateContribution(raw, maxWords);
     }
 
     function turnPrompt() {
-      const latest = contributions[contributions.length - 1];
-      if (!latest) return `Begin the poem with ${capPhrase()}.`;
-      const earlier = contributions.slice(-7, -1).map((c) => c.text).join("\n") || "(none)";
-      return `EARLIER FOLDS:\n${earlier}\n\nLATEST FOLD:\n${latest.text}\n\nWrite the next ${capPhrase()}.`;
+      return Core.buildTurnPrompt(contributions, maxWords);
     }
 
     async function modelTurn() {
@@ -1262,31 +1315,119 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
 
     el("pinBtn").addEventListener("click", () => {
       el("pinName").value = "";
+      el("pinStatus").textContent = "";
+      el("pinStatus").hidden = true;
       el("pinDialog").showModal();
     });
     el("pinCancel").addEventListener("click", () => el("pinDialog").close());
     el("pinName").addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); el("pinConfirm").click(); }
     });
-    el("pinConfirm").addEventListener("click", () => {
-      wall.unshift({
-        name: el("pinName").value.trim() || "anonymous",
-        poem: poemText,
-        analysis: readingText,
-        ts: new Date().toISOString(),
-      });
-      localStorage.setItem("cadavreWall", JSON.stringify(wall));
-      el("pinDialog").close();
-      renderWall();
-      el("wallSec").scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    el("pinConfirm").addEventListener("click", pinToWall);
+
+    async function pinToWall() {
+      const confirm = el("pinConfirm");
+      const status = el("pinStatus");
+      if (!poemText || wallLoading) return;
+      confirm.disabled = true;
+      status.hidden = false;
+      status.textContent = "pinning…";
+      try {
+        const response = await fetch(WALL_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: el("pinName").value.trim() || "anonymous",
+            poem: poemText,
+            analysis: readingText,
+          }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.item || !data.deleteToken) {
+          throw new Error(data.error || "the shared wall did not accept this corpse");
+        }
+        remoteWall.unshift(data.item);
+        wallTokens[data.item.id] = data.deleteToken;
+        saveWallTokens();
+        rebuildWall();
+        el("pinDialog").close();
+        el("wallSec").scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (error) {
+        status.textContent = error.message || "the shared wall is unavailable";
+      } finally {
+        confirm.disabled = false;
+      }
+    }
 
     /* ── the wall ───────────────────────────────────────────────────────── */
+    async function loadWall(cursor = null) {
+      if (wallLoading || (cursor && !wallCursor)) return;
+      wallLoading = true;
+      el("loadWallMore").disabled = true;
+      try {
+        const url = new URL(WALL_API, location.href);
+        url.searchParams.set("limit", "40");
+        if (cursor) url.searchParams.set("cursor", cursor);
+        const response = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !Array.isArray(data.items)) {
+          throw new Error(data.error || "the shared wall is unavailable");
+        }
+        if (cursor) {
+          const seen = new Set(remoteWall.map((item) => item.id));
+          remoteWall.push(...data.items.filter((item) => item?.id && !seen.has(item.id)));
+        } else {
+          remoteWall = data.items;
+        }
+        wallCursor = data.nextCursor || null;
+        rebuildWall();
+      } catch {
+        rebuildWall();
+      } finally {
+        wallLoading = false;
+        el("loadWallMore").disabled = false;
+      }
+    }
+
+    async function unpinWallItem(item, button) {
+      if (item.local) {
+        legacyWall = legacyWall.filter((entry) => entry.legacyKey !== item.legacyKey);
+        saveLegacyWall();
+        rebuildWall();
+        return;
+      }
+      const deleteToken = wallTokens[item.id];
+      if (!deleteToken) return;
+      button.disabled = true;
+      try {
+        const response = await fetch(`${WALL_API}/${encodeURIComponent(item.id)}/remove`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deleteToken }),
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || "the pin could not be removed");
+        }
+        remoteWall = remoteWall.filter((entry) => entry.id !== item.id);
+        delete wallTokens[item.id];
+        saveWallTokens();
+        rebuildWall();
+      } catch (error) {
+        button.disabled = false;
+        button.title = error.message || "the pin could not be removed";
+      }
+    }
+
     function renderWall() {
       const list = el("wallList");
       list.innerHTML = "";
       el("wallSec").hidden = wall.length === 0;
-      wall.forEach((item, i) => {
+      el("wallNote").textContent = legacyWall.length
+        ? "shared corpses, plus earlier pins kept in this browser"
+        : "shared corpses, across browsers";
+      el("wallMore").hidden = !wallCursor;
+      wall.forEach((item) => {
         const pin = document.createElement("div");
         pin.className = "pin";
         const poem = document.createElement("div");
@@ -1297,15 +1438,14 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
         const who = document.createElement("span");
         const when = new Date(item.ts);
         who.textContent = `— ${item.name} · ${isNaN(when) ? "" : when.toLocaleDateString()}`;
-        const unpin = document.createElement("button");
-        unpin.className = "linklike";
-        unpin.textContent = "unpin";
-        unpin.addEventListener("click", () => {
-          wall.splice(i, 1);
-          localStorage.setItem("cadavreWall", JSON.stringify(wall));
-          renderWall();
-        });
-        meta.append(who, unpin);
+        meta.append(who);
+        if (item.local || wallTokens[item.id]) {
+          const unpin = document.createElement("button");
+          unpin.className = "linklike";
+          unpin.textContent = "unpin";
+          unpin.addEventListener("click", () => unpinWallItem(item, unpin));
+          meta.append(unpin);
+        }
         pin.append(poem);
         if (item.analysis) {
           const det = document.createElement("details");
@@ -1329,7 +1469,9 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
 
     loadModelOptions();
     syncSeats();
-    renderWall();
+    rebuildWall();
+    el("loadWallMore").addEventListener("click", () => loadWall(wallCursor));
+    loadWall();
   </script>
 </body>
 </html>
