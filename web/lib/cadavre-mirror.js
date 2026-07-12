@@ -102,6 +102,12 @@ function createCadavreMirror(options = {}) {
     return now - entry.fetchedAt < cacheTtlFor(entry);
   }
 
+  function refreshSourceUrl(source, now) {
+    const url = new URL(source);
+    url.searchParams.set('cadavre_v', String(Math.floor(now / Math.max(1, cacheTtlMs))));
+    return url.toString();
+  }
+
   function trackCacheSnapshot(page, outcome, latencyMs) {
     if (!telemetry?.track) return;
     const reused = stats.cacheHits + stats.coalescedRequests + stats.staleRemoteServed;
@@ -138,7 +144,7 @@ function createCadavreMirror(options = {}) {
     let outcome = 'failed';
     stats.remoteFetches += 1;
     try {
-      const remote = await fetchHtml(sources[page], {
+      const remote = await fetchHtml(refreshSourceUrl(sources[page], now), {
         fetchImpl: options.fetchImpl,
         timeoutMs: options.fetchTimeoutMs
       });

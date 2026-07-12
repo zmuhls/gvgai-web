@@ -34,11 +34,13 @@ test('Cadavre mirror injects only same-origin runtime routes and rewrites the op
 
 test('Cadavre mirror keeps a short in-memory copy of canonical GitHub HTML', async () => {
   let fetchCount = 0;
+  let fetchedUrl = '';
   const mirror = createCadavreMirror({
     cacheTtlMs: 1000,
     sources: { main: 'https://raw.example/main', openSheet: 'https://raw.example/sheet' },
-    fetchImpl: async () => {
+    fetchImpl: async (url) => {
       fetchCount += 1;
+      fetchedUrl = url;
       return new Response(SOURCE_HTML, { status: 200 });
     }
   });
@@ -48,6 +50,7 @@ test('Cadavre mirror keeps a short in-memory copy of canonical GitHub HTML', asy
   assert.equal(first.source, 'github');
   assert.equal(second.source, 'cache');
   assert.equal(fetchCount, 1);
+  assert.equal(fetchedUrl, 'https://raw.example/main?cadavre_v=1');
 });
 
 test('Cadavre mirror shares one cold GitHub fetch across 100 concurrent requests', async () => {
