@@ -10,7 +10,11 @@ const {
 } = require('../lib/cadavre-mirror');
 
 const SOURCE_HTML = `<!doctype html>
-<html><head><script src="ui/config.local.js"></script></head>
+<html><head>
+<link rel="icon" href="assets/favicon-32.png">
+<link rel="icon" href="./assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<script src="ui/config.local.js"></script></head>
 <body><a href="ui/corpse.html">the open sheet</a></body></html>`;
 
 test('Cadavre mirror injects only same-origin runtime routes and rewrites the open sheet link', () => {
@@ -20,7 +24,11 @@ test('Cadavre mirror injects only same-origin runtime routes and rewrites the op
   assert.match(html, /"modelsEndpoint":"\/api\/cadavre\/models"/);
   assert.match(html, /"model":"legion:exquisite-corpse"/);
   assert.match(html, /href="\/cadavre\/open-sheet"/);
-  assert.doesNotMatch(html, /apiKey|OLLAMA|LEGION|https:\/\//);
+  assert.match(html, /href="https:\/\/milwrite\.github\.io\/cadavre-exquis\/assets\/favicon-32\.png"/);
+  assert.match(html, /href="https:\/\/milwrite\.github\.io\/cadavre-exquis\/assets\/favicon\.png"/);
+  assert.match(html, /href="https:\/\/milwrite\.github\.io\/cadavre-exquis\/assets\/apple-touch-icon\.png"/);
+  assert.doesNotMatch(html, /href="(?:\.\/)?assets\//);
+  assert.doesNotMatch(html, /apiKey|OLLAMA|LEGION|v1\/chat\/completions|ollama\.com/);
   assert.equal((injectRuntimeConfig(html).match(/id="cadavre-runtime-config"/g) || []).length, 1);
 });
 

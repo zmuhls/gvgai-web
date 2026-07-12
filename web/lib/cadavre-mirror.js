@@ -4,6 +4,7 @@ const path = require('path');
 const DEFAULT_CACHE_TTL_MS = 30000;
 const DEFAULT_FETCH_TIMEOUT_MS = 5000;
 const DEFAULT_MODEL = 'legion:exquisite-corpse';
+const DEFAULT_CANONICAL_BASE = 'https://milwrite.github.io/cadavre-exquis/';
 const DEFAULT_SOURCES = {
   main: 'https://raw.githubusercontent.com/milwrite/cadavre-exquis/master/index.html',
   openSheet: 'https://raw.githubusercontent.com/milwrite/cadavre-exquis/master/ui/corpse.html'
@@ -40,6 +41,11 @@ function injectRuntimeConfig(html, options = {}) {
       'href="/cadavre/open-sheet"'
     );
   }
+  const canonicalBase = options.canonicalBase || DEFAULT_CANONICAL_BASE;
+  transformed = transformed.replace(
+    /\b(href|src)=(['"])(?:\.\/)?assets\//gi,
+    `$1=$2${canonicalBase}assets/`
+  );
 
   const script = runtimeConfigScript();
   if (/<\/head>/i.test(transformed)) {
@@ -116,6 +122,7 @@ module.exports = {
   DEFAULT_SOURCES,
   DEFAULT_FALLBACKS,
   DEFAULT_MODEL,
+  DEFAULT_CANONICAL_BASE,
   runtimeConfigScript,
   injectRuntimeConfig,
   fetchHtml,
