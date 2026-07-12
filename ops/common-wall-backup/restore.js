@@ -15,16 +15,28 @@ function selectedBackupKey(env, prefix) {
 async function restore(options = {}) {
   const env = options.env || process.env;
   const prefix = cleanPrefix(env.BACKUP_PREFIX);
-  const pool = options.pool || createDatabasePool(env);
-  const storage = options.storage || createStorage(env);
+  const applying = env.RESTORE_APPLY === 'true';
+  let pool;
+  let storage;
+  let databaseEnv = env;
   try {
+    if (applying) {
+      const restoreDatabaseUrl = String(env.RESTORE_DATABASE_URL || '').trim();
+      if (!restoreDatabaseUrl) throw new Error('RESTORE_DATABASE_URL is required to apply a backup.');
+      if (restoreDatabaseUrl === String(env.DATABASE_URL || '').trim()) {
+        throw new Error('RESTORE_DATABASE_URL must differ from the live DATABASE_URL.');
+      }
+      databaseEnv = { ...env, DATABASE_URL: restoreDatabaseUrl };
+    }
+    pool = options.pool || createDatabasePool(databaseEnv);
+    storage = options.storage || createStorage(env);
     const key = selectedBackupKey(env, prefix);
     const backup = key
       ? await downloadBackup(storage.client, storage.bucket, key)
       : await loadLatestBackup(storage.client, storage.bucket, prefix);
     const check = await verifyRestorable(pool, backup.document);
     let applied = null;
-    if (env.RESTORE_APPLY === 'true') {
+    if (applying) {
       if (env.RESTORE_CONFIRM !== 'restore-common-wall') {
         throw new Error('RESTORE_CONFIRM=restore-common-wall is required to apply a backup.');
       }
@@ -40,8 +52,8 @@ async function restore(options = {}) {
     };
   } finally {
     await Promise.allSettled([
-      options.pool ? Promise.resolve() : pool.end(),
-      Promise.resolve().then(() => options.storage ? undefined : storage.client.destroy())
+      options.pool || !pool ? Promise.resolve() : pool.end(),
+      Promise.resolve().then(() => options.storage || !storage ? undefined : storage.client.destroy())
     ]);
   }
 }

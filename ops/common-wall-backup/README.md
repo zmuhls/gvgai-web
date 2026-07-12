@@ -2,7 +2,7 @@
 
 This Railway cron service takes a repeatable-read snapshot of `public.wall_posts`, compresses it, and writes it to a private Railway Object Storage bucket. Every run downloads the new object, verifies its SHA-256 checksum and document shape, and inserts the downloaded rows into a temporary PostgreSQL table inside a rolled-back transaction. The job updates `common-wall/daily/latest.json` only after those checks pass.
 
-The daily schedule is `06:15 UTC`. Backups remain for 35 days by default. Cleanup never removes the current backup or `latest.json`.
+The daily schedule is `06:15 UTC`. Backups remain for 35 days by default, and cleanup always preserves at least the seven newest archives. A ten-minute watchdog prevents a stalled job from suppressing later Railway cron runs.
 
 ## Runtime variables
 
@@ -22,8 +22,9 @@ Bucket credentials belong only to this cron service. The application and browser
 
 `npm run verify` downloads and restore-checks the latest backup without changing persistent rows. To select an older object, set `BACKUP_KEY` to its full key under `BACKUP_PREFIX`.
 
-Applying a backup inserts missing posts and refuses conflicting rows. It never deletes current posts:
+Applying a backup requires a separate `RESTORE_DATABASE_URL` whose migrated `wall_posts` table is empty. The restore locks that table while it inserts the archived posts; it refuses to merge an old snapshot into a live wall:
 
 ```bash
-RESTORE_APPLY=true RESTORE_CONFIRM=restore-common-wall npm run verify
+RESTORE_DATABASE_URL=postgres://replacement-database \
+  RESTORE_APPLY=true RESTORE_CONFIRM=restore-common-wall npm run verify
 ```

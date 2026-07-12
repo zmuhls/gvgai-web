@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 const {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
@@ -16,15 +17,16 @@ const {
   encodeBackup,
   validateBackupDocument
 } = require('../lib/backup-document');
-const { readSnapshot, verifyRestorable } = require('../lib/database');
+const { applyRestore, readSnapshot, verifyRestorable } = require('../lib/database');
 const {
   deleteExpiredBackups,
   loadLatestBackup,
+  publishVerifiedBackup,
   updateLatestManifest,
-  uploadAndVerifyBackup
+  uploadPendingAndVerifyBackup
 } = require('../lib/storage');
-const { safeErrorMessage } = require('../index');
-const { selectedBackupKey } = require('../restore');
+const { jobTimeoutMillis, safeErrorMessage } = require('../index');
+const { restore, selectedBackupKey } = require('../restore');
 
 const NOW = new Date('2026-07-12T04:00:00.000Z');
 const POST_ID = '123e4567-e89b-42d3-a456-426614174000';
@@ -44,15 +46,7 @@ function sampleDocument() {
       poem: 'the copper orchard',
       analysis: null,
       delete_token_hash: HASH
-    }],
-    volumeImports: [{
-      source_digest: 'c'.repeat(64),
-      source_name: 'cadavre-wall.json',
-      source_row_count: 0,
-      imported_row_count: 0,
-      imported_at: '2026-07-12T00:00:00.000Z'
-    }],
-    importedVolumeRowCount: 0
+    }]
   }, NOW);
 }
 
@@ -97,8 +91,6 @@ test('database snapshot uses a read-only transaction and keeps private hashes', 
         name: '001_create_wall_posts.sql', checksum: 'b'.repeat(64),
         applied_at: '2026-07-11T23:00:00.000Z'
       }] };
-      if (/FROM wall_volume_imports/.test(sql)) return { rows: [] };
-      if (/wall_volume_imported_rows/.test(sql)) return { rows: [{ count: 0 }] };
       return { rows: [] };
     },
     release() {}
@@ -127,6 +119,25 @@ test('restore verification inserts into a temporary table and always rolls back'
   assert.equal(queries.at(-1).sql, 'ROLLBACK');
 });
 
+test('applied restore locks and refuses a nonempty target', async () => {
+  const queries = [];
+  const client = {
+    async query(sql) {
+      queries.push(sql);
+      if (/SELECT count/.test(sql)) return { rows: [{ count: 1 }] };
+      return { rows: [] };
+    },
+    release() {}
+  };
+  await assert.rejects(
+    applyRestore({ async connect() { return client; } }, sampleDocument()),
+    /must be empty/
+  );
+  assert.equal(queries[0], 'BEGIN');
+  assert.match(queries[1], /ACCESS EXCLUSIVE/);
+  assert.equal(queries.at(-1), 'ROLLBACK');
+});
+
 class MemoryS3 {
   constructor() {
     this.objects = new Map();
@@ -146,6 +157,17 @@ class MemoryS3 {
       const object = this.objects.get(input.Key);
       if (!object) throw new Error('missing object');
       return { ContentLength: object.body.length, Metadata: object.metadata };
+    }
+    if (command instanceof CopyObjectCommand) {
+      const sourceKey = decodeURIComponent(input.CopySource).split('/').slice(1).join('/');
+      const source = this.objects.get(sourceKey);
+      if (!source) throw new Error('missing copy source');
+      this.objects.set(input.Key, {
+        body: Buffer.from(source.body),
+        metadata: { ...source.metadata },
+        modifiedAt: NOW
+      });
+      return {};
     }
     if (command instanceof GetObjectCommand) {
       const object = this.objects.get(input.Key);
@@ -172,9 +194,13 @@ test('object storage upload is downloaded, checksummed, and discoverable as late
   const client = new MemoryS3();
   const document = sampleDocument();
   const encoded = encodeBackup(document);
-  const backup = await uploadAndVerifyBackup({
+  const pending = await uploadPendingAndVerifyBackup({
     client, bucket: 'test-bucket', document, prefix: 'common-wall/daily', ...encoded
   });
+  assert.match(pending.key, /common-wall\/daily\/pending\//);
+  const backup = await publishVerifiedBackup({ client, bucket: 'test-bucket', backup: pending });
+  assert.doesNotMatch(backup.key, /\/pending\//);
+  assert.equal(client.objects.has(pending.key), false);
   await updateLatestManifest({
     client, bucket: 'test-bucket', prefix: 'common-wall/daily', backup
   });
@@ -200,12 +226,34 @@ test('retention cleanup deletes only expired compressed backups', async () => {
     prefix: 'common-wall/daily',
     keepKey: 'common-wall/daily/current.json.gz',
     now: NOW,
-    days: 35
+    days: 35,
+    minimumArchives: 1
   });
   assert.equal(deleted, 1);
   assert.equal(client.objects.has('common-wall/daily/old.json.gz'), false);
   assert.equal(client.objects.has('common-wall/daily/current.json.gz'), true);
   assert.equal(client.objects.has('common-wall/daily/latest.json'), true);
+});
+
+test('retention preserves at least seven recovery points after a long outage', async () => {
+  const client = new MemoryS3();
+  for (let index = 0; index < 9; index += 1) {
+    client.objects.set(`common-wall/daily/archive-${index}.json.gz`, {
+      body: Buffer.from(String(index)),
+      metadata: {},
+      modifiedAt: new Date(Date.UTC(2026, 0, index + 1))
+    });
+  }
+  const deleted = await deleteExpiredBackups({
+    client,
+    bucket: 'test-bucket',
+    prefix: 'common-wall/daily',
+    keepKey: 'common-wall/daily/archive-8.json.gz',
+    now: NOW,
+    days: 35
+  });
+  assert.equal(deleted, 2);
+  assert.equal([...client.objects.keys()].filter(key => key.endsWith('.json.gz')).length, 7);
 });
 
 test('restore selection stays under the configured prefix', () => {
@@ -219,14 +267,46 @@ test('restore selection stays under the configured prefix', () => {
   );
 });
 
+test('applied restore requires a separate target database URL', async () => {
+  await assert.rejects(
+    restore({
+      env: {
+        BACKUP_PREFIX: 'common-wall/daily',
+        RESTORE_APPLY: 'true',
+        RESTORE_CONFIRM: 'restore-common-wall'
+      }
+    }),
+    /RESTORE_DATABASE_URL is required/
+  );
+  await assert.rejects(
+    restore({
+      env: {
+        BACKUP_PREFIX: 'common-wall/daily',
+        DATABASE_URL: 'postgres://live',
+        RESTORE_DATABASE_URL: 'postgres://live',
+        RESTORE_APPLY: 'true',
+        RESTORE_CONFIRM: 'restore-common-wall'
+      }
+    }),
+    /must differ from the live DATABASE_URL/
+  );
+});
+
 test('backup errors redact database and bucket credentials', () => {
   const env = {
     DATABASE_URL: 'postgresql://user:password@postgres.railway.internal/db',
+    RESTORE_DATABASE_URL: 'postgresql://restore:password@replacement.railway.internal/db',
     BACKUP_BUCKET_ACCESS_KEY_ID: 'access-key-secret',
     BACKUP_BUCKET_SECRET_ACCESS_KEY: 'bucket-secret-value'
   };
   const message = safeErrorMessage(new Error(
-    `${env.DATABASE_URL} ${env.BACKUP_BUCKET_ACCESS_KEY_ID} ${env.BACKUP_BUCKET_SECRET_ACCESS_KEY}`
+    `${env.DATABASE_URL} ${env.RESTORE_DATABASE_URL} ${env.BACKUP_BUCKET_ACCESS_KEY_ID} ${env.BACKUP_BUCKET_SECRET_ACCESS_KEY}`
   ), env);
   assert.doesNotMatch(message, /password|access-key-secret|bucket-secret-value/);
+});
+
+test('job timeout is bounded between one and fifteen minutes', () => {
+  assert.equal(jobTimeoutMillis({}), 600000);
+  assert.equal(jobTimeoutMillis({ BACKUP_JOB_TIMEOUT_MS: '1' }), 60000);
+  assert.equal(jobTimeoutMillis({ BACKUP_JOB_TIMEOUT_MS: '99999999' }), 900000);
 });

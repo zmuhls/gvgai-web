@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const zlib = require('zlib');
 
 const BACKUP_FORMAT = 'inference-arcade/common-wall';
-const FORMAT_VERSION = 1;
+const FORMAT_VERSION = 2;
 const DEFAULT_PREFIX = 'common-wall/daily';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA256_RE = /^[0-9a-f]{64}$/;
@@ -39,17 +39,7 @@ function buildBackupDocument(snapshot, createdAt = new Date()) {
       poem: String(row.poem),
       analysis: row.analysis === undefined || row.analysis === null ? null : String(row.analysis),
       deleteTokenHash: String(row.delete_token_hash ?? row.deleteTokenHash).trim()
-    })),
-    transition: {
-      volumeImports: (snapshot.volumeImports || []).map(row => ({
-        sourceDigest: String(row.source_digest ?? row.sourceDigest).trim(),
-        sourceName: String(row.source_name ?? row.sourceName),
-        sourceRowCount: Number(row.source_row_count ?? row.sourceRowCount),
-        importedRowCount: Number(row.imported_row_count ?? row.importedRowCount),
-        importedAt: isoTimestamp(row.imported_at ?? row.importedAt, 'volume import importedAt')
-      })),
-      importedVolumeRowCount: Number(snapshot.importedVolumeRowCount || 0)
-    }
+    }))
   };
 }
 
@@ -97,24 +87,9 @@ function validateBackupDocument(document) {
     }
   }
 
-  const transition = document.transition;
-  if (!transition || !Array.isArray(transition.volumeImports) ||
-      !Number.isInteger(transition.importedVolumeRowCount) || transition.importedVolumeRowCount < 0) {
-    throw new Error('Backup contains invalid transition metadata.');
-  }
-  for (const entry of transition.volumeImports) {
-    if (!SHA256_RE.test(entry?.sourceDigest || '') || typeof entry.sourceName !== 'string' ||
-        !Number.isInteger(entry.sourceRowCount) || entry.sourceRowCount < 0 ||
-        !Number.isInteger(entry.importedRowCount) || entry.importedRowCount < 0 ||
-        entry.importedRowCount > entry.sourceRowCount) {
-      throw new Error('Backup contains invalid volume import metadata.');
-    }
-    isoTimestamp(entry.importedAt, 'volume import importedAt');
-  }
   return {
     posts: document.posts.length,
-    migrations: document.schemaMigrations.length,
-    volumeImports: document.transition.volumeImports.length
+    migrations: document.schemaMigrations.length
   };
 }
 

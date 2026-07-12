@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
@@ -7,6 +8,7 @@ const {
   PutObjectCommand,
   S3Client
 } = require('@aws-sdk/client-s3');
+const { NodeHttpHandler } = require('@smithy/node-http-handler');
 const {
   BACKUP_FORMAT,
   FORMAT_VERSION,
@@ -49,7 +51,12 @@ function createStorage(env = process.env) {
     credentials: {
       accessKeyId: config.accessKeyId,
       secretAccessKey: config.secretAccessKey
-    }
+    },
+    maxAttempts: 3,
+    requestHandler: new NodeHttpHandler({
+      connectionTimeout: 5000,
+      socketTimeout: 30000
+    })
   });
   return { client, bucket: config.bucket };
 }
@@ -73,6 +80,16 @@ function latestObjectKey(prefix) {
   return `${cleanPrefix(prefix)}/latest.json`;
 }
 
+function pendingObjectKey(document, sha256, prefix) {
+  const safePrefix = cleanPrefix(prefix);
+  const finalKey = backupObjectKey(document, sha256, safePrefix);
+  return `${safePrefix}/pending/${finalKey.slice(safePrefix.length + 1)}`;
+}
+
+function copySource(bucket, key) {
+  return `${encodeURIComponent(bucket)}/${key.split('/').map(encodeURIComponent).join('/')}`;
+}
+
 async function downloadBackup(client, bucket, key, expectedSha256 = '') {
   const response = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
   const compressed = await bodyToBuffer(response.Body);
@@ -85,16 +102,7 @@ async function downloadBackup(client, bucket, key, expectedSha256 = '') {
   return { ...decoded, compressed, sha256, key };
 }
 
-async function uploadAndVerifyBackup({
-  client,
-  bucket,
-  document,
-  compressed,
-  sha256,
-  summary,
-  prefix
-}) {
-  const key = backupObjectKey(document, sha256, prefix);
+async function putBackupObject(client, bucket, key, document, compressed, sha256, summary) {
   await client.send(new PutObjectCommand({
     Bucket: bucket,
     Key: key,
@@ -110,7 +118,9 @@ async function uploadAndVerifyBackup({
       createdat: document.createdAt
     }
   }));
+}
 
+async function verifyBackupObject(client, bucket, key, document, compressed, sha256, summary) {
   const head = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
   if (Number(head.ContentLength) !== compressed.length ||
       String(head.Metadata?.sha256 || '').toLowerCase() !== sha256) {
@@ -123,6 +133,61 @@ async function uploadAndVerifyBackup({
     throw new Error('Downloaded backup contents differ from the source snapshot.');
   }
   return downloaded;
+}
+
+async function uploadPendingAndVerifyBackup({
+  client,
+  bucket,
+  document,
+  compressed,
+  sha256,
+  summary,
+  prefix
+}) {
+  const key = pendingObjectKey(document, sha256, prefix);
+  try {
+    await putBackupObject(client, bucket, key, document, compressed, sha256, summary);
+    const downloaded = await verifyBackupObject(
+      client, bucket, key, document, compressed, sha256, summary
+    );
+    return { ...downloaded, finalKey: backupObjectKey(document, sha256, prefix) };
+  } catch (error) {
+    await deleteObjectQuietly(client, bucket, key);
+    throw error;
+  }
+}
+
+async function deleteObjectQuietly(client, bucket, key) {
+  if (!key) return;
+  try {
+    await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+  } catch {}
+}
+
+async function publishVerifiedBackup({ client, bucket, backup }) {
+  const pendingKey = backup.key;
+  const finalKey = backup.finalKey;
+  try {
+    await client.send(new CopyObjectCommand({
+      Bucket: bucket,
+      Key: finalKey,
+      CopySource: copySource(bucket, pendingKey)
+    }));
+    const published = await verifyBackupObject(
+      client,
+      bucket,
+      finalKey,
+      backup.document,
+      backup.compressed,
+      backup.sha256,
+      backup.summary
+    );
+    await deleteObjectQuietly(client, bucket, pendingKey);
+    return published;
+  } catch (error) {
+    await deleteObjectQuietly(client, bucket, finalKey);
+    throw error;
+  }
 }
 
 async function updateLatestManifest({ client, bucket, prefix, backup }) {
@@ -166,11 +231,25 @@ function retentionDays(env = process.env) {
   return Math.min(365, Math.max(7, parsed));
 }
 
-async function deleteExpiredBackups({ client, bucket, prefix, keepKey, now = new Date(), days = 35 }) {
+function isArchiveKey(key, prefix) {
+  const safePrefix = `${cleanPrefix(prefix)}/`;
+  return typeof key === 'string' && key.startsWith(safePrefix) &&
+    !key.slice(safePrefix.length).includes('/') && key.endsWith('.json.gz');
+}
+
+async function deleteExpiredBackups({
+  client,
+  bucket,
+  prefix,
+  keepKey,
+  now = new Date(),
+  days = 35,
+  minimumArchives = 7
+}) {
   const safePrefix = `${cleanPrefix(prefix)}/`;
   const cutoff = now.getTime() - (days * 24 * 60 * 60 * 1000);
   let continuationToken;
-  let deleted = 0;
+  const archives = [];
   do {
     const page = await client.send(new ListObjectsV2Command({
       Bucket: bucket,
@@ -178,18 +257,27 @@ async function deleteExpiredBackups({ client, bucket, prefix, keepKey, now = new
       ContinuationToken: continuationToken
     }));
     for (const object of page.Contents || []) {
-      const modifiedAt = object.LastModified instanceof Date
-        ? object.LastModified.getTime()
-        : Date.parse(object.LastModified);
-      if (object.Key === keepKey || object.Key === latestObjectKey(prefix) ||
-          !object.Key?.endsWith('.json.gz') || !Number.isFinite(modifiedAt) || modifiedAt >= cutoff) {
-        continue;
-      }
-      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: object.Key }));
-      deleted += 1;
+      if (isArchiveKey(object.Key, prefix)) archives.push(object);
     }
     continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
   } while (continuationToken);
+
+  archives.sort((left, right) => {
+    const leftTime = left.LastModified instanceof Date ? left.LastModified.getTime() : Date.parse(left.LastModified);
+    const rightTime = right.LastModified instanceof Date ? right.LastModified.getTime() : Date.parse(right.LastModified);
+    return rightTime - leftTime;
+  });
+  const protectedKeys = new Set(archives.slice(0, Math.max(1, minimumArchives)).map(item => item.Key));
+  protectedKeys.add(keepKey);
+  let deleted = 0;
+  for (const object of archives) {
+    const modifiedAt = object.LastModified instanceof Date
+      ? object.LastModified.getTime()
+      : Date.parse(object.LastModified);
+    if (protectedKeys.has(object.Key) || !Number.isFinite(modifiedAt) || modifiedAt >= cutoff) continue;
+    await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: object.Key }));
+    deleted += 1;
+  }
   return deleted;
 }
 
@@ -198,11 +286,15 @@ module.exports = {
   checksum,
   createStorage,
   deleteExpiredBackups,
+  deleteObjectQuietly,
   downloadBackup,
+  isArchiveKey,
   latestObjectKey,
   loadLatestBackup,
+  pendingObjectKey,
+  publishVerifiedBackup,
   retentionDays,
   storageConfig,
   updateLatestManifest,
-  uploadAndVerifyBackup
+  uploadPendingAndVerifyBackup
 };

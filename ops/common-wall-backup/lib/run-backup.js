@@ -3,9 +3,11 @@ const { createDatabasePool, readSnapshot, verifyRestorable } = require('./databa
 const {
   createStorage,
   deleteExpiredBackups,
+  deleteObjectQuietly,
+  publishVerifiedBackup,
   retentionDays,
   updateLatestManifest,
-  uploadAndVerifyBackup
+  uploadPendingAndVerifyBackup
 } = require('./storage');
 
 async function closeResources(pool, storage) {
@@ -22,46 +24,56 @@ async function runBackup(options = {}) {
   const days = retentionDays(env);
   let pool;
   let storage;
+  let pending;
   try {
     pool = options.pool || createDatabasePool(env);
     storage = options.storage || createStorage(env);
     const document = await readSnapshot(pool, now);
     const encoded = encodeBackup(document);
-    const downloaded = await uploadAndVerifyBackup({
+    pending = await uploadPendingAndVerifyBackup({
       client: storage.client,
       bucket: storage.bucket,
       document,
       prefix,
       ...encoded
     });
-    const restoreCheck = await verifyRestorable(pool, downloaded.document);
+    const restoreCheck = await verifyRestorable(pool, pending.document);
+    const published = await publishVerifiedBackup({
+      client: storage.client,
+      bucket: storage.bucket,
+      backup: pending
+    });
+    pending = null;
     await updateLatestManifest({
       client: storage.client,
       bucket: storage.bucket,
       prefix,
-      backup: downloaded
+      backup: published
     });
     const deletedExpired = await deleteExpiredBackups({
       client: storage.client,
       bucket: storage.bucket,
       prefix,
-      keepKey: downloaded.key,
+      keepKey: published.key,
       now,
       days
     });
     return {
       event: 'common_wall_backup_complete',
       createdAt: document.createdAt,
-      key: downloaded.key,
-      sha256: downloaded.sha256,
-      compressedBytes: downloaded.compressed.length,
-      posts: downloaded.summary.posts,
-      migrations: downloaded.summary.migrations,
+      key: published.key,
+      sha256: published.sha256,
+      compressedBytes: published.compressed.length,
+      posts: published.summary.posts,
+      migrations: published.summary.migrations,
       restoreCheckedPosts: restoreCheck.restoredPosts,
       retentionDays: days,
       deletedExpired
     };
   } finally {
+    if (pending && storage) {
+      await deleteObjectQuietly(storage.client, storage.bucket, pending.key);
+    }
     if (!options.keepOpen) await closeResources(options.pool ? null : pool, options.storage ? null : storage);
   }
 }
