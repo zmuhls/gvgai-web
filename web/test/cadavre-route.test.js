@@ -78,6 +78,43 @@ test('cadavre route accepts its legacy server alias as the configured Legion ada
   }
 });
 
+test('cadavre route can use OpenRouter when Ollama Cloud is not configured', () => {
+  const previousOllamaKey = process.env.OLLAMA_API_KEY;
+  const previousCloudKey = process.env.OLLAMA_CLOUD_API_KEY;
+  const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
+  try {
+    delete process.env.OLLAMA_API_KEY;
+    delete process.env.OLLAMA_CLOUD_API_KEY;
+    process.env.OPENROUTER_API_KEY = 'openrouter-only-test-token';
+
+    const candidate = _private.resolveRouteModel('ollama:gpt-oss:20b');
+    assert.equal(candidate.id, 'ollama:gpt-oss:20b');
+    assert.equal(candidate.provider, 'openrouter');
+    assert.equal(candidate.model, 'openai/gpt-oss-20b');
+  } finally {
+    restoreEnv('OLLAMA_API_KEY', previousOllamaKey);
+    restoreEnv('OLLAMA_CLOUD_API_KEY', previousCloudKey);
+    restoreEnv('OPENROUTER_API_KEY', previousOpenRouterKey);
+  }
+});
+
+test('cadavre standby configuration preserves model names containing colons', () => {
+  const previousStandbys = process.env.CADAVRE_STANDBY_MODELS;
+  const previousOllamaKey = process.env.OLLAMA_API_KEY;
+  try {
+    process.env.CADAVRE_STANDBY_MODELS = 'gemma3:4b, gpt-oss:20b, ollama:gemma3:4b';
+    process.env.OLLAMA_API_KEY = 'standby-parser-test-token';
+
+    assert.deepEqual(_private.configuredStandbyModelIds(), [
+      'ollama:gemma3:4b',
+      'ollama:gpt-oss:20b'
+    ]);
+  } finally {
+    restoreEnv('CADAVRE_STANDBY_MODELS', previousStandbys);
+    restoreEnv('OLLAMA_API_KEY', previousOllamaKey);
+  }
+});
+
 test('cadavre route derives provider discovery and native Ollama endpoints', () => {
   assert.equal(
     _private.modelsUrl('https://models.example/v1/chat/completions?unused=1'),
@@ -403,6 +440,81 @@ test('cadavre reaches the Ollama usage cap only after OpenRouter fails', async (
     usageGuardrail.admitOllamaCall = originalAdmit;
     restoreEnv('OPENROUTER_API_KEY', previousOpenRouterKey);
   }
+});
+
+test('cadavre moves from an exhausted selected route to a healthy standby model', async () => {
+  let now = 1000;
+  const attempts = [];
+  const selected = {
+    id: 'ollama:deepseek-v4-flash',
+    provider: 'legion-vllm',
+    apiUrl: 'https://selected.example/v1/chat/completions',
+    model: 'deepseek-v4-flash',
+    apiKey: ''
+  };
+  const standby = {
+    id: 'ollama:gemma3:4b',
+    provider: 'legion-vllm',
+    apiUrl: 'https://standby.example/v1/chat/completions',
+    model: 'gemma3:4b',
+    apiKey: ''
+  };
+
+  const result = await _private.callListedRoutePoolReliably({
+    requested: selected,
+    candidates: [selected, standby]
+  }, [{ role: 'user', content: 'copper' }], { maxTokens: 16, temperature: 0.8 }, {
+    nowImpl: () => now,
+    deadlineAt: 31000,
+    onAttempt: (attempt) => attempts.push(attempt),
+    callCandidateImpl: async (candidate) => {
+      now += 25;
+      if (candidate.id === selected.id) {
+        const error = new Error('daily provider cap reached');
+        error.guardrail = true;
+        throw error;
+      }
+      return {
+        content: 'verdigris',
+        provider: 'openrouter',
+        model: standby.id
+      };
+    }
+  });
+
+  assert.equal(result.content, 'verdigris');
+  assert.equal(result.model, standby.id);
+  assert.equal(result.requestedModel, selected.id);
+  assert.equal(result.failover, true);
+  assert.deepEqual(attempts.map(({ routeModel, standby: isStandby, fallback }) => ({
+    routeModel,
+    standby: isStandby,
+    fallback
+  })), [
+    { routeModel: selected.id, standby: false, fallback: false },
+    { routeModel: standby.id, standby: true, fallback: true }
+  ]);
+  assert.equal(_private.getModelReadyStatus(selected.id, now).model, standby.id);
+});
+
+test('cadavre readiness cache expires and the ready endpoint is rate limited', () => {
+  const status = _private.rememberModelReady('ollama:deepseek-v4-flash', {
+    model: 'ollama:gemma3:4b',
+    provider: 'openrouter'
+  }, 1000);
+
+  assert.equal(status.cached, false);
+  assert.equal(status.failover, true);
+  assert.equal(_private.getModelReadyStatus('ollama:deepseek-v4-flash', 1001).cached, true);
+  assert.equal(
+    _private.getModelReadyStatus('ollama:deepseek-v4-flash', 1000 + _private.MODEL_READY_TTL_MS),
+    null
+  );
+
+  const layer = cadavreRouter.stack.find((entry) => entry.route?.path === '/ready');
+  assert.ok(layer);
+  assert.equal(layer.route.methods.post, true);
+  assert.equal(layer.route.stack[0].handle, _private.rateLimitChat);
 });
 
 test('cadavre uses low thinking for gpt-oss and disables thinking for other Ollama models', () => {

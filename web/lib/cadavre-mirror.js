@@ -5,7 +5,7 @@ const defaultTelemetry = require('./telemetry-store');
 const DEFAULT_CACHE_TTL_MS = 30000;
 const DEFAULT_FALLBACK_CACHE_TTL_MS = 5000;
 const DEFAULT_FETCH_TIMEOUT_MS = 5000;
-const DEFAULT_MODEL = 'legion:exquisite-corpse';
+const DEFAULT_MODEL = 'ollama:gemma3:4b';
 const DEFAULT_CANONICAL_BASE = 'https://milwrite.github.io/cadavre-exquis/';
 const DEFAULT_SOURCES = {
   main: 'https://raw.githubusercontent.com/milwrite/cadavre-exquis/master/index.html',
@@ -19,6 +19,7 @@ const DEFAULT_FALLBACKS = {
 function runtimeConfigScript() {
   const config = JSON.stringify({
     endpoint: '/api/cadavre/chat',
+    readyEndpoint: '/api/cadavre/ready',
     model: DEFAULT_MODEL,
     modelsEndpoint: '/api/cadavre/models'
   });

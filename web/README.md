@@ -243,13 +243,15 @@ The browser receives route ids and calls this server:
 
 - `GET /api/cadavre/models` returns the available `legion:<model>` and
   `ollama:<model>` choices.
+- `POST /api/cadavre/ready` runs a real, cached generation check and returns
+  the verified route that is warm enough to begin a game.
 - `GET /api/cadavre/usage` reports the active request limits, chat volume,
   latency, provider-call ratio, token counts, guardrail use, and cache
   efficiency for the model catalog and HTML mirror.
-- `POST /api/cadavre/chat` resolves one listed route through a server-owned
-  provider endpoint. Transient Ollama failures receive one retry inside a
-  shared 50-second deadline, followed by the configured OpenRouter equivalent
-  when that model has one.
+- `POST /api/cadavre/chat` first preserves the selected logical model across
+  OpenRouter and Ollama Cloud. If both paths fail, the same request moves
+  through the verified standby pool inside one shared 50-second deadline and
+  reports the effective route to the browser.
 
 Cadavre writes one privacy-safe telemetry event per chat request and one cache
 snapshot per upstream refresh. These records contain counts and timings rather
@@ -267,7 +269,11 @@ the Exquisite Corpse vLLM host has an HTTPS endpoint that Railway can reach;
 `LEGION_API_KEY` supplies its optional bearer token. The browser sees model
 names and completion responses while provider credentials remain in Railway.
 `CADAVRE_OLLAMA_MODEL` can change the default Cloud choice from
-`deepseek-v4-flash`.
+`gemma3:4b`. `CADAVRE_STANDBY_MODELS` accepts a comma-separated route order;
+the default pool is `gemma3:4b`, `gemini-3-flash-preview`, and `gpt-oss:20b`.
+The server performs a real warm-up on startup and every three minutes; adjust
+that interval with `CADAVRE_MODEL_WARM_INTERVAL_MS`. A mapped Cloud route can
+run through OpenRouter even when no Ollama credential is configured.
 
 ## Model-Native Arcade Path
 

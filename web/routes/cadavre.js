@@ -13,8 +13,13 @@ const MAX_CONTENT_CHARS = 9000;
 const MAX_TOTAL_CONTENT_CHARS = 24000;
 const MAX_MODEL_ID_CHARS = 120;
 const DEFAULT_ADAPTER_MODEL = 'exquisite-corpse';
-const DEFAULT_OLLAMA_MODEL = 'deepseek-v4-flash';
+const DEFAULT_OLLAMA_MODEL = 'gemma3:4b';
 const DEFAULT_ROUTE_MODEL = `legion:${DEFAULT_ADAPTER_MODEL}`;
+const DEFAULT_STANDBY_MODELS = Object.freeze([
+  'ollama:gemma3:4b',
+  'ollama:gemini-3-flash-preview',
+  'ollama:gpt-oss:20b'
+]);
 const CADAVRE_OPENROUTER_MODEL_IDS = new Map([
   ['deepseek-v3.2', 'deepseek/deepseek-v3.2'],
   ['deepseek-v4-flash', 'deepseek/deepseek-v4-flash'],
@@ -42,6 +47,9 @@ const OLLAMA_MAX_ATTEMPTS = 2;
 const OLLAMA_RETRY_DELAY_MS = 250;
 const MODEL_PROBE_TIMEOUT_MS = 5000;
 const MODEL_CATALOG_TTL_MS = 30000;
+const MODEL_READY_TTL_MS = 4 * 60 * 1000;
+const MODEL_READY_DEADLINE_MS = 30000;
+const MODEL_WARM_INTERVAL_MS = 3 * 60 * 1000;
 const CHAT_RATE_LIMIT = 30;
 const CHAT_RATE_WINDOW_MS = 60000;
 const WALL_VOTE_RATE_LIMIT = 120;
@@ -51,6 +59,9 @@ const chatRateBuckets = new Map();
 const wallVoteRateBuckets = new Map();
 let catalogCache = null;
 let catalogRefresh = null;
+const modelReadyCache = new Map();
+const modelReadyChecks = new Map();
+let modelWarmTimer = null;
 let mirrorCacheStatusProvider = null;
 const catalogCacheStats = {
   requests: 0,
@@ -176,18 +187,32 @@ function resolveRouteModel(routeModel) {
 
   const apiUrl = config.ollamaCloud?.apiUrl;
   const apiKey = process.env.OLLAMA_CLOUD_API_KEY || process.env.OLLAMA_API_KEY || '';
-  if (!apiUrl || (!apiKey && !isLocalUrl(apiUrl))) {
-    const error = new Error('Ollama Cloud is not configured');
-    error.status = 503;
-    throw error;
+  if (apiUrl && (apiKey || isLocalUrl(apiUrl))) {
+    return {
+      id: `ollama:${model}`,
+      provider: 'ollama-cloud',
+      apiUrl,
+      model,
+      apiKey
+    };
   }
-  return {
-    id: `ollama:${model}`,
-    provider: 'ollama-cloud',
-    apiUrl,
-    model,
-    apiKey
-  };
+
+  const openRouterModel = CADAVRE_OPENROUTER_MODEL_IDS.get(model);
+  const openRouterUrl = config.openrouter?.apiUrl;
+  const openRouterKey = process.env.OPENROUTER_API_KEY || '';
+  if (openRouterModel && openRouterUrl && (openRouterKey || isLocalUrl(openRouterUrl))) {
+    return {
+      id: `ollama:${model}`,
+      provider: 'openrouter',
+      apiUrl: openRouterUrl,
+      model: openRouterModel,
+      apiKey: openRouterKey
+    };
+  }
+
+  const error = new Error('Neither Ollama Cloud nor OpenRouter is configured for this model');
+  error.status = 503;
+  throw error;
 }
 
 function providerCandidates(requestedModel) {
@@ -212,6 +237,26 @@ function openRouterFallbackCandidate(candidate) {
     model,
     apiKey
   };
+}
+
+function configuredStandbyModelIds() {
+  const configured = String(process.env.CADAVRE_STANDBY_MODELS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => /^(?:legion|ollama):/.test(value) ? value : `ollama:${value}`);
+  const source = configured.length ? configured : DEFAULT_STANDBY_MODELS;
+  const seen = new Set();
+  return source.filter((id) => {
+    if (seen.has(id)) return false;
+    try {
+      const candidate = resolveRouteModel(id);
+      seen.add(candidate.id);
+      return true;
+    } catch {
+      return false;
+    }
+  });
 }
 
 function endpointUrl(apiUrl, pathname) {
@@ -443,6 +488,73 @@ async function resolveListedRouteModel(routeModel) {
   return candidate;
 }
 
+function getModelReadyStatus(requestedModel, now = Date.now()) {
+  const cached = modelReadyCache.get(requestedModel);
+  if (!cached) return null;
+  if (cached.expiresAt <= now) {
+    modelReadyCache.delete(requestedModel);
+    return null;
+  }
+  return { ...cached, cached: true };
+}
+
+function rememberModelReady(requestedModel, result, now = Date.now()) {
+  const status = {
+    requestedModel,
+    model: result.model,
+    provider: result.provider,
+    failover: result.model !== requestedModel,
+    checkedAt: new Date(now).toISOString(),
+    expiresAt: now + MODEL_READY_TTL_MS
+  };
+  modelReadyCache.set(requestedModel, status);
+  modelReadyCache.set(result.model, {
+    ...status,
+    requestedModel: result.model,
+    failover: false
+  });
+  return { ...status, cached: false };
+}
+
+async function resolveListedRoutePool(routeModel) {
+  const requested = resolveRouteModel(routeModel);
+  const catalog = await getModelCatalog();
+  const listed = catalog.models.find((model) => model.id === requested.id);
+  if (!listed) {
+    const error = new Error('The requested model is not in the current Cadavre catalog');
+    error.status = 400;
+    throw error;
+  }
+
+  const cached = getModelReadyStatus(requested.id);
+  const ids = [
+    cached?.model,
+    requested.id,
+    ...configuredStandbyModelIds(),
+    catalog.default,
+    catalog.defaultModel
+  ].filter(Boolean);
+  const seen = new Set();
+  const candidates = [];
+  for (const id of ids) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const entry = catalog.models.find((model) => model.id === id && model.available !== false);
+    if (!entry) continue;
+    try {
+      candidates.push(resolveRouteModel(id));
+    } catch {
+      // A catalog entry can outlive a removed credential until its short TTL ends.
+    }
+  }
+  if (!candidates.length) {
+    const error = new Error('No ready Cadavre model route is configured');
+    error.status = 503;
+    throw error;
+  }
+  return { requested, candidates, catalog };
+}
+
 function isAllowedOrigin(origin) {
   if (!origin) return true;
   try {
@@ -662,7 +774,9 @@ async function callCandidateWithRetry(candidate, messages, settings, options = {
     if (remainingMs <= 0) throw new Error(`${candidate.provider} timed out`);
     const timeoutMs = Math.min(
       remainingMs,
-      candidate.provider === 'ollama-cloud' ? OLLAMA_ATTEMPT_TIMEOUT_MS : FETCH_TIMEOUT_MS
+      candidate.provider === 'ollama-cloud'
+        ? (options.ollamaAttemptTimeoutMs || OLLAMA_ATTEMPT_TIMEOUT_MS)
+        : (options.providerAttemptTimeoutMs || FETCH_TIMEOUT_MS)
     );
     try {
       options.onAttempt?.({
@@ -699,7 +813,10 @@ async function callCandidateReliably(candidate, messages, settings, options = {}
   try {
     const remainingMs = deadlineAt - nowImpl();
     if (remainingMs <= 0) throw new Error(`${primary.provider} timed out`);
-    const timeoutMs = Math.min(remainingMs, OPENROUTER_ATTEMPT_TIMEOUT_MS);
+    const timeoutMs = Math.min(
+      remainingMs,
+      options.openRouterAttemptTimeoutMs || OPENROUTER_ATTEMPT_TIMEOUT_MS
+    );
     options.onAttempt?.({
       provider: primary.provider,
       model: primary.id,
@@ -717,6 +834,122 @@ async function callCandidateReliably(candidate, messages, settings, options = {}
       fallback: true
     });
   }
+}
+
+async function callListedRoutePoolReliably(pool, messages, settings, options = {}) {
+  const nowImpl = options.nowImpl || Date.now;
+  const deadlineAt = options.deadlineAt || (nowImpl() + CHAT_DEADLINE_MS);
+  let lastError = null;
+
+  for (let index = 0; index < pool.candidates.length; index += 1) {
+    const candidate = pool.candidates[index];
+    const remainingMs = deadlineAt - nowImpl();
+    if (remainingMs <= 0) break;
+    const routesLeft = pool.candidates.length - index;
+    const routeBudgetMs = index === pool.candidates.length - 1
+      ? remainingMs
+      : Math.max(4000, Math.floor(remainingMs / routesLeft));
+    const routeDeadlineAt = Math.min(deadlineAt, nowImpl() + routeBudgetMs);
+    const standby = candidate.id !== pool.requested.id;
+
+    try {
+      const result = await callCandidateReliably(candidate, messages, settings, {
+        ...options,
+        deadlineAt: routeDeadlineAt,
+        onAttempt: (attempt) => options.onAttempt?.({
+          ...attempt,
+          routeModel: candidate.id,
+          standby,
+          fallback: Boolean(attempt.fallback || standby)
+        })
+      });
+      const ready = rememberModelReady(pool.requested.id, result, nowImpl());
+      return {
+        ...result,
+        requestedModel: pool.requested.id,
+        failover: ready.failover
+      };
+    } catch (error) {
+      lastError = error;
+      modelReadyCache.delete(candidate.id);
+    }
+  }
+
+  if (lastError) throw lastError;
+  const error = new Error('Cadavre model routes exhausted their response deadline');
+  error.status = 503;
+  throw error;
+}
+
+const MODEL_READY_MESSAGES = Object.freeze([
+  Object.freeze({
+    role: 'system',
+    content: 'This is a model readiness check. Reply with one plain word and no punctuation.'
+  }),
+  Object.freeze({ role: 'user', content: 'ready' })
+]);
+
+async function ensureModelReady(routeModel, options = {}) {
+  const requested = resolveRouteModel(routeModel);
+  if (!options.force) {
+    const cached = getModelReadyStatus(requested.id, options.nowImpl?.() ?? Date.now());
+    if (cached) return cached;
+    if (modelReadyChecks.has(requested.id)) return modelReadyChecks.get(requested.id);
+  }
+
+  const check = (async () => {
+    const nowImpl = options.nowImpl || Date.now;
+    const pool = await resolveListedRoutePool(requested.id);
+    const result = await callListedRoutePoolReliably(
+      pool,
+      MODEL_READY_MESSAGES,
+      { maxTokens: 16, temperature: 0 },
+      {
+        ...options,
+        nowImpl,
+        deadlineAt: options.deadlineAt || (nowImpl() + MODEL_READY_DEADLINE_MS)
+      }
+    );
+    const status = getModelReadyStatus(requested.id, nowImpl()) ||
+      rememberModelReady(requested.id, result, nowImpl());
+    return { ...status, cached: false };
+  })();
+
+  modelReadyChecks.set(requested.id, check);
+  try {
+    return await check;
+  } finally {
+    if (modelReadyChecks.get(requested.id) === check) modelReadyChecks.delete(requested.id);
+  }
+}
+
+function stopModelWarmer() {
+  if (modelWarmTimer) clearInterval(modelWarmTimer);
+  modelWarmTimer = null;
+}
+
+function startModelWarmer(options = {}) {
+  stopModelWarmer();
+  const intervalMs = clampNumber(
+    options.intervalMs ?? process.env.CADAVRE_MODEL_WARM_INTERVAL_MS,
+    MODEL_WARM_INTERVAL_MS,
+    30000,
+    60 * 60 * 1000
+  );
+  const warm = async () => {
+    try {
+      const status = await ensureModelReady(`ollama:${DEFAULT_OLLAMA_MODEL}`, { force: true });
+      console.log(`[Cadavre] model ready: ${status.model} via ${status.provider}`);
+      return status;
+    } catch (error) {
+      console.warn(`[Cadavre] model warm-up failed: ${error.message}`);
+      return null;
+    }
+  };
+  const initial = warm();
+  modelWarmTimer = setInterval(warm, intervalMs);
+  modelWarmTimer.unref?.();
+  return initial;
 }
 
 function beginChatUsage(now = Date.now()) {
@@ -890,6 +1123,27 @@ router.get('/models', async (req, res) => {
   }
 });
 
+router.post('/ready', rateLimitChat, async (req, res) => {
+  try {
+    const status = await ensureModelReady(req.body?.model);
+    res.set('Cache-Control', 'no-store').json({
+      ready: true,
+      requestedModel: status.requestedModel,
+      model: status.model,
+      provider: status.provider,
+      failover: status.failover,
+      cached: status.cached,
+      checkedAt: status.checkedAt
+    });
+  } catch (error) {
+    res.set('Cache-Control', 'no-store').status(error.status || 503).json({
+      ready: false,
+      retryable: true,
+      error: 'No Cadavre model route is ready yet.'
+    });
+  }
+});
+
 router.get('/usage', (req, res) => {
   res.json(cadavreUsageSnapshot());
 });
@@ -945,9 +1199,11 @@ router.post('/wall/:id/remove', rateLimitChat, async (req, res) => {
 router.post('/chat', rateLimitChat, async (req, res) => {
   let messages;
   let candidate;
+  let routePool;
   try {
     messages = cleanMessages(req.body?.messages);
-    candidate = await resolveListedRouteModel(req.body?.model);
+    routePool = await resolveListedRoutePool(req.body?.model);
+    candidate = routePool.requested;
   } catch (error) {
     res.status(error.status || 400).json({ error: error.message });
     return;
@@ -961,7 +1217,7 @@ router.post('/chat', rateLimitChat, async (req, res) => {
   const attempts = [];
 
   try {
-    const result = await callCandidateReliably(candidate, messages, settings, {
+    const result = await callListedRoutePoolReliably(routePool, messages, settings, {
       onAttempt: (attempt) => attempts.push(attempt)
     });
     recordChatUsage({
@@ -976,7 +1232,9 @@ router.post('/chat', rateLimitChat, async (req, res) => {
       id: `cadavre-${Date.now()}`,
       object: 'chat.completion',
       model: result.model,
+      requested_model: result.requestedModel,
       provider: result.provider,
+      failover: result.failover,
       choices: [{
         index: 0,
         message: { role: 'assistant', content: result.content },
@@ -992,11 +1250,10 @@ router.post('/chat', rateLimitChat, async (req, res) => {
       attempts,
       error
     });
-    if (error.guardrail) {
-      res.status(429).json({ error: `Ollama Cloud usage guardrail: ${error.message}` });
-      return;
-    }
-    res.status(error.status || 502).json({ error: 'Cadavre model unavailable.' });
+    res.status(error.status || 503).json({
+      error: 'Cadavre model routes are temporarily unavailable.',
+      retryable: true
+    });
   }
 });
 
@@ -1005,6 +1262,9 @@ function resetForTest() {
   wallVoteRateBuckets.clear();
   catalogCache = null;
   catalogRefresh = null;
+  modelReadyCache.clear();
+  modelReadyChecks.clear();
+  stopModelWarmer();
   Object.keys(catalogCacheStats).forEach((key) => { catalogCacheStats[key] = 0; });
   Object.assign(chatUsageStats, {
     requests: 0,
@@ -1025,12 +1285,15 @@ function resetForTest() {
 
 module.exports = router;
 module.exports.setMirrorCacheStatusProvider = setMirrorCacheStatusProvider;
+module.exports.startModelWarmer = startModelWarmer;
+module.exports.stopModelWarmer = stopModelWarmer;
 module.exports.closeWallStore = () => wallStore.close();
 module.exports._private = {
   cleanMessages,
   providerCandidates,
   resolveRouteModel,
   openRouterFallbackCandidate,
+  configuredStandbyModelIds,
   isLocalUrl,
   isSafeModelName,
   CADAVRE_CLOUD_MODEL_IDS,
@@ -1044,6 +1307,9 @@ module.exports._private = {
   getModelCatalog,
   getCatalogCacheStatus,
   resolveListedRouteModel,
+  resolveListedRoutePool,
+  getModelReadyStatus,
+  rememberModelReady,
   isAllowedOrigin,
   cadavreCors,
   clientIp,
@@ -1057,10 +1323,17 @@ module.exports._private = {
   CHAT_DEADLINE_MS,
   OPENROUTER_ATTEMPT_TIMEOUT_MS,
   OLLAMA_ATTEMPT_TIMEOUT_MS,
+  MODEL_READY_TTL_MS,
+  MODEL_READY_DEADLINE_MS,
+  DEFAULT_STANDBY_MODELS,
   callCandidate,
   shouldRetryOllama,
   callCandidateWithRetry,
   callCandidateReliably,
+  callListedRoutePoolReliably,
+  ensureModelReady,
+  startModelWarmer,
+  stopModelWarmer,
   beginChatUsage,
   recordChatUsage,
   cadavreUsageSnapshot,

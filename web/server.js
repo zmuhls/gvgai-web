@@ -606,6 +606,7 @@ async function startServer() {
       console.log(`[Server] Running on http://localhost:${PORT}`);
       console.log(`[Server] GVGAI project root: ${config.gvgai.projectRoot}`);
       console.log(`[Server] OpenRouter API key loaded from environment`);
+      cadavreRoutes.startModelWarmer();
 
       // Wire the attract-mode marble run onto the single Java process. It shares the
       // one screenshot streamer and yields to any walk-up player (activeGames > 0).
