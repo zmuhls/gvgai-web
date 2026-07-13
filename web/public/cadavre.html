@@ -13,14 +13,14 @@
   <meta property="og:description" content="Play the Surrealist parlor game with a language model at the table." />
   <meta property="og:url" content="https://milwrite.github.io/cadavre-exquis/" />
   <meta property="og:image" content="https://milwrite.github.io/cadavre-exquis/assets/share-card.jpg" />
-  <meta property="og:image:width" content="941" />
-  <meta property="og:image:height" content="412" />
-  <meta property="og:image:alt" content="Exquisite Corpse. The exquisite corpse will drink the new wine. The game's first sentence — Paris, 1925." />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Exquisite Corpse set as a restrained cut-paper typographic collage." />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Exquisite Corpse — Cadavre Exquis" />
   <meta name="twitter:description" content="Play the Surrealist parlor game with a language model at the table." />
   <meta name="twitter:image" content="https://milwrite.github.io/cadavre-exquis/assets/share-card.jpg" />
-  <meta name="twitter:image:alt" content="Exquisite Corpse. The exquisite corpse will drink the new wine. The game's first sentence — Paris, 1925." />
+  <meta name="twitter:image:alt" content="Exquisite Corpse set as a restrained cut-paper typographic collage." />
   <link rel="icon" type="image/png" sizes="32x32" href="https://milwrite.github.io/cadavre-exquis/assets/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="512x512" href="https://milwrite.github.io/cadavre-exquis/assets/favicon.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="https://milwrite.github.io/cadavre-exquis/assets/apple-touch-icon.png" />
@@ -76,43 +76,24 @@
       line-height: 1.08;
     }
 
-    .mixed-title {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      column-gap: 0.22em;
-      letter-spacing: -0.035em;
-      line-height: 0.98;
+    .cutup-title {
+      display: block;
+      width: 100%;
+      line-height: 1;
     }
 
-    .title-word {
-      display: inline-flex;
-      align-items: baseline;
-      white-space: nowrap;
+    .cutup-title img {
+      display: block;
+      width: 100%;
+      max-width: 760px;
+      height: auto;
+      aspect-ratio: 1300 / 155;
+      object-fit: contain;
+      object-position: left center;
     }
-
-    .title-glyph { display: inline-block; line-height: 1; }
-    .title-glyph:nth-of-type(3n) { transform: translateY(0.025em); }
-    .title-glyph:nth-of-type(4n) { transform: translateY(-0.02em); }
-
-    .title-glyph.g1  { font-family: Baskerville, Georgia, serif; }
-    .title-glyph.g2  { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 0.84em; font-weight: 300; }
-    .title-glyph.g3  { font-family: "American Typewriter", "Courier New", monospace; font-size: 0.86em; }
-    .title-glyph.g4  { font-family: Didot, "Times New Roman", serif; }
-    .title-glyph.g5  { font-family: Futura, "Trebuchet MS", sans-serif; font-size: 0.82em; font-weight: 300; }
-    .title-glyph.g6  { font-family: "Iowan Old Style", Palatino, serif; }
-    .title-glyph.g7  { font-family: "Avenir Next", Arial, sans-serif; font-size: 0.84em; font-weight: 300; }
-    .title-glyph.g8  { font-family: Copperplate, Georgia, serif; font-size: 0.74em; }
-    .title-glyph.g9  { font-family: "Hoefler Text", Georgia, serif; }
-    .title-glyph.g10 { font-family: Optima, "Gill Sans", sans-serif; font-size: 0.86em; }
-    .title-glyph.g11 { font-family: Georgia, serif; }
-    .title-glyph.g12 { font-family: Rockwell, "American Typewriter", serif; font-size: 0.84em; }
-    .title-glyph.g13 { font-family: "Gill Sans", "Trebuchet MS", sans-serif; font-size: 0.9em; font-weight: 300; }
-    .title-glyph.g14 { font-family: "Palatino Linotype", Palatino, serif; }
-    .title-glyph.g15 { font-family: "Courier New", monospace; font-size: 0.82em; }
 
     .epigraph {
-      margin-top: 0.9rem;
+      margin-top: 0.4rem;
       font-style: italic;
       font-size: clamp(0.72rem, 3.75vw, 1.25rem);
       color: var(--ash);
@@ -299,6 +280,14 @@
       to { transform: scaleY(1); opacity: 1; }
     }
 
+    /* undo: the newest crease lifts back open and the strip leaves the pile */
+    .fold.lifting { animation: liftOut 0.3s cubic-bezier(0.4, 0, 0.7, 0.2) both; }
+
+    @keyframes liftOut {
+      from { transform: scaleY(1); opacity: 1; }
+      to { transform: scaleY(0.1); opacity: 0; }
+    }
+
     /* who is at the table, and whose turn it is — the duet made spatial */
     .seats { display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 1.2rem; min-height: 2px; }
 
@@ -482,10 +471,30 @@
 
     .pin-poem { white-space: pre-wrap; font-size: 1.08rem; line-height: 1.55; overflow-wrap: break-word; }
 
+    .pin-pages {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.38rem;
+      margin-top: 1rem;
+    }
+
+    .pin-page {
+      min-width: 2.1rem;
+      padding: 0.38rem 0.55rem;
+      font-size: 0.68rem;
+    }
+
+    .pin-page[aria-current="page"] {
+      border-color: var(--wine);
+      color: var(--wine-bright);
+      background: var(--wine-wash);
+    }
+
     .pin-meta {
       display: flex;
       justify-content: space-between;
-      align-items: baseline;
+      align-items: center;
+      flex-wrap: wrap;
       gap: 1rem;
       margin-top: 0.8rem;
       font-family: var(--mono);
@@ -494,6 +503,32 @@
     }
 
     .pin-meta .linklike { font-size: 0.72rem; }
+
+    .pin-controls, .pin-votes {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.48rem;
+    }
+
+    .pin-vote {
+      min-width: 3.3rem;
+      padding: 0.38rem 0.58rem;
+      font-size: 0.7rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pin-vote[aria-pressed="true"] {
+      border-color: var(--wine);
+      color: var(--wine-bright);
+      background: var(--wine-wash);
+    }
+
+    .pin-vote-status {
+      flex-basis: 100%;
+      color: var(--wine-bright);
+      font-size: 0.66rem;
+    }
 
     .pin-reading { margin-top: 0.9rem; }
 
@@ -552,6 +587,9 @@
       }
 
       .eyebrow { margin-bottom: 1rem; }
+
+      .pin-meta { align-items: flex-start; }
+      .pin-controls { width: 100%; justify-content: space-between; }
     }
 
     @media (max-width: 24rem) {
@@ -564,6 +602,9 @@
       .entry input, .entry button { width: 100%; }
       .sheet-actions, .reveal-actions { flex-direction: column; }
       .sheet-actions button, .reveal-actions button { width: 100%; }
+      .pin-controls { align-items: stretch; flex-direction: column; }
+      .pin-votes { width: 100%; }
+      .pin-vote { flex: 1; }
     }
 
     /* ── pin dialog ─────────────────────────────────────────────────────── */
@@ -597,7 +638,7 @@
 
     /* ── motion, print ──────────────────────────────────────────────────── */
     @media (prefers-reduced-motion: reduce) {
-      .fold, .cue-words.rise, .cue-words.folding, .poem .line,
+      .fold, .fold.lifting, .cue-words.rise, .cue-words.folding, .poem .line,
       .reading.show, .reading-seam, .breathe { animation: none; }
       .reading.show, .reading-seam { opacity: 1; }
       .w, .quote { transition: none; }
@@ -624,13 +665,8 @@
     <main class="game-shell">
       <div class="game-intro">
         <header>
-          <h1 class="mixed-title" aria-label="Exquisite Corpse">
-            <span class="title-word" aria-hidden="true">
-              <span class="title-glyph g1">E</span><span class="title-glyph g2">x</span><span class="title-glyph g3">q</span><span class="title-glyph g4">u</span><span class="title-glyph g5">i</span><span class="title-glyph g6">s</span><span class="title-glyph g7">i</span><span class="title-glyph g8">t</span><span class="title-glyph g9">e</span>
-            </span>
-            <span class="title-word" aria-hidden="true">
-              <span class="title-glyph g10">C</span><span class="title-glyph g11">o</span><span class="title-glyph g12">r</span><span class="title-glyph g13">p</span><span class="title-glyph g14">s</span><span class="title-glyph g15">e</span>
-            </span>
+          <h1 class="cutup-title" aria-label="Exquisite Corpse">
+            <img src="https://milwrite.github.io/cadavre-exquis/assets/title-cutup-3.png" alt="" aria-hidden="true" width="1300" height="155">
           </h1>
           <p class="epigraph">“The exquisite corpse will drink the new wine.”
             <span class="attr">the game’s first sentence — Paris, 1925</span>
@@ -669,8 +705,8 @@
               </select>
             </label>
             <label class="setting-field">
-              <span class="setting-label">words per turn</span>
-              <select id="maxWords" aria-label="words per turn">
+              <span class="setting-label">per turn</span>
+              <select id="maxWords" aria-label="per turn">
                 <option value="1">one word</option>
                 <option value="2">two words</option>
                 <option value="3" selected>three words</option>
@@ -700,6 +736,7 @@
           </form>
           <p class="status" id="status" role="status" aria-live="polite"></p>
           <div class="sheet-actions">
+            <button id="undoBtn" disabled>unfold last</button>
             <button id="endBtn" disabled>reveal the poem</button>
             <button id="resetBtn">clear the table</button>
           </div>
@@ -735,6 +772,14 @@
       </div>
     </footer>
   </div>
+
+  <dialog id="revealDialog">
+    <p id="revealNote">the reveal unfolds the sheet and ends the game</p>
+    <div class="row">
+      <button id="revealCancel" type="button">keep writing</button>
+      <button id="revealConfirm" class="primary" type="button">reveal the poem</button>
+    </div>
+  </dialog>
 
   <dialog id="pinDialog">
     <p>pin this corpse to the wall</p>
@@ -785,7 +830,9 @@
         CFG.modelsEndpoint = DEFAULTS.modelsEndpoint;
       }
     }
-    localStorage.removeItem("corpseConn"); // retired: overrides no longer persist
+    try {
+      localStorage.removeItem("corpseConn"); // retired: overrides no longer persist
+    } catch {}
 
     /* The game lives in the system prompt, so play works against a hosted
        model or a tuned local model. The word cap follows the table setting. */
@@ -837,12 +884,18 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     let poemTokens = [];      // { norm, el } per revealed poem word — the reading links to these
     const LEGACY_WALL_KEY = "cadavreWall";
     const WALL_TOKENS_KEY = "cadavreWallDeleteTokens";
+    const WALL_VOTER_TOKEN_KEY = "cadavreWallVoterToken";
+    const WALL_VOTES_KEY = "cadavreWallVotes";
     let legacyWall = readLegacyWall();
     let remoteWall = [];
     let wall = [];
     let wallCursor = null;
     let wallLoading = false;
     let wallTokens = readWallTokens();
+    let wallVoterToken = readOrCreateWallVoterToken();
+    let wallVotes = readWallVotes();
+    const wallViews = new Map();
+    const wallVoting = new Set();
     const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     const el = (id) => document.getElementById(id);
@@ -878,9 +931,11 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     }
 
     function saveLegacyWall() {
-      localStorage.setItem(LEGACY_WALL_KEY, JSON.stringify(legacyWall.map((item) => ({
-        name: item.name, poem: item.poem, analysis: item.analysis, ts: item.ts,
-      }))));
+      try {
+        localStorage.setItem(LEGACY_WALL_KEY, JSON.stringify(legacyWall.map((item) => ({
+          name: item.name, poem: item.poem, analysis: item.analysis, ts: item.ts,
+        }))));
+      } catch {}
     }
 
     function readWallTokens() {
@@ -893,7 +948,45 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     }
 
     function saveWallTokens() {
-      localStorage.setItem(WALL_TOKENS_KEY, JSON.stringify(wallTokens));
+      try {
+        localStorage.setItem(WALL_TOKENS_KEY, JSON.stringify(wallTokens));
+      } catch {}
+    }
+
+    function readOrCreateWallVoterToken() {
+      let saved = "";
+      try {
+        saved = String(localStorage.getItem(WALL_VOTER_TOKEN_KEY) || "").toLowerCase();
+      } catch {}
+      if (/^[0-9a-f]{64}$/.test(saved)) return saved;
+
+      try {
+        const bytes = new Uint8Array(32);
+        crypto.getRandomValues(bytes);
+        const token = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+        try {
+          localStorage.setItem(WALL_VOTER_TOKEN_KEY, token);
+        } catch {}
+        return token;
+      } catch {
+        return "";
+      }
+    }
+
+    function readWallVotes() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(WALL_VOTES_KEY) || "{}");
+        if (!saved || typeof saved !== "object" || Array.isArray(saved)) return {};
+        return Object.fromEntries(Object.entries(saved).filter(([, value]) => value === 1 || value === -1));
+      } catch {
+        return {};
+      }
+    }
+
+    function saveWallVotes() {
+      try {
+        localStorage.setItem(WALL_VOTES_KEY, JSON.stringify(wallVotes));
+      } catch {}
     }
 
     function rebuildWall() {
@@ -1009,6 +1102,8 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
 
     // Fold the previous word out of sight, letting the eye follow it down into
     // the pile before the new cue rises — "folding it to conceal," made visible.
+    let cueSwap = 0;   // an undo cancels any fold-to-cue swap still in flight
+
     function foldPrevThenCue(prev, entry) {
       foldAway(prev);
       updateFoldCount();
@@ -1018,14 +1113,15 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       void words.offsetWidth;
       words.classList.add("folding");
       let done = false;
-      const swap = () => { if (done) return; done = true; words.classList.remove("folding"); showCue(entry); };
+      const my = ++cueSwap;
+      const swap = () => { if (done || my !== cueSwap) return; done = true; words.classList.remove("folding"); showCue(entry); };
       words.addEventListener("animationend", swap, { once: true });
       setTimeout(swap, 340);   // fallback if animationend is missed
     }
 
     function addContribution(text, isModel) {
       const prev = contributions[contributions.length - 1];
-      const entry = { text, isModel, seat: currentSeat() };
+      const entry = { text, isModel, seat: currentSeat(), turn: actorIndex };
       contributions.push(entry);
       el("endBtn").disabled = false;
       actorIndex++;
@@ -1042,6 +1138,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       setStatus(`round ${round()} · player ${currentSeat()} writes — ${limit}`);
       el("wordInput").disabled = false;
       el("submitBtn").disabled = false;
+      el("undoBtn").disabled = !contributions.length;
       el("wordInput").placeholder = limit + "…";
       el("wordInput").focus();
     }
@@ -1083,7 +1180,8 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
         }
         const option = document.createElement("option");
         option.value = route.id;
-        option.textContent = route.label || route.name || route.model || route.id;
+        option.textContent = String(route.label || route.name || route.model || route.id)
+          .replace(" (OpenRouter; Ollama Fallback)", "");
         option.disabled = route.available === false;
         groups.get(label).appendChild(option);
       });
@@ -1164,6 +1262,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       setStatus(`round ${round()} · the model writes <span class="breathe">·</span>`);
       el("wordInput").disabled = true;
       el("submitBtn").disabled = true;
+      el("undoBtn").disabled = true;
       const userMsg = turnPrompt();
       let reply;
       try {
@@ -1186,6 +1285,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
         setStatus(`the model isn’t answering at ${esc(endpointHost())} — is it running?
           <button class="linklike" id="retryTurn">try again</button>`, true);
         el("retryTurn").addEventListener("click", modelTurn);
+        el("undoBtn").disabled = !contributions.length;   // unfolding back is the other way out
         return;
       }
       if (id !== gameId || !gameActive) return;
@@ -1215,6 +1315,35 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       addContribution(raw, false);
       promptTurn();
     });
+
+    /* ── undo: lift the newest fold back open ───────────────────────────── */
+    function undoLast() {
+      if (!gameActive || !contributions.length || el("undoBtn").disabled) return;
+      gameId++;   // a straggling model reply must not rejoin the sheet
+      cueSwap++;  // nor may a mid-flight fold animation resurrect the popped words
+      el("cueWords").classList.remove("folding");
+      el("undoBtn").disabled = true;
+      el("wordInput").disabled = true;
+      el("submitBtn").disabled = true;
+      const popped = contributions.pop();
+      actorIndex = popped.turn;   // exact, even across a passed model turn
+      const latest = contributions[contributions.length - 1] || null;
+      el("endBtn").disabled = !contributions.length;
+      const strip = el("folds").lastElementChild;
+      const settle = () => {
+        if (strip) strip.remove();
+        updateFoldCount();
+        showCue(latest);
+        promptTurn();   // the lifted fold's author writes again — the model rewrites its own
+      };
+      if (!strip || REDUCED.matches) { settle(); return; }
+      let done = false;
+      const once = () => { if (done) return; done = true; settle(); };
+      strip.classList.add("lifting");
+      strip.addEventListener("animationend", once, { once: true });
+      setTimeout(once, 380);   // fallback if animationend is missed
+    }
+    el("undoBtn").addEventListener("click", undoLast);
 
     /* ── the reveal: the sheet unfolds ──────────────────────────────────── */
     function reveal() {
@@ -1277,6 +1406,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       updateFoldCount();
       renderSeats();
       el("endBtn").disabled = true;
+      el("undoBtn").disabled = true;
       el("tableSec").hidden = true;
       el("revealSec").hidden = true;
       el("sheetSec").hidden = false;
@@ -1296,8 +1426,25 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
 
     el("startBtn").addEventListener("click", begin);
     el("resetBtn").addEventListener("click", clearTable);
-    el("endBtn").addEventListener("click", reveal);
     el("againBtn").addEventListener("click", clearTable);
+
+    /* the reveal asks once more — the sheet unfolds only one way */
+    el("endBtn").addEventListener("click", () => {
+      if (!contributions.length) return;
+      const n = contributions.length;
+      el("revealNote").textContent =
+        `${n} fold${n === 1 ? "" : "s"} on the sheet — the reveal unfolds it and ends the game`;
+      el("revealDialog").showModal();
+    });
+    el("revealConfirm").addEventListener("click", () => {
+      el("revealDialog").close();
+      reveal();
+    });
+    el("revealCancel").addEventListener("click", () => el("revealDialog").close());
+    el("revealDialog").addEventListener("close", () => {
+      // declined (cancel or Esc): hand the pen back
+      if (gameActive && !isModelTurn()) el("wordInput").focus();
+    });
 
     /* ── keep, print, pin ───────────────────────────────────────────────── */
     el("exportMdBtn").addEventListener("click", () => {
@@ -1392,6 +1539,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     async function unpinWallItem(item, button) {
       if (item.local) {
         legacyWall = legacyWall.filter((entry) => entry.legacyKey !== item.legacyKey);
+        wallViews.delete(wallItemKey(item));
         saveLegacyWall();
         rebuildWall();
         return;
@@ -1411,7 +1559,10 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
         }
         remoteWall = remoteWall.filter((entry) => entry.id !== item.id);
         delete wallTokens[item.id];
+        delete wallVotes[item.id];
         saveWallTokens();
+        saveWallVotes();
+        wallViews.delete(wallItemKey(item));
         rebuildWall();
       } catch (error) {
         button.disabled = false;
@@ -1419,48 +1570,205 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       }
     }
 
+    function wallItemKey(item) {
+      return item.id ? `remote:${item.id}` : `local:${item.legacyKey}`;
+    }
+
+    function wallView(item) {
+      const key = wallItemKey(item);
+      if (!wallViews.has(key)) {
+        wallViews.set(key, { page: 0, readingOpen: false, voteError: "" });
+      }
+      return wallViews.get(key);
+    }
+
+    function wallCount(value) {
+      const count = Number(value);
+      return Number.isSafeInteger(count) && count >= 0 ? count : 0;
+    }
+
+    function replaceWallItem(item) {
+      const key = wallItemKey(item);
+      const current = Array.from(el("wallList").children)
+        .find((node) => node.dataset.wallKey === key);
+      if (!current) {
+        renderWall();
+        return;
+      }
+      const details = current.querySelector(".pin-reading");
+      if (details) wallView(item).readingOpen = details.open;
+      current.replaceWith(renderWallItem(item));
+    }
+
+    async function voteWallItem(item, requested) {
+      if (!item.remote || !item.id || wallVoting.has(item.id)) return;
+      const view = wallView(item);
+      if (!wallVoterToken) wallVoterToken = readOrCreateWallVoterToken();
+      if (!wallVoterToken) {
+        view.voteError = "voting is unavailable in this browser";
+        replaceWallItem(item);
+        return;
+      }
+
+      const value = Core.nextWallVote(wallVotes[item.id] || 0, requested);
+      view.voteError = "";
+      wallVoting.add(item.id);
+      replaceWallItem(item);
+      try {
+        const response = await fetch(`${WALL_API}/${encodeURIComponent(item.id)}/vote`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ voterToken: wallVoterToken, value }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "the vote could not be saved");
+        if (data.id !== item.id) throw new Error("the wall returned the wrong corpse");
+
+        const viewerVote = Number(data.viewerVote);
+        if (viewerVote !== -1 && viewerVote !== 0 && viewerVote !== 1) {
+          throw new Error("the wall returned an invalid vote");
+        }
+        const upvotes = wallCount(data.upvotes);
+        const downvotes = wallCount(data.downvotes);
+        const returnedScore = Number(data.score);
+        const score = Number.isSafeInteger(returnedScore) ? returnedScore : upvotes - downvotes;
+        const index = remoteWall.findIndex((entry) => entry.id === item.id);
+        if (index < 0) throw new Error("the corpse is no longer on the wall");
+
+        remoteWall[index] = { ...remoteWall[index], upvotes, downvotes, score, viewerVote };
+        if (viewerVote) wallVotes[item.id] = viewerVote;
+        else delete wallVotes[item.id];
+        saveWallVotes();
+      } catch (error) {
+        view.voteError = error.message || "the vote could not be saved";
+      } finally {
+        wallVoting.delete(item.id);
+        const current = remoteWall.find((entry) => entry.id === item.id) || item;
+        replaceWallItem({ ...current, remote: true });
+      }
+    }
+
+    function renderWallItem(item) {
+      const view = wallView(item);
+      const pages = Core.paginateLines(item.poem, 20);
+      view.page = Math.min(Math.max(0, view.page), pages.length - 1);
+
+      const pin = document.createElement("div");
+      pin.className = "pin";
+      pin.dataset.wallKey = wallItemKey(item);
+      const poem = document.createElement("div");
+      poem.className = "pin-poem";
+      poem.setAttribute("aria-label", pages.length > 1
+        ? `poem page ${view.page + 1} of ${pages.length}`
+        : "poem");
+      const pinTokens = renderPoemWords(poem, pages[view.page], false);
+      pin.append(poem);
+
+      if (pages.length > 1) {
+        const pageNav = document.createElement("nav");
+        pageNav.className = "pin-pages";
+        pageNav.setAttribute("aria-label", `poem pages, ${pages.length} total`);
+        pages.forEach((unused, index) => {
+          const pageButton = document.createElement("button");
+          pageButton.type = "button";
+          pageButton.className = "pin-page";
+          pageButton.textContent = String(index + 1);
+          pageButton.setAttribute("aria-label", `page ${index + 1} of ${pages.length}`);
+          if (index === view.page) pageButton.setAttribute("aria-current", "page");
+          pageButton.addEventListener("click", () => {
+            if (view.page === index) return;
+            view.page = index;
+            replaceWallItem(item);
+            const replacement = Array.from(el("wallList").children)
+              .find((node) => node.dataset.wallKey === wallItemKey(item));
+            replacement?.querySelectorAll(".pin-page")[index]?.focus();
+          });
+          pageNav.append(pageButton);
+        });
+        pin.append(pageNav);
+      }
+
+      if (item.analysis) {
+        const det = document.createElement("details");
+        det.className = "pin-reading";
+        det.open = view.readingOpen;
+        const sum = document.createElement("summary");
+        sum.textContent = "close reading";
+        const body = document.createElement("div");
+        body.className = "pin-reading-body";
+        renderReadingLinked(body, item.analysis, pinTokens);
+        det.addEventListener("toggle", () => { view.readingOpen = det.open; });
+        det.append(sum, body);
+        pin.append(det);
+      }
+
+      const meta = document.createElement("div");
+      meta.className = "pin-meta";
+      const who = document.createElement("span");
+      const when = new Date(item.ts);
+      who.textContent = `— ${item.name} · ${isNaN(when) ? "" : when.toLocaleDateString()}`;
+      meta.append(who);
+
+      const controls = document.createElement("div");
+      controls.className = "pin-controls";
+      if (item.remote) {
+        const votes = document.createElement("div");
+        votes.className = "pin-votes";
+        votes.setAttribute("role", "group");
+        votes.setAttribute("aria-label", `votes for ${item.name}'s poem`);
+        const selected = wallVotes[item.id] || 0;
+        const pending = wallVoting.has(item.id);
+        [
+          { value: 1, label: "upvote", mark: "↑", count: wallCount(item.upvotes) },
+          { value: -1, label: "downvote", mark: "↓", count: wallCount(item.downvotes) },
+        ].forEach(({ value, label, mark, count }) => {
+          const vote = document.createElement("button");
+          vote.type = "button";
+          vote.className = "pin-vote";
+          vote.textContent = `${mark} ${count}`;
+          vote.disabled = pending;
+          vote.setAttribute("aria-pressed", String(selected === value));
+          vote.setAttribute("aria-label", `${label}, ${count} ${count === 1 ? "vote" : "votes"}`);
+          vote.addEventListener("click", () => voteWallItem(item, value));
+          votes.append(vote);
+        });
+        controls.append(votes);
+      }
+      if (item.local || wallTokens[item.id]) {
+        const unpin = document.createElement("button");
+        unpin.type = "button";
+        unpin.className = "linklike";
+        unpin.textContent = "unpin";
+        unpin.addEventListener("click", () => unpinWallItem(item, unpin));
+        controls.append(unpin);
+      }
+      if (controls.childElementCount) meta.append(controls);
+      if (view.voteError) {
+        const error = document.createElement("div");
+        error.className = "pin-vote-status";
+        error.setAttribute("role", "status");
+        error.setAttribute("aria-live", "polite");
+        error.textContent = view.voteError;
+        meta.append(error);
+      }
+      pin.append(meta);
+      return pin;
+    }
+
     function renderWall() {
       const list = el("wallList");
+      Array.from(list.children).forEach((pin) => {
+        const details = pin.querySelector(".pin-reading");
+        const view = wallViews.get(pin.dataset.wallKey);
+        if (details && view) view.readingOpen = details.open;
+      });
       list.innerHTML = "";
       el("wallSec").hidden = wall.length === 0;
       el("wallNote").textContent = legacyWall.length
         ? "shared corpses, plus earlier pins kept in this browser"
         : "shared corpses, across browsers";
       el("wallMore").hidden = !wallCursor;
-      wall.forEach((item) => {
-        const pin = document.createElement("div");
-        pin.className = "pin";
-        const poem = document.createElement("div");
-        poem.className = "pin-poem";
-        const pinTokens = renderPoemWords(poem, String(item.poem).split("\n"), false);
-        const meta = document.createElement("div");
-        meta.className = "pin-meta";
-        const who = document.createElement("span");
-        const when = new Date(item.ts);
-        who.textContent = `— ${item.name} · ${isNaN(when) ? "" : when.toLocaleDateString()}`;
-        meta.append(who);
-        if (item.local || wallTokens[item.id]) {
-          const unpin = document.createElement("button");
-          unpin.className = "linklike";
-          unpin.textContent = "unpin";
-          unpin.addEventListener("click", () => unpinWallItem(item, unpin));
-          meta.append(unpin);
-        }
-        pin.append(poem);
-        if (item.analysis) {
-          const det = document.createElement("details");
-          det.className = "pin-reading";
-          const sum = document.createElement("summary");
-          sum.textContent = "close reading";
-          const body = document.createElement("div");
-          body.className = "pin-reading-body";
-          renderReadingLinked(body, item.analysis, pinTokens);
-          det.append(sum, body);
-          pin.append(det);
-        }
-        pin.append(meta);
-        list.appendChild(pin);
-      });
+      wall.forEach((item) => list.appendChild(renderWallItem(item)));
     }
 
     /* ── footer connection line ─────────────────────────────────────────── */
