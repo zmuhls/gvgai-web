@@ -1,5 +1,7 @@
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const test = require('node:test');
+const zlib = require('node:zlib');
 
 const {
   CopyObjectCommand,
@@ -18,6 +20,7 @@ const {
   validateBackupDocument
 } = require('../lib/backup-document');
 const { applyRestore, readSnapshot, verifyRestorable } = require('../lib/database');
+const { runBackup } = require('../lib/run-backup');
 const {
   deleteExpiredBackups,
   deleteStalePendingBackups,
@@ -32,6 +35,7 @@ const { restore, selectedBackupKey } = require('../restore');
 const NOW = new Date('2026-07-12T04:00:00.000Z');
 const POST_ID = '123e4567-e89b-42d3-a456-426614174000';
 const HASH = 'a'.repeat(64);
+const VOTER_HASH = 'c'.repeat(64);
 
 function sampleDocument() {
   return buildBackupDocument({
@@ -47,8 +51,25 @@ function sampleDocument() {
       poem: 'the copper orchard',
       analysis: null,
       delete_token_hash: HASH
+    }],
+    votes: [{
+      post_id: POST_ID,
+      voter_token_hash: VOTER_HASH,
+      vote: 1,
+      created_at: '2026-07-12T03:15:00.000Z',
+      updated_at: '2026-07-12T03:30:00.000Z'
     }]
   }, NOW);
+}
+
+function sampleLegacyDocument() {
+  const current = sampleDocument();
+  return {
+    ...current,
+    version: 2,
+    source: { schema: 'public', table: 'wall_posts' },
+    votes: undefined
+  };
 }
 
 test('backup document round-trips through deterministic gzip with a dated object key', () => {
@@ -75,6 +96,34 @@ test('backup validation rejects duplicate ids and missing deletion hashes', () =
   assert.throws(() => cleanPrefix('../escape'), /path-safe/);
 });
 
+test('backup validation checks vote references, values, hashes, and uniqueness', () => {
+  const unknownPost = sampleDocument();
+  unknownPost.votes[0].postId = '123e4567-e89b-42d3-a456-426614174001';
+  assert.throws(() => validateBackupDocument(unknownPost), /unknown wall post/);
+
+  const invalidValue = sampleDocument();
+  invalidValue.votes[0].vote = 0;
+  assert.throws(() => validateBackupDocument(invalidValue), /invalid wall vote value/);
+
+  const invalidHash = sampleDocument();
+  invalidHash.votes[0].voterTokenHash = VOTER_HASH.toUpperCase();
+  assert.throws(() => validateBackupDocument(invalidHash), /invalid voter token hash/);
+
+  const duplicate = sampleDocument();
+  duplicate.votes.push({ ...duplicate.votes[0] });
+  assert.throws(() => validateBackupDocument(duplicate), /duplicate wall vote/);
+});
+
+test('version 2 archives decode as snapshots with no votes', () => {
+  const legacy = sampleLegacyDocument();
+  const bytes = Buffer.from(`${JSON.stringify(legacy, null, 2)}\n`, 'utf8');
+  const compressed = zlib.gzipSync(bytes, { level: 9, mtime: 0 });
+  const decoded = decodeBackup(compressed);
+  assert.equal(decoded.document.version, 2);
+  assert.deepEqual(decoded.document.votes, []);
+  assert.equal(decoded.summary.votes, 0);
+});
+
 test('database snapshot uses a read-only transaction and keeps private hashes', async () => {
   const queries = [];
   const client = {
@@ -88,6 +137,13 @@ test('database snapshot uses a read-only transaction and keeps private hashes', 
         analysis: null,
         delete_token_hash: HASH
       }] };
+      if (/FROM wall_post_votes/.test(sql)) return { rows: [{
+        post_id: POST_ID,
+        voter_token_hash: VOTER_HASH,
+        vote: 1,
+        created_at: '2026-07-12T03:15:00.000Z',
+        updated_at: '2026-07-12T03:30:00.000Z'
+      }] };
       if (/FROM wall_schema_migrations/.test(sql)) return { rows: [{
         name: '001_create_wall_posts.sql', checksum: 'b'.repeat(64),
         applied_at: '2026-07-11T23:00:00.000Z'
@@ -98,6 +154,7 @@ test('database snapshot uses a read-only transaction and keeps private hashes', 
   };
   const document = await readSnapshot({ async connect() { return client; } }, NOW);
   assert.equal(document.posts[0].deleteTokenHash, HASH);
+  assert.equal(document.votes[0].voterTokenHash, VOTER_HASH);
   assert.match(queries[0], /REPEATABLE READ READ ONLY/);
   assert.equal(queries.at(-1), 'COMMIT');
 });
@@ -113,10 +170,12 @@ test('restore verification inserts into a temporary table and always rolls back'
     release() {}
   };
   const result = await verifyRestorable({ async connect() { return client; } }, sampleDocument());
-  assert.deepEqual(result, { restoredPosts: 1 });
-  const insert = queries.find(entry => /INSERT INTO common_wall_restore_check/.test(entry.sql));
-  assert.equal(insert.values[0], POST_ID);
-  assert.equal(insert.values[5], HASH);
+  assert.deepEqual(result, { restoredPosts: 1, restoredVotes: 1 });
+  const postInsert = queries.find(entry => /INSERT INTO common_wall_restore_check_posts/.test(entry.sql));
+  assert.equal(postInsert.values[0], POST_ID);
+  assert.equal(postInsert.values[5], HASH);
+  const voteInsert = queries.find(entry => /INSERT INTO common_wall_restore_check_votes/.test(entry.sql));
+  assert.deepEqual(voteInsert.values.slice(0, 3), [POST_ID, VOTER_HASH, 1]);
   assert.equal(queries.at(-1).sql, 'ROLLBACK');
 });
 
@@ -125,7 +184,9 @@ test('applied restore locks and refuses a nonempty target', async () => {
   const client = {
     async query(sql) {
       queries.push(sql);
-      if (/SELECT count/.test(sql)) return { rows: [{ count: 1 }] };
+      if (/FROM wall_posts/.test(sql) && /FROM wall_post_votes/.test(sql)) {
+        return { rows: [{ posts: 1, votes: 0 }] };
+      }
       return { rows: [] };
     },
     release() {}
@@ -136,7 +197,29 @@ test('applied restore locks and refuses a nonempty target', async () => {
   );
   assert.equal(queries[0], 'BEGIN');
   assert.match(queries[1], /ACCESS EXCLUSIVE/);
+  assert.match(queries[1], /wall_post_votes/);
   assert.equal(queries.at(-1), 'ROLLBACK');
+});
+
+test('applied restore inserts posts before votes into an empty locked target', async () => {
+  const queries = [];
+  const client = {
+    async query(sql, values) {
+      queries.push({ sql, values });
+      if (/FROM wall_posts/.test(sql) && /FROM wall_post_votes/.test(sql)) {
+        return { rows: [{ posts: 0, votes: 0 }] };
+      }
+      return { rows: [], rowCount: 1 };
+    },
+    release() {}
+  };
+  const result = await applyRestore({ async connect() { return client; } }, sampleDocument());
+  assert.deepEqual(result, { inserted: 1, existing: 0, insertedVotes: 1, existingVotes: 0 });
+  const postIndex = queries.findIndex(entry => /INSERT INTO wall_posts/.test(entry.sql));
+  const voteIndex = queries.findIndex(entry => /INSERT INTO wall_post_votes/.test(entry.sql));
+  assert.ok(postIndex > 0);
+  assert.ok(voteIndex > postIndex);
+  assert.equal(queries.at(-1).sql, 'COMMIT');
 });
 
 class MemoryS3 {
@@ -208,6 +291,88 @@ test('object storage upload is downloaded, checksummed, and discoverable as late
   const latest = await loadLatestBackup(client, 'test-bucket', 'common-wall/daily');
   assert.equal(latest.sha256, encoded.sha256);
   assert.equal(latest.summary.posts, 1);
+  assert.equal(latest.summary.votes, 1);
+  assert.equal(client.objects.get(backup.key).metadata.votes, '1');
+  const manifest = JSON.parse(client.objects.get('common-wall/daily/latest.json').body.toString('utf8'));
+  assert.equal(manifest.version, 3);
+  assert.equal(manifest.votes, 1);
+});
+
+test('latest manifest accepts a version 2 archive and supplies an empty vote list', async () => {
+  const client = new MemoryS3();
+  const legacy = sampleLegacyDocument();
+  const bytes = Buffer.from(`${JSON.stringify(legacy, null, 2)}\n`, 'utf8');
+  const compressed = zlib.gzipSync(bytes, { level: 9, mtime: 0 });
+  const sha256 = crypto.createHash('sha256').update(compressed).digest('hex');
+  const key = 'common-wall/daily/legacy.json.gz';
+  client.objects.set(key, {
+    body: compressed,
+    metadata: { sha256 },
+    modifiedAt: NOW
+  });
+  client.objects.set('common-wall/daily/latest.json', {
+    body: Buffer.from(`${JSON.stringify({
+      format: legacy.format,
+      version: 2,
+      createdAt: legacy.createdAt,
+      key,
+      sha256,
+      posts: 1,
+      migrations: 1
+    })}\n`),
+    metadata: {},
+    modifiedAt: NOW
+  });
+  const latest = await loadLatestBackup(client, 'test-bucket', 'common-wall/daily');
+  assert.equal(latest.document.version, 2);
+  assert.deepEqual(latest.document.votes, []);
+  assert.equal(latest.summary.votes, 0);
+});
+
+test('backup receipt reports archived and restore-checked vote counts', async () => {
+  const client = new MemoryS3();
+  const databaseClient = {
+    async query(sql) {
+      if (/FROM wall_posts\s+ORDER BY/.test(sql)) return { rows: [{
+        id: POST_ID,
+        created_at: '2026-07-12T03:00:00.000Z',
+        author_name: 'Backup Writer',
+        poem: 'the copper orchard',
+        analysis: null,
+        delete_token_hash: HASH
+      }] };
+      if (/FROM wall_post_votes\s+ORDER BY/.test(sql)) return { rows: [{
+        post_id: POST_ID,
+        voter_token_hash: VOTER_HASH,
+        vote: 1,
+        created_at: '2026-07-12T03:15:00.000Z',
+        updated_at: '2026-07-12T03:30:00.000Z'
+      }] };
+      if (/FROM wall_schema_migrations/.test(sql)) return { rows: [{
+        name: '004_create_wall_post_votes.sql',
+        checksum: 'd'.repeat(64),
+        applied_at: '2026-07-12T02:00:00.000Z'
+      }] };
+      if (/count\(\*\).*common_wall_restore_check_posts/.test(sql)) {
+        return { rows: [{ count: 1 }] };
+      }
+      if (/count\(\*\).*common_wall_restore_check_votes/.test(sql)) {
+        return { rows: [{ count: 1 }] };
+      }
+      return { rows: [], rowCount: 1 };
+    },
+    release() {}
+  };
+  const receipt = await runBackup({
+    pool: { async connect() { return databaseClient; } },
+    storage: { client, bucket: 'test-bucket' },
+    env: { BACKUP_PREFIX: 'common-wall/daily', BACKUP_RETENTION_DAYS: '35' },
+    now: NOW
+  });
+  assert.equal(receipt.posts, 1);
+  assert.equal(receipt.votes, 1);
+  assert.equal(receipt.restoreCheckedPosts, 1);
+  assert.equal(receipt.restoreCheckedVotes, 1);
 });
 
 test('retention cleanup deletes only expired compressed backups', async () => {

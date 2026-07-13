@@ -5,6 +5,7 @@ const DEFAULT_LIMIT = 40;
 const MAX_LIMIT = 100;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN_RE = /^[0-9a-f]{64}$/i;
+const VOTE_HASH_DOMAIN = 'cadavre-wall-vote:v1\0';
 
 function httpError(status, message, cause) {
   const error = new Error(message, cause ? { cause } : undefined);
@@ -52,12 +53,41 @@ function decodeCursor(value) {
 }
 
 function publicPost(row = {}) {
+  const upvotes = Number(row.upvotes || 0);
+  const downvotes = Number(row.downvotes || 0);
   return {
     id: row.id,
     name: row.author_name || 'anonymous',
     poem: row.poem || '',
     analysis: row.analysis || '',
-    ts: isoTimestamp(row.created_at)
+    ts: isoTimestamp(row.created_at),
+    upvotes,
+    downvotes,
+    score: Number(row.score ?? upvotes - downvotes)
+  };
+}
+
+function voteTokenHash(value) {
+  const token = String(value || '').trim();
+  if (!TOKEN_RE.test(token)) throw httpError(400, 'Invalid wall vote token.');
+  return crypto.createHash('sha256').update(VOTE_HASH_DOMAIN).update(token).digest('hex');
+}
+
+function parseVote(value) {
+  if (!Number.isInteger(value) || ![-1, 0, 1].includes(value)) {
+    throw httpError(400, 'value must be -1, 0, or 1.');
+  }
+  return value;
+}
+
+function voteCounts(row = {}, viewerVote = 0) {
+  const upvotes = Number(row.upvotes || 0);
+  const downvotes = Number(row.downvotes || 0);
+  return {
+    upvotes,
+    downvotes,
+    score: Number(row.score ?? upvotes - downvotes),
+    viewerVote: Number(viewerVote)
   };
 }
 
@@ -106,16 +136,29 @@ class CadavreWallStore {
     let cursorClause = '';
     if (decodedCursor) {
       values.push(decodedCursor.createdAt, decodedCursor.id);
-      cursorClause = 'WHERE (created_at, id) < ROW($1::timestamptz, $2::uuid)';
+      cursorClause = `WHERE (created_at, id) < ROW($${values.length - 1}::timestamptz, $${values.length}::uuid)`;
     }
     values.push(pageSize + 1);
     const limitParameter = `$${values.length}`;
     const result = await this.query(`
-      SELECT id, author_name, poem, analysis, created_at
-      FROM wall_posts
-      ${cursorClause}
-      ORDER BY created_at DESC, id DESC
-      LIMIT ${limitParameter}
+      WITH page AS (
+        SELECT id, author_name, poem, analysis, created_at
+        FROM wall_posts
+        ${cursorClause}
+        ORDER BY created_at DESC, id DESC
+        LIMIT ${limitParameter}
+      )
+      SELECT page.id, page.author_name, page.poem, page.analysis, page.created_at,
+             counts.upvotes, counts.downvotes, counts.score
+      FROM page
+      CROSS JOIN LATERAL (
+        SELECT COUNT(*) FILTER (WHERE vote = 1)::integer AS upvotes,
+               COUNT(*) FILTER (WHERE vote = -1)::integer AS downvotes,
+               COALESCE(SUM(vote), 0)::integer AS score
+        FROM wall_post_votes
+        WHERE post_id = page.id
+      ) counts
+      ORDER BY page.created_at DESC, page.id DESC
     `, values);
     const page = result.rows.slice(0, pageSize);
     return {
@@ -146,6 +189,65 @@ class CadavreWallStore {
     return { item: publicPost(result.rows[0]), deleteToken };
   }
 
+  async vote(id, voteToken, value) {
+    if (!UUID_RE.test(String(id || ''))) throw httpError(400, 'Invalid wall post id.');
+    const voterTokenHash = voteTokenHash(voteToken);
+    const vote = parseVote(value);
+    let client;
+    let inTransaction = false;
+    try {
+      client = await this.getPool().connect();
+      await client.query('BEGIN');
+      inTransaction = true;
+      const target = await client.query(`
+        SELECT id
+        FROM wall_posts
+        WHERE id = $1::uuid
+        FOR KEY SHARE
+      `, [id]);
+      if (!target.rows[0]) {
+        await client.query('ROLLBACK');
+        inTransaction = false;
+        return null;
+      }
+
+      if (vote === 0) {
+        await client.query(`
+          DELETE FROM wall_post_votes
+          WHERE post_id = $1::uuid AND voter_token_hash = $2
+        `, [id, voterTokenHash]);
+      } else {
+        await client.query(`
+          INSERT INTO wall_post_votes (post_id, voter_token_hash, vote)
+          VALUES ($1::uuid, $2, $3::smallint)
+          ON CONFLICT (post_id, voter_token_hash)
+          DO UPDATE SET vote = EXCLUDED.vote, updated_at = CURRENT_TIMESTAMP(3)
+        `, [id, voterTokenHash, vote]);
+      }
+
+      const counts = await client.query(`
+        SELECT COUNT(*) FILTER (WHERE vote = 1)::integer AS upvotes,
+               COUNT(*) FILTER (WHERE vote = -1)::integer AS downvotes,
+               COALESCE(SUM(vote), 0)::integer AS score
+        FROM wall_post_votes
+        WHERE post_id = $1::uuid
+      `, [id]);
+      await client.query('COMMIT');
+      inTransaction = false;
+      return { id, ...voteCounts(counts.rows[0], vote) };
+    } catch (error) {
+      if (inTransaction && client) {
+        try {
+          await client.query('ROLLBACK');
+        } catch {}
+      }
+      if (error.status) throw error;
+      throw httpError(503, 'The shared wall database is unavailable.', error);
+    } finally {
+      if (client) client.release();
+    }
+  }
+
   async remove(id, deleteToken) {
     if (!UUID_RE.test(String(id || ''))) throw httpError(400, 'Invalid wall post id.');
     if (!TOKEN_RE.test(String(deleteToken || ''))) throw httpError(403, 'This browser cannot remove that pin.');
@@ -159,8 +261,12 @@ class CadavreWallStore {
   }
 
   async health() {
-    const result = await this.query("SELECT to_regclass('public.wall_posts')::text AS table_name");
-    if (result.rows[0]?.table_name !== 'wall_posts') {
+    const result = await this.query(`
+      SELECT to_regclass('public.wall_posts')::text AS posts_table,
+             to_regclass('public.wall_post_votes')::text AS votes_table
+    `);
+    if (result.rows[0]?.posts_table !== 'wall_posts' ||
+        result.rows[0]?.votes_table !== 'wall_post_votes') {
       throw httpError(503, 'The shared wall schema is unavailable.');
     }
     return { status: 'ok', storage: 'postgres' };
@@ -186,8 +292,12 @@ module.exports = {
     encodeCursor,
     decodeCursor,
     publicPost,
+    parseVote,
+    voteCounts,
+    voteTokenHash,
     isoTimestamp,
     UUID_RE,
-    TOKEN_RE
+    TOKEN_RE,
+    VOTE_HASH_DOMAIN
   }
 };

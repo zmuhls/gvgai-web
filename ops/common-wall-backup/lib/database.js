@@ -39,6 +39,12 @@ async function readSnapshot(pool, createdAt = new Date()) {
       FROM wall_posts
       ORDER BY created_at, id
     `);
+    const votes = await client.query(`
+      SELECT post_id::text, btrim(voter_token_hash) AS voter_token_hash,
+             vote::int, created_at, updated_at
+      FROM wall_post_votes
+      ORDER BY post_id, voter_token_hash
+    `);
     const schemaMigrations = await client.query(`
       SELECT name, btrim(checksum) AS checksum, applied_at
       FROM wall_schema_migrations
@@ -48,6 +54,7 @@ async function readSnapshot(pool, createdAt = new Date()) {
     inTransaction = false;
     return buildBackupDocument({
       posts: posts.rows,
+      votes: votes.rows,
       schemaMigrations: schemaMigrations.rows
     }, createdAt);
   } catch (error) {
@@ -73,6 +80,20 @@ async function insertBackupPost(client, tableName, post) {
   ]);
 }
 
+async function insertBackupVote(client, tableName, vote) {
+  return client.query(`
+    INSERT INTO ${tableName} (
+      post_id, voter_token_hash, vote, created_at, updated_at
+    ) VALUES ($1::uuid, $2, $3::smallint, $4::timestamptz, $5::timestamptz)
+  `, [
+    vote.postId,
+    vote.voterTokenHash,
+    vote.vote,
+    vote.createdAt,
+    vote.updatedAt
+  ]);
+}
+
 async function verifyRestorable(pool, document) {
   const summary = validateBackupDocument(document);
   const client = await pool.connect();
@@ -81,20 +102,36 @@ async function verifyRestorable(pool, document) {
     await client.query('BEGIN');
     inTransaction = true;
     await client.query(`
-      CREATE TEMP TABLE common_wall_restore_check
+      CREATE TEMP TABLE common_wall_restore_check_posts
       (LIKE wall_posts INCLUDING ALL)
       ON COMMIT DROP
     `);
+    await client.query(`
+      CREATE TEMP TABLE common_wall_restore_check_votes
+      (LIKE wall_post_votes INCLUDING ALL)
+      ON COMMIT DROP
+    `);
     for (const post of document.posts) {
-      await insertBackupPost(client, 'common_wall_restore_check', post);
+      await insertBackupPost(client, 'common_wall_restore_check_posts', post);
     }
-    const count = await client.query('SELECT count(*)::int AS count FROM common_wall_restore_check');
-    if (Number(count.rows[0]?.count) !== summary.posts) {
-      throw new Error('Restore check row count does not match the backup.');
+    for (const vote of document.votes) {
+      await insertBackupVote(client, 'common_wall_restore_check_votes', vote);
+    }
+    const postCount = await client.query(
+      'SELECT count(*)::int AS count FROM common_wall_restore_check_posts'
+    );
+    if (Number(postCount.rows[0]?.count) !== summary.posts) {
+      throw new Error('Restore check post count does not match the backup.');
+    }
+    const voteCount = await client.query(
+      'SELECT count(*)::int AS count FROM common_wall_restore_check_votes'
+    );
+    if (Number(voteCount.rows[0]?.count) !== summary.votes) {
+      throw new Error('Restore check vote count does not match the backup.');
     }
     await client.query('ROLLBACK');
     inTransaction = false;
-    return { restoredPosts: summary.posts };
+    return { restoredPosts: summary.posts, restoredVotes: summary.votes };
   } catch (error) {
     if (inTransaction) await rollbackQuietly(client);
     throw error;
@@ -127,33 +164,25 @@ async function applyRestore(pool, document) {
   validateBackupDocument(document);
   const client = await pool.connect();
   let inTransaction = false;
-  let inserted = 0;
-  let existing = 0;
   try {
     await client.query('BEGIN');
     inTransaction = true;
-    await client.query('LOCK TABLE wall_posts IN ACCESS EXCLUSIVE MODE');
+    await client.query('LOCK TABLE wall_posts, wall_post_votes IN ACCESS EXCLUSIVE MODE');
     await requireEmptyRestoreTarget(client);
     for (const post of document.posts) {
-      const current = await client.query(`
-        SELECT id::text, created_at, author_name, poem, analysis,
-               btrim(delete_token_hash) AS delete_token_hash
-        FROM wall_posts
-        WHERE id = $1::uuid
-      `, [post.id]);
-      if (current.rows[0]) {
-        if (!postsMatch(comparableDatabasePost(current.rows[0]), post)) {
-          throw new Error(`Existing wall post ${post.id} differs from the backup.`);
-        }
-        existing += 1;
-        continue;
-      }
       await insertBackupPost(client, 'wall_posts', post);
-      inserted += 1;
+    }
+    for (const vote of document.votes) {
+      await insertBackupVote(client, 'wall_post_votes', vote);
     }
     await client.query('COMMIT');
     inTransaction = false;
-    return { inserted, existing };
+    return {
+      inserted: document.posts.length,
+      existing: 0,
+      insertedVotes: document.votes.length,
+      existingVotes: 0
+    };
   } catch (error) {
     if (inTransaction) await rollbackQuietly(client);
     throw error;
@@ -163,12 +192,17 @@ async function applyRestore(pool, document) {
 }
 
 async function requireEmptyRestoreTarget(pool) {
-  const result = await pool.query('SELECT count(*)::int AS count FROM wall_posts');
-  const count = Number(result.rows[0]?.count || 0);
-  if (count !== 0) {
-    throw new Error('Restore target wall_posts must be empty.');
+  const result = await pool.query(`
+    SELECT
+      (SELECT count(*)::int FROM wall_posts) AS posts,
+      (SELECT count(*)::int FROM wall_post_votes) AS votes
+  `);
+  const posts = Number(result.rows[0]?.posts || 0);
+  const votes = Number(result.rows[0]?.votes || 0);
+  if (posts !== 0 || votes !== 0) {
+    throw new Error('Restore target wall_posts and wall_post_votes must be empty.');
   }
-  return { existingPosts: count };
+  return { existingPosts: posts, existingVotes: votes };
 }
 
 module.exports = {
@@ -176,6 +210,7 @@ module.exports = {
   comparableDatabasePost,
   createDatabasePool,
   insertBackupPost,
+  insertBackupVote,
   postsMatch,
   readSnapshot,
   requireEmptyRestoreTarget,

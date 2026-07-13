@@ -12,7 +12,7 @@ function integrationPool() {
   return new Pool({ connectionString: databaseUrl, max: 2, connectionTimeoutMillis: 5000 });
 }
 
-integrationTest('Postgres wall creates, reads, and removes a live row', async (t) => {
+integrationTest('Postgres wall creates, votes on, reads, and removes a live row', async (t) => {
   const pool = integrationPool();
   const store = new CadavreWallStore({}, { pool });
   const ids = [];
@@ -29,9 +29,36 @@ integrationTest('Postgres wall creates, reads, and removes a live row', async (t
   });
   ids.push(created.item.id);
 
+  const voterToken = 'f'.repeat(64);
+  assert.deepEqual(await store.vote(created.item.id, voterToken, 1), {
+    id: created.item.id,
+    upvotes: 1,
+    downvotes: 0,
+    score: 1,
+    viewerVote: 1
+  });
+  assert.deepEqual(await store.vote(created.item.id, voterToken, -1), {
+    id: created.item.id,
+    upvotes: 0,
+    downvotes: 1,
+    score: -1,
+    viewerVote: -1
+  });
+
   const page = await store.list({ limit: 100 });
-  assert.equal(page.items.some(item => item.id === created.item.id), true);
+  const listed = page.items.find(item => item.id === created.item.id);
+  assert.deepEqual(
+    { upvotes: listed.upvotes, downvotes: listed.downvotes, score: listed.score },
+    { upvotes: 0, downvotes: 1, score: -1 }
+  );
   assert.doesNotMatch(JSON.stringify(page.items), /delete_token|deleteToken/i);
+  assert.deepEqual(await store.vote(created.item.id, voterToken, 0), {
+    id: created.item.id,
+    upvotes: 0,
+    downvotes: 0,
+    score: 0,
+    viewerVote: 0
+  });
   assert.equal(await store.remove(created.item.id, '0'.repeat(64)), false);
   assert.equal(await store.remove(created.item.id, created.deleteToken), true);
   ids.length = 0;

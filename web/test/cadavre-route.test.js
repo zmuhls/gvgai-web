@@ -2,7 +2,8 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 const usageGuardrail = require('../lib/usage-guardrail');
-const { _private } = require('../routes/cadavre');
+const cadavreRouter = require('../routes/cadavre');
+const { _private } = cadavreRouter;
 
 function restoreEnv(name, value) {
   if (value === undefined) delete process.env[name];
@@ -445,6 +446,81 @@ test('cadavre route limits CORS to the deployed sites and localhost', () => {
   assert.equal(_private.isAllowedOrigin('https://example.com'), false);
 });
 
+test('cadavre wall vote handler forwards the browser token and returns only vote state', async () => {
+  const expected = {
+    id: '123e4567-e89b-42d3-a456-426614174000',
+    upvotes: 4,
+    downvotes: 2,
+    score: 2,
+    viewerVote: 1
+  };
+  let received;
+  const handler = _private.createWallVoteHandler({
+    async vote(id, voterToken, value) {
+      received = { id, voterToken, value };
+      return expected;
+    }
+  });
+  const response = {
+    statusCode: 200,
+    body: null,
+    headers: {},
+    set(name, value) { this.headers[name] = value; return this; },
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; }
+  };
+  const voterToken = 'd'.repeat(64);
+
+  await handler({
+    params: { id: expected.id },
+    body: { voterToken, value: 1 }
+  }, response);
+
+  assert.deepEqual(received, { id: expected.id, voterToken, value: 1 });
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.body, expected);
+  assert.equal(response.headers['Cache-Control'], 'no-store');
+  assert.doesNotMatch(JSON.stringify(response.body), /token|hash/i);
+});
+
+test('cadavre registers the wall vote endpoint with its own limiter', () => {
+  const layer = cadavreRouter.stack.find(entry => entry.route?.path === '/wall/:id/vote');
+
+  assert.ok(layer);
+  assert.equal(layer.route.methods.post, true);
+  assert.equal(layer.route.stack[0].handle, _private.rateLimitVote);
+});
+
+test('cadavre wall vote handler returns 404 for a missing post and keeps validation statuses', async () => {
+  const response = () => ({
+    statusCode: 200,
+    body: null,
+    headers: {},
+    set(name, value) { this.headers[name] = value; return this; },
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; }
+  });
+  const request = {
+    params: { id: '123e4567-e89b-42d3-a456-426614174000' },
+    body: { voterToken: 'e'.repeat(64), value: 1 }
+  };
+
+  const missingResponse = response();
+  await _private.createWallVoteHandler({ async vote() { return null; } })(request, missingResponse);
+  assert.equal(missingResponse.statusCode, 404);
+
+  const invalidResponse = response();
+  await _private.createWallVoteHandler({
+    async vote() {
+      const error = new Error('value must be -1, 0, or 1.');
+      error.status = 400;
+      throw error;
+    }
+  })(request, invalidResponse);
+  assert.equal(invalidResponse.statusCode, 400);
+  assert.deepEqual(invalidResponse.body, { error: 'value must be -1, 0, or 1.' });
+});
+
 test('cadavre chat rate limit is enforced per IP', () => {
   const previousLimit = process.env.CADAVRE_CHAT_RATE_LIMIT;
   const response = {
@@ -465,6 +541,45 @@ test('cadavre chat rate limit is enforced per IP', () => {
     assert.ok(Number(response.headers['Retry-After']) > 0);
   } finally {
     restoreEnv('CADAVRE_CHAT_RATE_LIMIT', previousLimit);
+  }
+});
+
+test('cadavre wall votes have a separate rate limit that resetForTest clears', () => {
+  const previousChatLimit = process.env.CADAVRE_CHAT_RATE_LIMIT;
+  const previousVoteLimit = process.env.CADAVRE_WALL_VOTE_RATE_LIMIT;
+  const makeResponse = () => ({
+    statusCode: 200,
+    body: null,
+    headers: {},
+    set(name, value) { this.headers[name] = value; },
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; }
+  });
+  let votePasses = 0;
+  let chatPasses = 0;
+  try {
+    process.env.CADAVRE_CHAT_RATE_LIMIT = '1';
+    process.env.CADAVRE_WALL_VOTE_RATE_LIMIT = '1';
+    const request = { ip: '203.0.113.10' };
+    const firstVoteResponse = makeResponse();
+    const limitedVoteResponse = makeResponse();
+
+    _private.rateLimitVote(request, firstVoteResponse, () => { votePasses += 1; }, 1000);
+    _private.rateLimitVote(request, limitedVoteResponse, () => { votePasses += 1; }, 1001);
+    _private.rateLimitChat(request, makeResponse(), () => { chatPasses += 1; }, 1002);
+
+    assert.equal(votePasses, 1);
+    assert.equal(chatPasses, 1);
+    assert.equal(limitedVoteResponse.statusCode, 429);
+    assert.match(limitedVoteResponse.body.error, /Too many wall votes/);
+    assert.ok(Number(limitedVoteResponse.headers['Retry-After']) > 0);
+
+    _private.resetForTest();
+    _private.rateLimitVote(request, makeResponse(), () => { votePasses += 1; }, 1003);
+    assert.equal(votePasses, 2);
+  } finally {
+    restoreEnv('CADAVRE_CHAT_RATE_LIMIT', previousChatLimit);
+    restoreEnv('CADAVRE_WALL_VOTE_RATE_LIMIT', previousVoteLimit);
   }
 });
 

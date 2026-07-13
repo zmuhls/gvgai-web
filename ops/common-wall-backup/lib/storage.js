@@ -12,6 +12,7 @@ const { NodeHttpHandler } = require('@smithy/node-http-handler');
 const {
   BACKUP_FORMAT,
   FORMAT_VERSION,
+  LEGACY_FORMAT_VERSION,
   SHA256_RE,
   backupObjectKey,
   cleanPrefix,
@@ -112,8 +113,9 @@ async function putBackupObject(client, bucket, key, document, compressed, sha256
     Metadata: {
       sha256,
       format: BACKUP_FORMAT,
-      version: String(FORMAT_VERSION),
+      version: String(document.version),
       posts: String(summary.posts),
+      votes: String(summary.votes),
       migrations: String(summary.migrations),
       createdat: document.createdAt
     }
@@ -128,7 +130,9 @@ async function verifyBackupObject(client, bucket, key, document, compressed, sha
   }
   const downloaded = await downloadBackup(client, bucket, key, sha256);
   if (downloaded.document.createdAt !== document.createdAt ||
+      downloaded.document.version !== document.version ||
       downloaded.summary.posts !== summary.posts ||
+      downloaded.summary.votes !== summary.votes ||
       downloaded.summary.migrations !== summary.migrations) {
     throw new Error('Downloaded backup contents differ from the source snapshot.');
   }
@@ -193,12 +197,13 @@ async function publishVerifiedBackup({ client, bucket, backup }) {
 async function updateLatestManifest({ client, bucket, prefix, backup }) {
   const manifest = {
     format: BACKUP_FORMAT,
-    version: FORMAT_VERSION,
+    version: backup.document.version,
     createdAt: backup.document.createdAt,
     key: backup.key,
     sha256: backup.sha256,
     compressedBytes: backup.compressed.length,
     posts: backup.summary.posts,
+    votes: backup.summary.votes,
     migrations: backup.summary.migrations
   };
   await client.send(new PutObjectCommand({
@@ -217,12 +222,17 @@ async function loadLatestBackup(client, bucket, prefix) {
   }));
   const manifest = JSON.parse((await bodyToBuffer(latest.Body)).toString('utf8'));
   const safePrefix = `${cleanPrefix(prefix)}/`;
-  if (manifest?.format !== BACKUP_FORMAT || manifest.version !== FORMAT_VERSION ||
+  if (manifest?.format !== BACKUP_FORMAT ||
+      ![LEGACY_FORMAT_VERSION, FORMAT_VERSION].includes(manifest.version) ||
       typeof manifest.key !== 'string' || !manifest.key.startsWith(safePrefix) ||
       !SHA256_RE.test(manifest.sha256 || '')) {
     throw new Error('Latest backup manifest is invalid.');
   }
-  return downloadBackup(client, bucket, manifest.key, manifest.sha256);
+  const backup = await downloadBackup(client, bucket, manifest.key, manifest.sha256);
+  if (backup.document.version !== manifest.version) {
+    throw new Error('Latest backup manifest version does not match its archive.');
+  }
+  return backup;
 }
 
 function retentionDays(env = process.env) {

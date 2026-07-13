@@ -2,7 +2,8 @@ const crypto = require('crypto');
 const zlib = require('zlib');
 
 const BACKUP_FORMAT = 'inference-arcade/common-wall';
-const FORMAT_VERSION = 2;
+const FORMAT_VERSION = 3;
+const LEGACY_FORMAT_VERSION = 2;
 const DEFAULT_PREFIX = 'common-wall/daily';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA256_RE = /^[0-9a-f]{64}$/;
@@ -26,7 +27,7 @@ function buildBackupDocument(snapshot, createdAt = new Date()) {
     format: BACKUP_FORMAT,
     version: FORMAT_VERSION,
     createdAt: isoTimestamp(createdAt, 'createdAt'),
-    source: { schema: 'public', table: 'wall_posts' },
+    source: { schema: 'public', table: 'wall_posts', voteTable: 'wall_post_votes' },
     schemaMigrations: (snapshot.schemaMigrations || []).map(row => ({
       name: String(row.name),
       checksum: String(row.checksum).trim(),
@@ -39,21 +40,41 @@ function buildBackupDocument(snapshot, createdAt = new Date()) {
       poem: String(row.poem),
       analysis: row.analysis === undefined || row.analysis === null ? null : String(row.analysis),
       deleteTokenHash: String(row.delete_token_hash ?? row.deleteTokenHash).trim()
+    })),
+    votes: (snapshot.votes || []).map(row => ({
+      postId: String(row.post_id ?? row.postId),
+      voterTokenHash: String(row.voter_token_hash ?? row.voterTokenHash).trim(),
+      vote: Number(row.vote),
+      createdAt: isoTimestamp(row.created_at ?? row.createdAt, 'wall vote createdAt'),
+      updatedAt: isoTimestamp(row.updated_at ?? row.updatedAt, 'wall vote updatedAt')
     }))
   };
 }
 
+function normalizedBackupDocument(document) {
+  if (document?.version !== LEGACY_FORMAT_VERSION || Array.isArray(document.votes)) return document;
+  return { ...document, votes: [] };
+}
+
 function validateBackupDocument(document) {
   if (!document || typeof document !== 'object') throw new Error('Backup must be a JSON object.');
-  if (document.format !== BACKUP_FORMAT || document.version !== FORMAT_VERSION) {
+  if (document.format !== BACKUP_FORMAT ||
+      ![LEGACY_FORMAT_VERSION, FORMAT_VERSION].includes(document.version)) {
     throw new Error('Backup format or version is unsupported.');
   }
   isoTimestamp(document.createdAt, 'createdAt');
   if (document.source?.schema !== 'public' || document.source?.table !== 'wall_posts') {
     throw new Error('Backup source must be public.wall_posts.');
   }
-  if (!Array.isArray(document.schemaMigrations) || !Array.isArray(document.posts)) {
-    throw new Error('Backup migrations and posts must be arrays.');
+  if (document.version === FORMAT_VERSION && document.source?.voteTable !== 'wall_post_votes') {
+    throw new Error('Backup vote source must be public.wall_post_votes.');
+  }
+  if (!Array.isArray(document.schemaMigrations) || !Array.isArray(document.posts) ||
+      !Array.isArray(document.votes)) {
+    throw new Error('Backup migrations, posts, and votes must be arrays.');
+  }
+  if (document.version === LEGACY_FORMAT_VERSION && document.votes.length !== 0) {
+    throw new Error('Version 2 backups cannot contain votes.');
   }
 
   for (const migration of document.schemaMigrations) {
@@ -87,8 +108,29 @@ function validateBackupDocument(document) {
     }
   }
 
+  const voteKeys = new Set();
+  for (const vote of document.votes) {
+    const key = `${vote?.postId || ''}:${vote?.voterTokenHash || ''}`;
+    if (!UUID_RE.test(vote?.postId || '') || !ids.has(vote.postId)) {
+      throw new Error('Backup contains a vote for an unknown wall post.');
+    }
+    if (!SHA256_RE.test(vote?.voterTokenHash || '')) {
+      throw new Error('Backup contains an invalid voter token hash.');
+    }
+    if (voteKeys.has(key)) {
+      throw new Error('Backup contains a duplicate wall vote.');
+    }
+    voteKeys.add(key);
+    if (!Number.isInteger(vote.vote) || ![-1, 1].includes(vote.vote)) {
+      throw new Error('Backup contains an invalid wall vote value.');
+    }
+    isoTimestamp(vote.createdAt, 'wall vote createdAt');
+    isoTimestamp(vote.updatedAt, 'wall vote updatedAt');
+  }
+
   return {
     posts: document.posts.length,
+    votes: document.votes.length,
     migrations: document.schemaMigrations.length
   };
 }
@@ -104,7 +146,7 @@ function encodeBackup(document) {
 function decodeBackup(compressed) {
   const bytes = Buffer.isBuffer(compressed) ? compressed : Buffer.from(compressed);
   const json = zlib.gunzipSync(bytes).toString('utf8');
-  const document = JSON.parse(json);
+  const document = normalizedBackupDocument(JSON.parse(json));
   const summary = validateBackupDocument(document);
   return { document, json, summary };
 }
@@ -118,6 +160,7 @@ function backupObjectKey(document, sha256, prefix = DEFAULT_PREFIX) {
 module.exports = {
   BACKUP_FORMAT,
   FORMAT_VERSION,
+  LEGACY_FORMAT_VERSION,
   DEFAULT_PREFIX,
   UUID_RE,
   SHA256_RE,
@@ -127,5 +170,6 @@ module.exports = {
   decodeBackup,
   encodeBackup,
   isoTimestamp,
+  normalizedBackupDocument,
   validateBackupDocument
 };

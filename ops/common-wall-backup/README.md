@@ -1,6 +1,8 @@
 # Common Wall backup job
 
-This Railway cron service takes a repeatable-read snapshot of `public.wall_posts`, compresses it, and writes it to a private Railway Object Storage bucket. Every run downloads the new object, verifies its SHA-256 checksum and document shape, and inserts the downloaded rows into a temporary PostgreSQL table inside a rolled-back transaction. The job updates `common-wall/daily/latest.json` only after those checks pass.
+This Railway cron service takes one repeatable-read snapshot of `public.wall_posts` and `public.wall_post_votes`, compresses it, and writes it to a private Railway Object Storage bucket. Every run downloads the new object, verifies its SHA-256 checksum and document shape, and inserts the downloaded posts and votes into temporary PostgreSQL tables inside a rolled-back transaction. The job updates `common-wall/daily/latest.json` only after those checks pass.
+
+New archives use format version 3 and include vote hashes, values, and timestamps. Recovery remains compatible with version 2 archives, which are treated as snapshots with no votes.
 
 The daily schedule is `06:15 UTC`. Backups remain for 35 days by default, and cleanup always preserves at least the seven newest archives. A ten-minute watchdog prevents a stalled job from suppressing later Railway cron runs.
 
@@ -24,7 +26,7 @@ Bucket credentials belong only to this cron service. The application and browser
 
 `npm run verify` downloads and restore-checks the latest backup without changing persistent rows. To select an older object, set `BACKUP_KEY` to its full key under `BACKUP_PREFIX`.
 
-Applying a backup requires a separate `RESTORE_DATABASE_URL` whose migrated `wall_posts` table is empty. The restore locks that table while it inserts the archived posts; it refuses to merge an old snapshot into a live wall:
+Applying a backup requires a separate `RESTORE_DATABASE_URL` whose migrated `wall_posts` and `wall_post_votes` tables are empty. The restore locks both tables, inserts posts before their votes, and refuses to merge an old snapshot into a populated wall:
 
 ```bash
 RESTORE_DATABASE_URL=postgres://replacement-database \

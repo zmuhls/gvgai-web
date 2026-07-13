@@ -44,9 +44,11 @@ const MODEL_PROBE_TIMEOUT_MS = 5000;
 const MODEL_CATALOG_TTL_MS = 30000;
 const CHAT_RATE_LIMIT = 30;
 const CHAT_RATE_WINDOW_MS = 60000;
+const WALL_VOTE_RATE_LIMIT = 120;
 const USAGE_STARTED_AT = new Date().toISOString();
 
 const chatRateBuckets = new Map();
+const wallVoteRateBuckets = new Map();
 let catalogCache = null;
 let catalogRefresh = null;
 let mirrorCacheStatusProvider = null;
@@ -478,6 +480,11 @@ function configuredRateLimit() {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : CHAT_RATE_LIMIT;
 }
 
+function configuredWallVoteRateLimit() {
+  const parsed = Number.parseInt(process.env.CADAVRE_WALL_VOTE_RATE_LIMIT, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : WALL_VOTE_RATE_LIMIT;
+}
+
 function clientIp(req) {
   const header = (name) => {
     if (typeof req.get === 'function') return req.get(name);
@@ -508,6 +515,29 @@ function rateLimitChat(req, res, next, now = Date.now()) {
   if (chatRateBuckets.size > 5000) {
     for (const [bucketKey, value] of chatRateBuckets) {
       if (now - value.startedAt >= CHAT_RATE_WINDOW_MS) chatRateBuckets.delete(bucketKey);
+    }
+  }
+  next();
+}
+
+function rateLimitVote(req, res, next, now = Date.now()) {
+  const key = clientIp(req);
+  const current = wallVoteRateBuckets.get(key);
+  const bucket = !current || now - current.startedAt >= CHAT_RATE_WINDOW_MS
+    ? { startedAt: now, count: 0 }
+    : current;
+  const limit = configuredWallVoteRateLimit();
+  if (bucket.count >= limit) {
+    const retryAfter = Math.max(1, Math.ceil((CHAT_RATE_WINDOW_MS - (now - bucket.startedAt)) / 1000));
+    res.set('Retry-After', String(retryAfter));
+    res.status(429).json({ error: 'Too many wall votes. Please try again shortly.' });
+    return;
+  }
+  bucket.count += 1;
+  wallVoteRateBuckets.set(key, bucket);
+  if (wallVoteRateBuckets.size > 5000) {
+    for (const [bucketKey, value] of wallVoteRateBuckets) {
+      if (now - value.startedAt >= CHAT_RATE_WINDOW_MS) wallVoteRateBuckets.delete(bucketKey);
     }
   }
   next();
@@ -830,6 +860,26 @@ function setMirrorCacheStatusProvider(provider) {
   mirrorCacheStatusProvider = typeof provider === 'function' ? provider : null;
 }
 
+function createWallVoteHandler(store) {
+  return async function wallVoteHandler(req, res) {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const result = await store.vote(
+        req.params.id,
+        req.body?.voterToken,
+        req.body?.value
+      );
+      if (!result) {
+        res.status(404).json({ error: 'This wall post is unavailable.' });
+        return;
+      }
+      res.json(result);
+    } catch (error) {
+      res.status(error.status || 500).json({ error: error.message || 'Unable to save this vote.' });
+    }
+  };
+}
+
 router.use(cadavreCors);
 
 router.get('/models', async (req, res) => {
@@ -874,6 +924,8 @@ router.post('/wall', rateLimitChat, async (req, res) => {
     res.status(error.status || 500).json({ error: error.message || 'Unable to pin this corpse.' });
   }
 });
+
+router.post('/wall/:id/vote', rateLimitVote, createWallVoteHandler(wallStore));
 
 // POST works with the existing GitHub Pages CORS policy and keeps the delete
 // capability in a JSON body rather than a URL or server log.
@@ -950,6 +1002,7 @@ router.post('/chat', rateLimitChat, async (req, res) => {
 
 function resetForTest() {
   chatRateBuckets.clear();
+  wallVoteRateBuckets.clear();
   catalogCache = null;
   catalogRefresh = null;
   Object.keys(catalogCacheStats).forEach((key) => { catalogCacheStats[key] = 0; });
@@ -994,7 +1047,11 @@ module.exports._private = {
   isAllowedOrigin,
   cadavreCors,
   clientIp,
+  configuredWallVoteRateLimit,
   rateLimitChat,
+  rateLimitVote,
+  createWallVoteHandler,
+  WALL_VOTE_RATE_LIMIT,
   ollamaThinkSetting,
   providerTokenUsage,
   CHAT_DEADLINE_MS,

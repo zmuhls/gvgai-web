@@ -72,8 +72,10 @@ async function runBackup(options = {}) {
       sha256: published.sha256,
       compressedBytes: published.compressed.length,
       posts: published.summary.posts,
+      votes: published.summary.votes,
       migrations: published.summary.migrations,
       restoreCheckedPosts: restoreCheck.restoredPosts,
+      restoreCheckedVotes: restoreCheck.restoredVotes,
       retentionDays: days,
       deletedStalePending,
       deletedExpired

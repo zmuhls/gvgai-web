@@ -47,7 +47,9 @@ async function restore(options = {}) {
       key: backup.key,
       sha256: backup.sha256,
       posts: backup.summary.posts,
+      votes: backup.summary.votes,
       restoreCheckedPosts: check.restoredPosts,
+      restoreCheckedVotes: check.restoredVotes,
       applied
     };
   } finally {
