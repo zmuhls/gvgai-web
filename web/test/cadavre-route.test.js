@@ -251,7 +251,7 @@ test('cadavre catalog returns the tuned adapter and OpenRouter-first model choic
       'qwen3.5:397b',
       'qwen3-coder-next'
     ]);
-    assert.match(catalog.models[1].label, /OpenRouter; Ollama fallback/);
+    assert.doesNotMatch(catalog.models[1].label, /OpenRouter|Ollama fallback/i);
     assert.equal(catalog.models[1].provider, 'openrouter');
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:deepseek-v4-pro'), false);
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:mistral-large-3:675b'), false);

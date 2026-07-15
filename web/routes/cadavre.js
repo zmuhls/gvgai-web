@@ -365,7 +365,7 @@ async function buildModelCatalog() {
       id: `ollama:${model.id}`,
       model: model.id,
       label: model.openRouterAvailable
-        ? `${model.label} (OpenRouter; Ollama fallback)`
+        ? model.label
         : `${model.label} (Ollama Cloud)`,
       provider: model.openRouterAvailable ? 'openrouter' : 'ollama',
       available: true

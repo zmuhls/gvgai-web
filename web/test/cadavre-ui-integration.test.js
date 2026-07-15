@@ -7,6 +7,7 @@ const htmlPath = path.join(__dirname, '..', 'public', 'cadavre.html');
 const titlePath = path.join(__dirname, '..', 'public', 'assets', 'cadavre-title.png');
 const serverPath = path.join(__dirname, '..', 'server.js');
 const routesPath = path.join(__dirname, '..', 'routes', 'cadavre.js');
+const railwayPath = path.join(__dirname, '..', '..', 'railway.json');
 
 test('Cadavre ships the model catalog UI with additive account and poem features', () => {
   const html = fs.readFileSync(htmlPath, 'utf8');
@@ -33,6 +34,8 @@ test('Cadavre ships the model catalog UI with additive account and poem features
   assert.match(html, /id="savePoemBtn"/);
   assert.match(html, /id="exportPdfBtn"/);
   assert.doesNotMatch(html, /exportMdBtn|text\/markdown|save as markdown/i);
+  assert.match(html, /\[502, 503, 504\]\.includes/);
+  assert.match(html, /retryDelays = \[1000, 2000, 3000\]/);
   assert.match(html, /src="\/assets\/cadavre-title\.png"/);
   assert.doesNotMatch(html, /milwrite\.github\.io\/cadavre-exquis\/assets\/title-cutup/);
   assert.ok(fs.statSync(titlePath).size > 100000);
@@ -45,6 +48,12 @@ test('Cadavre ships the model catalog UI with additive account and poem features
   for (const match of html.matchAll(/<script(?: [^>]*)?>([\s\S]*?)<\/script>/g)) {
     if (match[1].trim()) assert.doesNotThrow(() => new Function(match[1]));
   }
+});
+
+test('Railway keeps health-checked deploys while the browser covers volume remounts', () => {
+  const railway = JSON.parse(fs.readFileSync(railwayPath, 'utf8'));
+  assert.equal(railway.deploy.overlapSeconds, undefined);
+  assert.equal(railway.deploy.healthcheckPath, '/api/cadavre/wall/health');
 });
 
 test('Cadavre owns turn countdown deadlines on the backend', () => {
