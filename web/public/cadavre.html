@@ -1463,7 +1463,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
         const option = document.createElement("option");
         option.value = route.id;
         option.textContent = String(route.label || route.name || route.model || route.id)
-          .replace(" (OpenRouter; Ollama Fallback)", "");
+          .replace(/\s*\(OpenRouter;\s*Ollama fallback\)$/i, "");
         option.disabled = route.available === false;
         groups.get(label).appendChild(option);
       });
