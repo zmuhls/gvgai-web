@@ -1506,30 +1506,44 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     }
 
     async function chat(messages, maxTokens) {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 60000);
-      try {
-        const res = await fetch(CFG.endpoint, {
-          method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" },
-            CFG.apiKey ? { Authorization: "Bearer " + CFG.apiKey } : {}),
-          body: JSON.stringify({
-            model: CFG.model, messages,
-            max_tokens: maxTokens, temperature: 0.8, stream: false,
-          }),
-          signal: ctrl.signal,
-        });
-        if (!res.ok) throw new Error("the model answered " + res.status);
-        const data = await res.json();
-        showRoute(data);
-        return {
-          content: (data.choices?.[0]?.message?.content ?? "").trim(),
-          model: data.model,
-          provider: data.provider,
-        };
-      } finally {
-        clearTimeout(timer);
+      const body = JSON.stringify({
+        model: CFG.model, messages,
+        max_tokens: maxTokens, temperature: 0.8, stream: false,
+      });
+      let lastError;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 60000);
+        try {
+          const res = await fetch(CFG.endpoint, {
+            method: "POST",
+            headers: Object.assign({ "Content-Type": "application/json" },
+              CFG.apiKey ? { Authorization: "Bearer " + CFG.apiKey } : {}),
+            body,
+            signal: ctrl.signal,
+          });
+          if (!res.ok) {
+            const error = new Error("the model answered " + res.status);
+            error.retryable = [502, 503, 504].includes(res.status);
+            throw error;
+          }
+          const data = await res.json();
+          showRoute(data);
+          return {
+            content: (data.choices?.[0]?.message?.content ?? "").trim(),
+            model: data.model,
+            provider: data.provider,
+          };
+        } catch (error) {
+          lastError = error;
+          const transient = error.retryable || (error.name !== "AbortError" && error instanceof TypeError);
+          if (!transient || attempt === 1) throw error;
+          await new Promise((resolve) => setTimeout(resolve, 900));
+        } finally {
+          clearTimeout(timer);
+        }
       }
+      throw lastError;
     }
 
     function validContribution(raw) {
