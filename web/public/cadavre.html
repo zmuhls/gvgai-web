@@ -180,14 +180,17 @@
     /* ── the table ──────────────────────────────────────────────────────── */
     .table-setting {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 0.75rem;
+      grid-template-columns:
+        minmax(0, 2fr)
+        minmax(0, 1.1fr)
+        minmax(0, 0.75fr)
+        minmax(0, 0.9fr)
+        minmax(0, 1.1fr);
+      gap: 0.4rem;
       font-family: var(--mono);
       font-size: 0.78rem;
       color: var(--label);
     }
-
-    .setting-field.model-route { grid-column: 1 / -1; }
 
     .setting-field {
       display: flex;
@@ -201,11 +204,12 @@
       line-height: 1.25;
       letter-spacing: 0.1em;
       text-transform: uppercase;
+      white-space: nowrap;
     }
 
     .table-setting select {
       font-family: var(--mono);
-      font-size: 0.82rem;
+      font-size: 0.76rem;
       color: var(--bone);
       background: transparent;
       border: 0;
@@ -665,6 +669,11 @@
       .library-row button:last-child { grid-column: 2; }
     }
 
+    @media (max-width: 35rem) {
+      .table-setting { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .setting-field.model-route { grid-column: 1 / -1; }
+    }
+
     @media (max-width: 24rem) {
       .page { padding-inline: 0.55rem; }
       .game-intro, .game-stage { padding-inline: 1rem; }
@@ -766,7 +775,7 @@
       <div class="game-intro">
         <header>
           <h1 class="cutup-title" aria-label="Exquisite Corpse">
-            <img src="https://milwrite.github.io/cadavre-exquis/assets/title-cutup-3.png" alt="" aria-hidden="true" width="1300" height="155">
+            <img src="/assets/cadavre-title.png" alt="" aria-hidden="true" width="1300" height="155">
           </h1>
           <p class="epigraph">“The exquisite corpse will drink the new wine.”
             <span class="attr">the game’s first sentence — Paris, 1925</span>
@@ -786,6 +795,15 @@
               <span class="setting-label">the other hand</span>
               <select id="modelRoute" aria-label="model provider and model">
                 <option value="">loading available models…</option>
+              </select>
+            </label>
+            <label class="setting-field">
+              <span class="setting-label">countdown</span>
+              <select id="countdown" aria-label="turn countdown">
+                <option value="0">off</option>
+                <option value="15">15 seconds</option>
+                <option value="30" selected>30 seconds</option>
+                <option value="60">one minute</option>
               </select>
             </label>
             <label class="setting-field">
@@ -812,14 +830,6 @@
                 <option value="3" selected>three words</option>
                 <option value="4">four words</option>
                 <option value="5">five words</option>
-              </select>
-            </label>
-            <label class="setting-field">
-              <span class="setting-label">countdown</span>
-              <select id="countdown" aria-label="turn countdown">
-                <option value="15">15 seconds</option>
-                <option value="30" selected>30 seconds</option>
-                <option value="60">one minute</option>
               </select>
             </label>
           </div>
@@ -967,6 +977,7 @@
     if (params.get("model")) paramConn.model = params.get("model");
     const CFG = Object.assign({}, DEFAULTS, window.CORPSE_CONFIG || {}, paramConn);
     const WALL_API = REMOTE_API + "/wall";
+    const TIMER_API = LOCAL_PAGE ? "/api/cadavre/turn-timer" : REMOTE_API + "/turn-timer";
     const isHttpEndpoint = (value) => /^https?:$/.test(new URL(value, location.href).protocol);
     try {
       if (!isHttpEndpoint(CFG.endpoint)) throw new Error("bad scheme");
@@ -1031,7 +1042,8 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     let gameId = 0;           // stale in-flight replies must not join a new game
     let poemText = "", readingText = "";
     let gameActive = false;
-    let timerInterval = null, timerDeadline = 0;
+    let timerInterval = null, timerDeadline = 0, turnTimerId = "", timerGeneration = 0;
+    let timerSyncInFlight = false, lastTimerSyncAt = 0;
     let authUser = null, activePoem = null, authMode = "login";
     let readingRequestId = 0;
     let poemTokens = [];      // { norm, el } per revealed poem word — the reading links to these
@@ -1069,33 +1081,115 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       el("revealStatus").classList.toggle("err", isErr);
     }
 
-    function clearTurnTimer() {
+    function clearTurnTimer({ cancel = true } = {}) {
       if (timerInterval) clearInterval(timerInterval);
+      const activeTimerId = turnTimerId;
       timerInterval = null;
       timerDeadline = 0;
+      turnTimerId = "";
+      timerGeneration++;
+      timerSyncInFlight = false;
+      lastTimerSyncAt = 0;
       el("turnTimer").hidden = true;
       el("turnTimer").textContent = "";
+      if (cancel && activeTimerId) {
+        fetch(`${TIMER_API}/${encodeURIComponent(activeTimerId)}/cancel`, {
+          method: "POST",
+          keepalive: true,
+        }).catch(() => {});
+      }
     }
 
-    function startTurnTimer() {
+    function expireHumanTurn(generation) {
+      if (generation !== timerGeneration || !gameActive || isModelTurn()) return;
+      clearTurnTimer({ cancel: false });
+      el("wordInput").disabled = true;
+      el("submitBtn").disabled = true;
+      actorIndex++;
+      setStatus("time expired — the fold passes on");
+      setTimeout(promptTurn, 650);
+    }
+
+    async function syncTurnTimer(generation) {
+      if (generation !== timerGeneration || !turnTimerId || timerSyncInFlight) return;
+      timerSyncInFlight = true;
+      const activeTimerId = turnTimerId;
+      try {
+        const response = await fetch(`${TIMER_API}/${encodeURIComponent(activeTimerId)}`, {
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error("timer status unavailable");
+        const timer = await response.json();
+        if (generation !== timerGeneration || activeTimerId !== turnTimerId) return;
+        if (timer.expired || Number(timer.remainingMs) <= 0) {
+          expireHumanTurn(generation);
+          return;
+        }
+        timerDeadline = performance.now() + Number(timer.remainingMs);
+      } catch {
+        // The server-issued deadline still advances locally during a brief network interruption.
+      } finally {
+        if (generation === timerGeneration) timerSyncInFlight = false;
+      }
+    }
+
+    async function startTurnTimer() {
       clearTurnTimer();
-      if (!gameActive || isModelTurn()) return;
-      timerDeadline = Date.now() + countdownSeconds * 1000;
+      if (!gameActive || isModelTurn() || countdownSeconds === 0) return;
+      const generation = timerGeneration;
+      const timerEl = el("turnTimer");
+      timerEl.hidden = false;
+      timerEl.textContent = "setting the turn timer…";
+
+      try {
+        const response = await fetch(TIMER_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ durationSeconds: countdownSeconds }),
+        });
+        if (!response.ok) throw new Error("timer start unavailable");
+        const timer = await response.json();
+        const remainingMs = Number(timer.remainingMs);
+        if (!timer.timerId || !Number.isFinite(remainingMs) || remainingMs <= 0) {
+          throw new Error("timer start was invalid");
+        }
+        if (generation !== timerGeneration || !gameActive || isModelTurn()) {
+          fetch(`${TIMER_API}/${encodeURIComponent(timer.timerId)}/cancel`, {
+            method: "POST",
+            keepalive: true,
+          }).catch(() => {});
+          return;
+        }
+        turnTimerId = timer.timerId;
+        timerDeadline = performance.now() + remainingMs;
+      } catch {
+        if (generation !== timerGeneration || !gameActive || isModelTurn()) return;
+        timerDeadline = performance.now() + countdownSeconds * 1000;
+      }
+
       const tick = () => {
-        const remaining = Math.max(0, Math.ceil((timerDeadline - Date.now()) / 1000));
-        el("turnTimer").hidden = false;
-        el("turnTimer").textContent = `${remaining} second${remaining === 1 ? "" : "s"} remain`;
+        if (generation !== timerGeneration) return;
+        const now = performance.now();
+        const remaining = Math.max(0, Math.ceil((timerDeadline - now) / 1000));
+        timerEl.hidden = false;
+        timerEl.textContent = `${remaining} second${remaining === 1 ? "" : "s"} remain`;
         if (remaining > 0) return;
-        clearTurnTimer();
-        if (!gameActive || isModelTurn()) return;
-        el("wordInput").disabled = true;
-        el("submitBtn").disabled = true;
-        actorIndex++;
-        setStatus("time expired — the fold passes on");
-        setTimeout(promptTurn, 650);
+        expireHumanTurn(generation);
       };
       tick();
       timerInterval = setInterval(tick, 250);
+      lastTimerSyncAt = performance.now();
+      const syncInterval = setInterval(() => {
+        if (generation !== timerGeneration) {
+          clearInterval(syncInterval);
+          return;
+        }
+        const now = performance.now();
+        if (now - lastTimerSyncAt < 5000) return;
+        lastTimerSyncAt = now;
+        syncTurnTimer(generation);
+      }, 1000);
     }
 
     function readLegacyWall() {
@@ -1850,6 +1944,8 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
 
     function openAuth(mode) {
       authMode = mode;
+      el("authPassword").value = "";
+      el("authConfirm").value = "";
       renderAuthMode();
       if (!el("authDialog").open) el("authDialog").showModal();
     }
@@ -2262,7 +2358,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       el("modelSlot").value = savedSettings.modelSeat || 2;
     }
     if ([1, 2, 3, 4, 5].includes(Number(savedSettings.maxWords))) el("maxWords").value = savedSettings.maxWords;
-    if ([15, 30, 60].includes(Number(savedSettings.countdownSeconds))) {
+    if ([0, 15, 30, 60].includes(Number(savedSettings.countdownSeconds))) {
       el("countdown").value = savedSettings.countdownSeconds;
     }
     loadModelOptions();

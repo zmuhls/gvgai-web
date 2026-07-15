@@ -192,15 +192,17 @@ function createCadavreUserRouter(options = {}) {
   }));
 
   router._cadavreStore = store;
+  router.closeStore = () => store.close();
   return router;
 }
 
-module.exports = createCadavreUserRouter();
-module.exports.createCadavreUserRouter = createCadavreUserRouter;
-module.exports._private = {
-  cookies,
-  requestOrigin,
-  requireSameOrigin,
-  sessionCookie,
-  publicUser
+module.exports = {
+  createCadavreUserRouter,
+  _private: {
+    cookies,
+    requestOrigin,
+    requireSameOrigin,
+    sessionCookie,
+    publicUser
+  }
 };

@@ -16,6 +16,8 @@ const cadavreMirror = createCadavreMirror();
 
 const telemetry = require('./lib/telemetry-store');
 const cadavreRoutes = require('./routes/cadavre');
+const { createCadavreUserRouter } = require('./routes/cadavre-users');
+const cadavreUserRoutes = createCadavreUserRouter();
 cadavreRoutes.setMirrorCacheStatusProvider((now) => cadavreMirror.getCacheStatus(now));
 
 let gameManager = null;
@@ -243,7 +245,7 @@ app.use('/api/marble', require('./routes/marble'));
 app.use('/api/traces', require('./routes/traces-local'));
 app.use('/api/finetune', require('./routes/finetune'));
 app.use('/api/cadavre', cadavreRoutes);
-app.use('/api/cadavre', require('./routes/cadavre-users'));
+app.use('/api/cadavre', cadavreUserRoutes);
 
 // Clean URL for the embeddable spectator page (also served as /marquee.html).
 app.get('/marquee', (req, res) => res.sendFile(path.join(__dirname, 'public', 'marquee.html')));
@@ -552,7 +554,11 @@ async function shutdown(signal) {
     httpClosed,
     telemetry.flush()
   ]);
-  await Promise.allSettled([cadavreRoutes.closeWallStore()]);
+  await Promise.allSettled([
+    cadavreRoutes.closeWallStore(),
+    cadavreRoutes.closeTurnTimerStore(),
+    cadavreUserRoutes.closeStore()
+  ]);
   clearTimeout(forcedExit);
   process.exit(0);
 }

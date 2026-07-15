@@ -1,6 +1,7 @@
 const express = require('express');
 const { getConfig } = require('../lib/runtime-config');
 const { createPoemPdf, safeFilename } = require('../lib/cadavre-pdf');
+const { CadavreTurnTimerStore } = require('../lib/cadavre-turn-timer');
 const { resolveModel } = require('../lib/models');
 const { CadavreWallStore } = require('../lib/cadavre-wall-store');
 const telemetry = require('../lib/telemetry-store');
@@ -8,6 +9,7 @@ const usageGuardrail = require('../lib/usage-guardrail');
 
 const router = express.Router();
 const wallStore = new CadavreWallStore();
+const turnTimerStore = new CadavreTurnTimerStore();
 
 const MAX_MESSAGES = 14;
 const MAX_CONTENT_CHARS = 9000;
@@ -54,10 +56,12 @@ const MODEL_WARM_INTERVAL_MS = 3 * 60 * 1000;
 const CHAT_RATE_LIMIT = 30;
 const CHAT_RATE_WINDOW_MS = 60000;
 const WALL_VOTE_RATE_LIMIT = 120;
+const TURN_TIMER_RATE_LIMIT = 180;
 const USAGE_STARTED_AT = new Date().toISOString();
 
 const chatRateBuckets = new Map();
 const wallVoteRateBuckets = new Map();
+const turnTimerRateBuckets = new Map();
 let catalogCache = null;
 let catalogRefresh = null;
 const modelReadyCache = new Map();
@@ -561,7 +565,7 @@ function isAllowedOrigin(origin) {
   try {
     const url = new URL(origin);
     if (!['http:', 'https:'].includes(url.protocol)) return false;
-    if (url.hostname === 'localhost') return true;
+    if (['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return true;
     return url.origin === 'https://inference-arcade.com' ||
       url.origin === 'https://milwrite.github.io';
   } catch {
@@ -596,6 +600,11 @@ function configuredRateLimit() {
 function configuredWallVoteRateLimit() {
   const parsed = Number.parseInt(process.env.CADAVRE_WALL_VOTE_RATE_LIMIT, 10);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : WALL_VOTE_RATE_LIMIT;
+}
+
+function configuredTurnTimerRateLimit() {
+  const parsed = Number.parseInt(process.env.CADAVRE_TURN_TIMER_RATE_LIMIT, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : TURN_TIMER_RATE_LIMIT;
 }
 
 function clientIp(req) {
@@ -651,6 +660,29 @@ function rateLimitVote(req, res, next, now = Date.now()) {
   if (wallVoteRateBuckets.size > 5000) {
     for (const [bucketKey, value] of wallVoteRateBuckets) {
       if (now - value.startedAt >= CHAT_RATE_WINDOW_MS) wallVoteRateBuckets.delete(bucketKey);
+    }
+  }
+  next();
+}
+
+function rateLimitTurnTimer(req, res, next, now = Date.now()) {
+  const key = clientIp(req);
+  const current = turnTimerRateBuckets.get(key);
+  const bucket = !current || now - current.startedAt >= CHAT_RATE_WINDOW_MS
+    ? { startedAt: now, count: 0 }
+    : current;
+  const limit = configuredTurnTimerRateLimit();
+  if (bucket.count >= limit) {
+    const retryAfter = Math.max(1, Math.ceil((CHAT_RATE_WINDOW_MS - (now - bucket.startedAt)) / 1000));
+    res.set('Retry-After', String(retryAfter));
+    res.status(429).json({ error: 'Too many turn timer requests. Please try again shortly.' });
+    return;
+  }
+  bucket.count += 1;
+  turnTimerRateBuckets.set(key, bucket);
+  if (turnTimerRateBuckets.size > 5000) {
+    for (const [bucketKey, value] of turnTimerRateBuckets) {
+      if (now - value.startedAt >= CHAT_RATE_WINDOW_MS) turnTimerRateBuckets.delete(bucketKey);
     }
   }
   next();
@@ -1149,6 +1181,38 @@ router.get('/usage', (req, res) => {
   res.json(cadavreUsageSnapshot());
 });
 
+router.post('/turn-timer', rateLimitTurnTimer, (req, res) => {
+  try {
+    const timer = turnTimerStore.start(req.body?.durationSeconds);
+    res.set('Cache-Control', 'no-store').status(201).json(timer);
+  } catch (error) {
+    res.set('Cache-Control', 'no-store').status(error.status || 500).json({
+      error: error.message || 'Unable to start the turn timer.'
+    });
+  }
+});
+
+router.get('/turn-timer/:id', rateLimitTurnTimer, (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store').json(turnTimerStore.status(req.params.id));
+  } catch (error) {
+    res.set('Cache-Control', 'no-store').status(error.status || 500).json({
+      error: error.message || 'Unable to read the turn timer.'
+    });
+  }
+});
+
+router.post('/turn-timer/:id/cancel', rateLimitTurnTimer, (req, res) => {
+  try {
+    turnTimerStore.cancel(req.params.id);
+    res.set('Cache-Control', 'no-store').status(204).end();
+  } catch (error) {
+    res.set('Cache-Control', 'no-store').status(error.status || 500).json({
+      error: error.message || 'Unable to cancel the turn timer.'
+    });
+  }
+});
+
 router.get('/wall/health', async (req, res) => {
   try {
     const health = await wallStore.health();
@@ -1273,6 +1337,8 @@ router.post('/pdf', async (req, res) => {
 function resetForTest() {
   chatRateBuckets.clear();
   wallVoteRateBuckets.clear();
+  turnTimerRateBuckets.clear();
+  turnTimerStore.reset();
   catalogCache = null;
   catalogRefresh = null;
   modelReadyCache.clear();
@@ -1301,6 +1367,7 @@ module.exports.setMirrorCacheStatusProvider = setMirrorCacheStatusProvider;
 module.exports.startModelWarmer = startModelWarmer;
 module.exports.stopModelWarmer = stopModelWarmer;
 module.exports.closeWallStore = () => wallStore.close();
+module.exports.closeTurnTimerStore = () => turnTimerStore.close();
 module.exports._private = {
   cleanMessages,
   providerCandidates,
@@ -1327,10 +1394,13 @@ module.exports._private = {
   cadavreCors,
   clientIp,
   configuredWallVoteRateLimit,
+  configuredTurnTimerRateLimit,
   rateLimitChat,
   rateLimitVote,
+  rateLimitTurnTimer,
   createWallVoteHandler,
   WALL_VOTE_RATE_LIMIT,
+  TURN_TIMER_RATE_LIMIT,
   ollamaThinkSetting,
   providerTokenUsage,
   CHAT_DEADLINE_MS,

@@ -554,6 +554,8 @@ test('cadavre route limits CORS to the deployed sites and localhost', () => {
   assert.equal(_private.isAllowedOrigin('https://inference-arcade.com'), true);
   assert.equal(_private.isAllowedOrigin('https://milwrite.github.io'), true);
   assert.equal(_private.isAllowedOrigin('http://localhost:8800'), true);
+  assert.equal(_private.isAllowedOrigin('http://127.0.0.1:8800'), true);
+  assert.equal(_private.isAllowedOrigin('http://[::1]:8800'), true);
   assert.equal(_private.isAllowedOrigin('https://inference-arcade.com.evil.example'), false);
   assert.equal(_private.isAllowedOrigin('https://example.com'), false);
 });
