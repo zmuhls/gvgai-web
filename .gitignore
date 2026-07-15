@@ -74,6 +74,7 @@ node_modules/
 !web/public/marquee.html
 # Companion room subpages (iframe hosts) — tracked despite the global *.html ignore
 !web/public/cadavre.html
+!web/public/chess.html
 !web/public/haggle.html
 !web/public/langgames.html
 
