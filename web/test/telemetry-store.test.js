@@ -376,6 +376,127 @@ test('telemetry flush writes to Supabase idempotently on event_id', async () => 
   }
 });
 
+test('telemetry replays the fallback into Supabase once it recovers', async () => {
+  const originalFetch = global.fetch;
+  const fallbackPath = path.join(os.tmpdir(), `gvgai-telemetry-drain-${Date.now()}.jsonl`);
+  const store = new TelemetryStore();
+  store.configure({
+    enabled: true,
+    useEnv: false,
+    flushMs: 0,
+    batchSize: 10,
+    writeRetries: 0,
+    writeRetryMs: 0,
+    supabaseUrl: 'https://example.supabase.co',
+    supabaseServiceRoleKey: 'service-role-key',
+    fallbackPath
+  });
+
+  const insertedIds = [];
+  try {
+    // Outage: the write fails and the event spills to the JSONL fallback.
+    global.fetch = async () => ({ ok: false, status: 503, async text() { return 'unavailable'; } });
+    const tracked = store.track({
+      eventFamily: 'evaluation',
+      eventType: 'run_summary',
+      source: 'test',
+      payload: { won: true }
+    });
+    await store.flush();
+    assert.equal(store.getStorageStatus().state, 'error');
+    assert.ok(fs.existsSync(fallbackPath), 'event should be buffered to disk during outage');
+
+    // Recovery: the drain replays the fallback into Supabase idempotently and
+    // clears the file so nothing is lost or double-written.
+    global.fetch = async (url, options) => {
+      for (const row of JSON.parse(options.body)) insertedIds.push(row.event_id);
+      assert.match(url, /on_conflict=event_id/);
+      return { ok: true, async text() { return ''; } };
+    };
+    const result = await store.drainFallback();
+
+    assert.equal(result.drained, 1);
+    assert.deepEqual(insertedIds, [tracked.event_id]);
+    assert.equal(store.stats.drained, 1);
+    assert.equal(store.getStorageStatus().state, 'connected');
+    assert.ok(!fs.existsSync(`${fallbackPath}.draining`), 'rotated file should be removed after drain');
+    const leftover = fs.existsSync(fallbackPath) ? fs.readFileSync(fallbackPath, 'utf-8').trim() : '';
+    assert.equal(leftover, '', 'fallback file should be empty after a successful drain');
+  } finally {
+    global.fetch = originalFetch;
+    fs.rmSync(fallbackPath, { force: true });
+    fs.rmSync(`${fallbackPath}.draining`, { force: true });
+  }
+});
+
+test('telemetry retries transient write failures before giving up', async () => {
+  const originalFetch = global.fetch;
+  const store = new TelemetryStore();
+  store.configure({
+    enabled: true,
+    useEnv: false,
+    flushMs: 0,
+    batchSize: 10,
+    writeRetries: 2,
+    writeRetryMs: 0,
+    supabaseUrl: 'https://example.supabase.co',
+    supabaseServiceRoleKey: 'service-role-key'
+  });
+
+  let calls = 0;
+  try {
+    // Two transient 500s, then success — the batch should persist, not spill.
+    global.fetch = async () => {
+      calls += 1;
+      if (calls < 3) return { ok: false, status: 500, async text() { return 'boom'; } };
+      return { ok: true, async text() { return ''; } };
+    };
+    store.track({ eventFamily: 'evaluation', eventType: 'run_summary', source: 'test' });
+    await store.flush();
+
+    assert.equal(calls, 3);
+    assert.equal(store.stats.persisted, 1);
+    assert.equal(store.stats.lastWriteError, null);
+    assert.equal(store.getStorageStatus().state, 'connected');
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('telemetry does not retry deterministic 4xx write failures', async () => {
+  const originalFetch = global.fetch;
+  const fallbackPath = path.join(os.tmpdir(), `gvgai-telemetry-4xx-${Date.now()}.jsonl`);
+  const store = new TelemetryStore();
+  store.configure({
+    enabled: true,
+    useEnv: false,
+    flushMs: 0,
+    batchSize: 10,
+    writeRetries: 3,
+    writeRetryMs: 0,
+    supabaseUrl: 'https://example.supabase.co',
+    supabaseServiceRoleKey: 'service-role-key',
+    fallbackPath
+  });
+
+  let calls = 0;
+  try {
+    global.fetch = async () => {
+      calls += 1;
+      return { ok: false, status: 400, async text() { return 'bad row'; } };
+    };
+    store.track({ eventFamily: 'evaluation', eventType: 'run_summary', source: 'test' });
+    await store.flush();
+
+    assert.equal(calls, 1, 'a 400 should not be retried');
+    assert.equal(store.getStorageStatus().state, 'error');
+    assert.ok(fs.existsSync(fallbackPath));
+  } finally {
+    global.fetch = originalFetch;
+    fs.rmSync(fallbackPath, { force: true });
+  }
+});
+
 test('telemetry status separates read failures from write failures', async () => {
   const originalFetch = global.fetch;
   const fallbackPath = path.join(os.tmpdir(), `gvgai-telemetry-rw-${Date.now()}.jsonl`);

@@ -6,6 +6,13 @@ const DEFAULT_EVENT_LIMIT = 500;
 const DEFAULT_BATCH_SIZE = 25;
 const DEFAULT_FLUSH_MS = 3000;
 const DEFAULT_FALLBACK_READ_BYTES = 2 * 1024 * 1024;
+// Live writes retry a few times before dropping to the JSONL fallback, so a
+// brief Supabase blip does not immediately spill events to (ephemeral) disk.
+const DEFAULT_WRITE_RETRIES = 3;
+const DEFAULT_WRITE_RETRY_MS = 300;
+// Suffix for the fallback file while it is being replayed into Supabase.
+const DRAIN_SUFFIX = '.draining';
+const DRAIN_BATCH_SIZE = 100;
 // How far back the Supabase fetch reaches when building a dashboard snapshot.
 // Aggregation itself is not time-windowed (see buildDashboardSnapshot); this
 // only bounds the cloud query. The JSONL fallback reads its tail bytes instead.
@@ -26,6 +33,61 @@ const EVENT_FAMILIES = new Set([
 function parsePositiveInteger(value, fallback) {
   const parsed = Number.parseInt(value, 10);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseNonNegativeInteger(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function delay(ms) {
+  return new Promise(resolve => {
+    const timer = setTimeout(resolve, ms);
+    if (timer.unref) timer.unref();
+  });
+}
+
+// Retry only failures that a later attempt could plausibly recover from:
+// network errors (status null) and transient server/rate-limit responses.
+// A 4xx like 400 (bad row) or 401 (bad key) is deterministic — don't retry it.
+function isRetryableStatus(status) {
+  return status === null || status === undefined || status === 408 || status === 429 || status >= 500;
+}
+
+function readJsonlEvents(filePath) {
+  if (!fs.existsSync(filePath)) return [];
+  return fs.readFileSync(filePath, 'utf-8')
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
+function uniqueByEventId(events) {
+  const seen = new Set();
+  const unique = [];
+  for (const event of events) {
+    const eventId = event.event_id || event.payload?.event_id;
+    if (eventId && seen.has(eventId)) continue;
+    if (eventId) seen.add(eventId);
+    unique.push(event);
+  }
+  return unique;
+}
+
+function chunkArray(items, size) {
+  const chunks = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
 }
 
 function parseNonNegativeNumber(value) {
@@ -109,10 +171,14 @@ class TelemetryStore {
     this.buffer = [];
     this.flushTimer = null;
     this.flushInFlight = false;
+    this.drainInFlight = false;
+    this.maxWriteRetries = DEFAULT_WRITE_RETRIES;
+    this.writeRetryBaseMs = DEFAULT_WRITE_RETRY_MS;
     this.stats = {
       accepted: 0,
       persisted: 0,
       fallback: 0,
+      drained: 0,
       failures: 0,
       dropped: 0,
       // lastError mirrors the most recent failure of either kind for
@@ -148,6 +214,14 @@ class TelemetryStore {
       options.fallbackReadBytes || env.TELEMETRY_FALLBACK_READ_BYTES,
       DEFAULT_FALLBACK_READ_BYTES
     );
+    this.maxWriteRetries = parseNonNegativeInteger(
+      options.writeRetries ?? env.TELEMETRY_WRITE_RETRIES,
+      DEFAULT_WRITE_RETRIES
+    );
+    this.writeRetryBaseMs = parseNonNegativeInteger(
+      options.writeRetryMs ?? env.TELEMETRY_WRITE_RETRY_MS,
+      DEFAULT_WRITE_RETRY_MS
+    );
     const hasSupabaseUrl = Object.prototype.hasOwnProperty.call(options, 'supabaseUrl');
     const hasServiceRoleKey = Object.prototype.hasOwnProperty.call(options, 'supabaseServiceRoleKey');
     this.supabaseUrl = trimTrailingSlash(hasSupabaseUrl ? options.supabaseUrl : env.SUPABASE_URL);
@@ -158,7 +232,7 @@ class TelemetryStore {
 
     if (this.enabled && this.flushMs > 0) {
       this.flushTimer = setInterval(() => {
-        this.flush().catch(error => {
+        this.pump().catch(error => {
           this.recordWriteError(error.message);
         });
       }, this.flushMs);
@@ -299,6 +373,13 @@ class TelemetryStore {
     return event;
   }
 
+  // One maintenance tick: push buffered events, then replay anything that had
+  // spilled to the JSONL fallback back into Supabase. Runs on the flush timer.
+  async pump() {
+    await this.flush();
+    await this.drainFallback();
+  }
+
   async flush() {
     if (!this.enabled || this.buffer.length === 0 || this.flushInFlight) return;
 
@@ -309,7 +390,7 @@ class TelemetryStore {
       if (this.isSupabaseReady()) {
         // Idempotent insert: event_id has a unique index, so a re-flushed or
         // backfilled batch resolves as a no-op instead of a 409 write error.
-        await this.writeSupabase(batch, { ignoreDuplicates: true });
+        await this.writeSupabaseWithRetry(batch, { ignoreDuplicates: true });
         this.stats.persisted += batch.length;
         this.stats.lastFlushAt = new Date().toISOString();
         this.stats.lastWriteError = null;
@@ -327,23 +408,99 @@ class TelemetryStore {
     } finally {
       this.flushInFlight = false;
     }
+
+    // A live batch just succeeded — opportunistically replay any events that
+    // spilled to the fallback during an earlier outage.
+    if (this.isSupabaseReady() && !this.stats.lastWriteError) {
+      await this.drainFallback();
+    }
+  }
+
+  // Replays fallback JSONL into Supabase so events written during an outage are
+  // not lost on ephemeral disk. The file is rotated to *.draining first so
+  // concurrent appends land in a fresh file; on success the rotated file is
+  // removed, on failure it is left for the next attempt. Idempotent on
+  // event_id, so a partially-uploaded file never duplicates rows.
+  async drainFallback() {
+    if (!this.isSupabaseReady() || this.drainInFlight) return { drained: 0 };
+
+    const drainPath = `${this.fallbackPath}${DRAIN_SUFFIX}`;
+    if (!fs.existsSync(drainPath)) {
+      if (!fs.existsSync(this.fallbackPath)) return { drained: 0 };
+      if (fs.statSync(this.fallbackPath).size === 0) return { drained: 0 };
+    }
+
+    this.drainInFlight = true;
+    try {
+      if (!fs.existsSync(drainPath)) {
+        fs.renameSync(this.fallbackPath, drainPath);
+      }
+
+      const events = uniqueByEventId(readJsonlEvents(drainPath))
+        .map(row => this.eventFromDatabaseRow(row));
+
+      if (events.length === 0) {
+        fs.rmSync(drainPath, { force: true });
+        return { drained: 0 };
+      }
+
+      for (const batch of chunkArray(events, DRAIN_BATCH_SIZE)) {
+        await this.writeSupabaseWithRetry(batch, { ignoreDuplicates: true });
+        this.stats.drained += batch.length;
+      }
+
+      fs.rmSync(drainPath, { force: true });
+      this.stats.lastFlushAt = new Date().toISOString();
+      this.stats.lastWriteError = null;
+      if (!this.stats.lastReadError) this.stats.lastError = null;
+      return { drained: events.length };
+    } catch (error) {
+      // Leave the rotated file in place; the next tick retries it.
+      this.recordWriteError(error.message);
+      return { drained: 0, error: error.message };
+    } finally {
+      this.drainInFlight = false;
+    }
+  }
+
+  async writeSupabaseWithRetry(events, options = {}) {
+    let attempt = 0;
+    for (;;) {
+      try {
+        return await this.writeSupabase(events, options);
+      } catch (error) {
+        attempt += 1;
+        if (attempt > this.maxWriteRetries || !isRetryableStatus(error.status)) throw error;
+        if (this.writeRetryBaseMs > 0) await delay(this.writeRetryBaseMs * attempt);
+      }
+    }
   }
 
   async writeSupabase(events, options = {}) {
     const params = new URLSearchParams();
     if (options.ignoreDuplicates) params.set('on_conflict', 'event_id');
     const query = params.toString() ? `?${params}` : '';
-    const response = await fetch(`${this.supabaseUrl}/rest/v1/${this.tableName}${query}`, {
-      method: 'POST',
-      headers: this.supabaseHeaders(options.ignoreDuplicates
-        ? 'resolution=ignore-duplicates,return=minimal'
-        : 'return=minimal'),
-      body: JSON.stringify(events.map(event => this.databaseRow(event)))
-    });
+    let response;
+    try {
+      response = await fetch(`${this.supabaseUrl}/rest/v1/${this.tableName}${query}`, {
+        method: 'POST',
+        headers: this.supabaseHeaders(options.ignoreDuplicates
+          ? 'resolution=ignore-duplicates,return=minimal'
+          : 'return=minimal'),
+        body: JSON.stringify(events.map(event => this.databaseRow(event)))
+      });
+    } catch (error) {
+      // Network-level failure (DNS, socket, timeout) — retryable.
+      const wrapped = new Error(`Supabase request failed: ${error.message}`);
+      wrapped.status = null;
+      throw wrapped;
+    }
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Supabase ${response.status}: ${body.slice(0, 300)}`);
+      const error = new Error(`Supabase ${response.status}: ${body.slice(0, 300)}`);
+      error.status = response.status;
+      throw error;
     }
   }
 
