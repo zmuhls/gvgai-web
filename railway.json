@@ -8,7 +8,6 @@
     "preDeployCommand": "npm run wall:migrate",
     "healthcheckPath": "/api/cadavre/wall/health",
     "healthcheckTimeout": 300,
-    "overlapSeconds": 30,
     "drainingSeconds": 20,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3

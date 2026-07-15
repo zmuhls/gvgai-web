@@ -35,6 +35,7 @@ test('Cadavre ships the model catalog UI with additive account and poem features
   assert.match(html, /id="exportPdfBtn"/);
   assert.doesNotMatch(html, /exportMdBtn|text\/markdown|save as markdown/i);
   assert.match(html, /\[502, 503, 504\]\.includes/);
+  assert.match(html, /retryDelays = \[1000, 2000, 3000\]/);
   assert.match(html, /src="\/assets\/cadavre-title\.png"/);
   assert.doesNotMatch(html, /milwrite\.github\.io\/cadavre-exquis\/assets\/title-cutup/);
   assert.ok(fs.statSync(titlePath).size > 100000);
@@ -49,9 +50,9 @@ test('Cadavre ships the model catalog UI with additive account and poem features
   }
 });
 
-test('Railway overlaps releases so active turns survive deployment cutover', () => {
+test('Railway keeps health-checked deploys while the browser covers volume remounts', () => {
   const railway = JSON.parse(fs.readFileSync(railwayPath, 'utf8'));
-  assert.equal(Number(railway.deploy.overlapSeconds), 30);
+  assert.equal(railway.deploy.overlapSeconds, undefined);
   assert.equal(railway.deploy.healthcheckPath, '/api/cadavre/wall/health');
 });
 
