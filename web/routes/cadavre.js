@@ -1,5 +1,6 @@
 const express = require('express');
 const { getConfig } = require('../lib/runtime-config');
+const { createPoemPdf, safeFilename } = require('../lib/cadavre-pdf');
 const { resolveModel } = require('../lib/models');
 const { CadavreWallStore } = require('../lib/cadavre-wall-store');
 const telemetry = require('../lib/telemetry-store');
@@ -1254,6 +1255,18 @@ router.post('/chat', rateLimitChat, async (req, res) => {
       error: 'Cadavre model routes are temporarily unavailable.',
       retryable: true
     });
+  }
+});
+
+router.post('/pdf', async (req, res) => {
+  try {
+    const pdf = await createPoemPdf(req.body || {});
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeFilename(req.body?.title)}"`);
+    res.send(pdf);
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message || 'Could not create PDF' });
   }
 });
 

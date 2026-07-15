@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Exquisite Corpse — Cadavre Exquis</title>
-  <meta name="description" content="Play exquisite corpse, the Surrealist parlor game, at a table that seats a small Gemma fine-tuned on public-domain surrealist and modernist poetry." />
+  <meta name="description" content="Play exquisite corpse, the Surrealist parlor game, with your choice of language model at the table." />
   <link rel="canonical" href="https://milwrite.github.io/cadavre-exquis/" />
   <meta name="theme-color" content="#0C0D10" />
   <meta property="og:type" content="website" />
@@ -60,6 +60,23 @@
       margin: 0 auto;
       padding: clamp(1rem, 3vw, 2.5rem) clamp(0.85rem, 2.5vw, 2rem) 4rem;
     }
+
+    [hidden] { display: none !important; }
+
+    .account-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 0.7rem;
+      min-height: 2.2rem;
+      margin-bottom: 0.8rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--label);
+    }
+
+    .account-area { display: flex; align-items: center; gap: 0.6rem; }
+    .account-name { color: var(--bone); }
 
     a { color: inherit; text-decoration: underline; text-underline-offset: 0.18em; text-decoration-color: var(--ash); }
     a:hover { color: var(--wine-bright); text-decoration-color: var(--wine-bright); }
@@ -384,6 +401,17 @@
 
     .status.err { color: var(--wine-bright); }
 
+    .turn-timer {
+      min-height: 1.6em;
+      margin: -0.55rem 0 0.8rem;
+      color: var(--wine-bright);
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
     .breathe { color: var(--wine-bright); animation: breathe 1.5s ease-in-out infinite; }
 
     @keyframes breathe { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.9; } }
@@ -453,6 +481,49 @@
     .quote:focus-visible { outline: 1px solid var(--wine-bright); outline-offset: 2px; }
 
     .reveal-actions { display: flex; justify-content: center; gap: 0.8rem; flex-wrap: wrap; }
+
+    .edit-panel, .library {
+      margin: 0 auto 2rem;
+      padding: 1.1rem;
+      border: 1px solid var(--crease);
+    }
+
+    .edit-panel { width: min(100%, 40rem); }
+    .edit-panel label {
+      display: block;
+      margin-bottom: 0.9rem;
+      color: var(--label);
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .edit-panel input, .edit-panel textarea {
+      width: 100%;
+      margin-top: 0.35rem;
+      padding: 0.65rem;
+      color: var(--bone);
+      background: rgba(12, 13, 16, 0.7);
+      border: 1px solid var(--crease);
+      font-family: var(--serif);
+      font-size: 1rem;
+    }
+    .edit-panel textarea { min-height: 13rem; resize: vertical; line-height: 1.55; }
+
+    .library { width: min(100%, 50rem); margin-top: 3rem; }
+    .library-list { display: grid; gap: 0.65rem; }
+    .library-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.65rem;
+      border-bottom: 1px solid var(--crease);
+      font-family: var(--mono);
+      font-size: 0.76rem;
+    }
+    .library-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .library-row button { padding: 0.38rem 0.55rem; font-size: 0.62rem; }
 
     /* ── the wall ───────────────────────────────────────────────────────── */
     .wall { margin-top: 4rem; }
@@ -590,6 +661,8 @@
 
       .pin-meta { align-items: flex-start; }
       .pin-controls { width: 100%; justify-content: space-between; }
+      .library-row { grid-template-columns: minmax(0, 1fr) auto; }
+      .library-row button:last-child { grid-column: 2; }
     }
 
     @media (max-width: 24rem) {
@@ -636,6 +709,21 @@
     dialog input:focus { border-bottom-color: var(--wine); outline: none; }
     dialog .row { display: flex; justify-content: flex-end; gap: 0.8rem; }
 
+    .auth-card { padding: 0; }
+    .auth-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .auth-head h2 { margin: 0; font-size: 1.65rem; font-weight: 400; }
+    .auth-tabs { display: flex; gap: 0.55rem; margin: 1rem 0; }
+    .auth-form { display: grid; gap: 0.9rem; }
+    .auth-form label { color: var(--label); font-family: var(--mono); font-size: 0.7rem; }
+    .auth-form input {
+      margin: 0.3rem 0 0;
+      padding: 0.65rem;
+      border: 1px solid var(--crease);
+      font-family: var(--mono);
+    }
+    .auth-message { min-height: 1.4em; margin: 0; color: var(--label); font-family: var(--mono); font-size: 0.72rem; }
+    .auth-message.err { color: var(--wine-bright); }
+
     /* ── motion, print ──────────────────────────────────────────────────── */
     @media (prefers-reduced-motion: reduce) {
       .fold, .fold.lifting, .cue-words.rise, .cue-words.folding, .poem .line,
@@ -645,16 +733,23 @@
     }
 
     @media print {
+      @page { size: letter; margin: 0.72in; }
       :root { color-scheme: light; }
-      body { background: #fff; color: #111; }
+      html, body { min-height: 0; background: #fff; color: #111; }
+      .page { max-width: none; margin: 0; padding: 0; }
       header .epigraph, .prose, .table, .sheet, .wall, footer,
-      .reveal-actions, .eyebrow, .reading .pending, .reading .err { display: none; }
+      .account-bar, .reveal-actions, .edit-panel, .library, dialog,
+      .eyebrow, .reading .pending, .reading .err { display: none !important; }
       h1 { font-size: 1.6rem; margin-bottom: 1.5rem; }
-      .poem { color: #111; font-size: 1.3rem; }
+      .game-shell, .game-stage { display: block; border: 0; padding: 0; }
+      .game-intro { display: none; }
+      .revealed { width: auto; max-width: 100%; margin: 0; padding: 0; }
+      .poem { max-width: 100%; color: #111; font-size: 18pt; line-height: 1.42; }
+      .poem .line { max-width: 100%; overflow-wrap: anywhere; animation: none; break-inside: avoid; }
       .poem .w.lit { background: none; box-shadow: none; color: #111; }
       .reading-seam::before { background: #ccc; }
       .reading-label { color: #888; }
-      .reading { color: #444; border-color: #ccc; }
+      .reading { max-width: 100%; color: #444; border-color: #ccc; font-size: 10.5pt; line-height: 1.5; }
       .reading .quote { border-bottom: 0; color: #444; }
     }
   </style>
@@ -662,6 +757,11 @@
 </head>
 <body>
   <div class="page">
+    <div class="account-bar" aria-label="account">
+      <span class="account-area" id="accountArea">
+        <button id="authOpenBtn" type="button">sign in</button>
+      </span>
+    </div>
     <main class="game-shell">
       <div class="game-intro">
         <header>
@@ -714,6 +814,14 @@
                 <option value="5">five words</option>
               </select>
             </label>
+            <label class="setting-field">
+              <span class="setting-label">countdown</span>
+              <select id="countdown" aria-label="turn countdown">
+                <option value="15">15 seconds</option>
+                <option value="30" selected>30 seconds</option>
+                <option value="60">one minute</option>
+              </select>
+            </label>
           </div>
           <div class="table-actions">
             <button id="startBtn" class="primary">begin</button>
@@ -734,6 +842,7 @@
                    autocorrect="off" spellcheck="false" aria-label="your contribution" />
             <button id="submitBtn" class="primary" type="submit">fold in</button>
           </form>
+          <div class="turn-timer" id="turnTimer" role="timer" hidden></div>
           <p class="status" id="status" role="status" aria-live="polite"></p>
           <div class="sheet-actions">
             <button id="undoBtn" disabled>unfold last</button>
@@ -745,11 +854,22 @@
         <section class="revealed" id="revealSec" hidden aria-label="the poem">
           <h2 class="eyebrow">The Poem</h2>
           <div class="poem" id="poem"></div>
+          <div class="edit-panel" id="editPanel" hidden>
+            <label>Title <input id="poemTitle" type="text" maxlength="120"></label>
+            <label>Poem <textarea id="poemEditor" maxlength="20000"></textarea></label>
+            <div class="reveal-actions">
+              <button id="applyEditBtn" class="primary" type="button">apply edits</button>
+              <button id="cancelEditBtn" type="button">cancel</button>
+            </div>
+          </div>
           <div class="reading-seam" aria-hidden="true"><span class="reading-label">close reading</span></div>
           <div class="reading" id="reading" aria-live="polite"></div>
+          <p class="status" id="revealStatus" role="status" aria-live="polite"></p>
           <div class="reveal-actions">
             <button id="againBtn" class="primary">play again</button>
-            <button id="exportMdBtn">save as markdown</button>
+            <button id="editBtn" type="button">edit poem</button>
+            <button id="savePoemBtn" type="button">save to my poems</button>
+            <button id="exportPdfBtn" type="button">export PDF</button>
             <button id="printBtn">print</button>
             <button id="pinBtn">pin to the wall</button>
           </div>
@@ -757,6 +877,11 @@
       </div>
 
     </main>
+
+    <section class="library" id="librarySec" hidden aria-label="My poems">
+      <h2 class="eyebrow">My Poems</h2>
+      <div class="library-list" id="libraryList"></div>
+    </section>
 
     <section class="wall" id="wallSec" hidden aria-label="the wall">
       <h2 class="eyebrow">The Wall</h2>
@@ -790,6 +915,29 @@
       <button id="pinConfirm" class="primary" type="button">pin it</button>
     </div>
   </dialog>
+
+  <dialog id="authDialog" aria-labelledby="authTitle">
+    <div class="auth-card">
+      <div class="auth-head">
+        <h2 id="authTitle">Sign in</h2>
+        <button id="authCloseBtn" type="button" aria-label="Close">close</button>
+      </div>
+      <div class="auth-tabs" id="authTabs">
+        <button id="loginTab" class="primary" type="button">sign in</button>
+        <button id="registerTab" type="button">register</button>
+      </div>
+      <form class="auth-form" id="authForm">
+        <label id="usernameRow">Username <input id="authUsername" autocomplete="username" maxlength="32"></label>
+        <label id="loginRow">Username or email <input id="authLogin" autocomplete="username" maxlength="254"></label>
+        <label id="emailRow">Email <input id="authEmail" type="email" autocomplete="email" maxlength="254"></label>
+        <label id="passwordRow">Password <input id="authPassword" type="password" autocomplete="current-password" maxlength="128"></label>
+        <label id="confirmRow">Confirm password <input id="authConfirm" type="password" autocomplete="new-password" maxlength="128"></label>
+        <p class="auth-message" id="authMessage" role="status"></p>
+        <button id="authSubmitBtn" class="primary" type="submit">sign in</button>
+        <button id="forgotBtn" class="linklike" type="button">forgot password?</button>
+      </form>
+    </div>
+  </dialog>
   <script src="https://milwrite.github.io/cadavre-exquis/assets/cadavre-core.js"></script>
   <script>
     /* ── connection: defaults < config.local.js < URL params (this visit only —
@@ -812,6 +960,8 @@
       apiKey: "",
     };
     const params = new URLSearchParams(location.search);
+    let savedSettings = {};
+    try { savedSettings = JSON.parse(localStorage.getItem("cadavreSettings") || "{}"); } catch {}
     const paramConn = {};
     if (params.get("endpoint")) paramConn.endpoint = params.get("endpoint");
     if (params.get("model")) paramConn.model = params.get("model");
@@ -875,12 +1025,15 @@ Return only ${capPhrase()}. Use plain text without a label, explanation, alterna
 
 Write one paragraph of 2–4 concrete sentences. Quote specific words and describe how syntax, juxtaposition, line breaks, or pronouns shape the poem. Treat the poem as a finished, single-authored work. Focus on what the language does.`;
 
-    let players = 2, modelSeat = 2, maxWords = 3;
+    let players = 2, modelSeat = 2, maxWords = 3, countdownSeconds = 30;
     let contributions = [];   // { text, isModel, seat }
     let actorIndex = 0;       // total turns taken so far
     let gameId = 0;           // stale in-flight replies must not join a new game
     let poemText = "", readingText = "";
     let gameActive = false;
+    let timerInterval = null, timerDeadline = 0;
+    let authUser = null, activePoem = null, authMode = "login";
+    let readingRequestId = 0;
     let poemTokens = [];      // { norm, el } per revealed poem word — the reading links to these
     const LEGACY_WALL_KEY = "cadavreWall";
     const WALL_TOKENS_KEY = "cadavreWallDeleteTokens";
@@ -909,6 +1062,40 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     function setStatus(html, isErr) {
       el("status").innerHTML = html;
       el("status").classList.toggle("err", !!isErr);
+    }
+
+    function setRevealStatus(message, isErr = false) {
+      el("revealStatus").textContent = message;
+      el("revealStatus").classList.toggle("err", isErr);
+    }
+
+    function clearTurnTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = null;
+      timerDeadline = 0;
+      el("turnTimer").hidden = true;
+      el("turnTimer").textContent = "";
+    }
+
+    function startTurnTimer() {
+      clearTurnTimer();
+      if (!gameActive || isModelTurn()) return;
+      timerDeadline = Date.now() + countdownSeconds * 1000;
+      const tick = () => {
+        const remaining = Math.max(0, Math.ceil((timerDeadline - Date.now()) / 1000));
+        el("turnTimer").hidden = false;
+        el("turnTimer").textContent = `${remaining} second${remaining === 1 ? "" : "s"} remain`;
+        if (remaining > 0) return;
+        clearTurnTimer();
+        if (!gameActive || isModelTurn()) return;
+        el("wordInput").disabled = true;
+        el("submitBtn").disabled = true;
+        actorIndex++;
+        setStatus("time expired — the fold passes on");
+        setTimeout(promptTurn, 650);
+      };
+      tick();
+      timerInterval = setInterval(tick, 250);
     }
 
     function readLegacyWall() {
@@ -1132,7 +1319,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     function promptTurn() {
       if (!gameActive) return;
       renderSeats();
-      if (isModelTurn()) { modelTurn(); return; }
+      if (isModelTurn()) { clearTurnTimer(); modelTurn(); return; }
       const cap = NUMBER_WORDS[maxWords];
       const limit = maxWords === 1 ? "one word" : `up to ${cap} words`;
       setStatus(`round ${round()} · player ${currentSeat()} writes — ${limit}`);
@@ -1141,6 +1328,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       el("undoBtn").disabled = !contributions.length;
       el("wordInput").placeholder = limit + "…";
       el("wordInput").focus();
+      startTurnTimer();
     }
 
     /* ── talking to the model ───────────────────────────────────────────── */
@@ -1188,7 +1376,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
 
       const available = routes.filter((route) => route?.id && route.available !== false);
       if (!available.length) { setSingleModelOption(); return; }
-      const chosen = Core.chooseModel(catalog, [CFG.model]);
+      const chosen = Core.chooseModel(catalog, [savedSettings.model, CFG.model].filter(Boolean));
       CFG.model = chosen.id;
       select.value = CFG.model;
       select.disabled = available.length < 2;
@@ -1213,6 +1401,8 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       activeModel = CFG.model;
       const option = event.target.options[event.target.selectedIndex];
       el("connModel").textContent = option?.textContent || CFG.model;
+      savedSettings.model = CFG.model;
+      try { localStorage.setItem("cadavreSettings", JSON.stringify(savedSettings)); } catch {}
     });
 
     function showRoute(data) {
@@ -1257,6 +1447,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     }
 
     async function modelTurn() {
+      clearTurnTimer();
       const id = gameId;
       renderSeats();
       setStatus(`round ${round()} · the model writes <span class="breathe">·</span>`);
@@ -1311,6 +1502,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
         setStatus(maxWords === 1 ? "one word only" : `one to ${cap} words`, true);
         return;
       }
+      clearTurnTimer();
       el("wordInput").value = "";
       addContribution(raw, false);
       promptTurn();
@@ -1319,6 +1511,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     /* ── undo: lift the newest fold back open ───────────────────────────── */
     function undoLast() {
       if (!gameActive || !contributions.length || el("undoBtn").disabled) return;
+      clearTurnTimer();
       gameId++;   // a straggling model reply must not rejoin the sheet
       cueSwap++;  // nor may a mid-flight fold animation resurrect the popped words
       el("cueWords").classList.remove("folding");
@@ -1348,16 +1541,54 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     /* ── the reveal: the sheet unfolds ──────────────────────────────────── */
     function reveal() {
       if (!contributions.length) return;
+      clearTurnTimer();
       gameActive = false;
       poemText = contributions.map((c) => c.text).join("\n");
+      activePoem = null;
       el("sheetSec").hidden = true;
       el("revealSec").hidden = false;
       poemTokens = renderPoemWords(el("poem"), contributions.map((c) => c.text), true);
+      el("poemTitle").value = contributions[0]?.text.slice(0, 80) || "Exquisite Corpse";
+      el("editPanel").hidden = true;
+      setRevealStatus("");
       el("revealSec").scrollIntoView({ behavior: "smooth", block: "start" });
       fetchReading();
     }
 
+    function currentPoemLines() {
+      return Array.from(el("poem").querySelectorAll(".line"), (line) => line.textContent);
+    }
+
+    function renderCurrentPoem(lines, stagger = false) {
+      poemTokens = renderPoemWords(el("poem"), lines, stagger);
+    }
+
+    function openEditor() {
+      el("poemEditor").value = currentPoemLines().join("\n");
+      if (!el("poemTitle").value) {
+        el("poemTitle").value = currentPoemLines()[0]?.slice(0, 80) || "Exquisite Corpse";
+      }
+      el("editPanel").hidden = false;
+      el("poemEditor").focus();
+    }
+
+    function applyEdits() {
+      const lines = el("poemEditor").value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      if (!lines.length) {
+        setRevealStatus("the edited poem needs at least one line", true);
+        return;
+      }
+      contributions = lines.map((text) => ({ text, isModel: false, seat: 0 }));
+      poemText = lines.join("\n");
+      renderCurrentPoem(lines);
+      el("editPanel").hidden = true;
+      readingText = "";
+      setRevealStatus("edits applied");
+      fetchReading();
+    }
+
     async function fetchReading() {
+      const requestId = ++readingRequestId;
       const readingEl = el("reading");
       readingEl.classList.remove("show");
       readingEl.innerHTML = `<span class="pending">reading <span class="breathe">·</span></span>`;
@@ -1366,10 +1597,12 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
           { role: "system", content: readingPrompt() },
           { role: "user", content: `Read this finished poem:\n\n${poemText}\n\nProvide the close reading paragraph.` },
         ], 400);
+        if (requestId !== readingRequestId) return;
         readingText = result.content;
         renderReadingLinked(readingEl, readingText, poemTokens);
         readingEl.classList.add("show");
       } catch (e) {
+        if (requestId !== readingRequestId) return;
         readingText = "";
         readingEl.innerHTML = `<span class="err">the reading didn’t arrive from ${esc(endpointHost())}
           — <button class="linklike" id="retryReading">try again</button></span>`;
@@ -1397,10 +1630,14 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       players = Number(el("playerCount").value);
       modelSeat = Number(el("modelSlot").value);
       maxWords = Number(el("maxWords").value);
+      countdownSeconds = Number(el("countdown").value);
+      savedSettings = { players, modelSeat, maxWords, countdownSeconds, model: CFG.model };
+      try { localStorage.setItem("cadavreSettings", JSON.stringify(savedSettings)); } catch {}
       contributions = [];
       actorIndex = 0;
       gameId++;
       poemText = readingText = "";
+      activePoem = null;
       gameActive = true;
       el("folds").innerHTML = "";
       updateFoldCount();
@@ -1416,6 +1653,8 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     }
 
     function clearTable() {
+      clearTurnTimer();
+      readingRequestId++;
       gameActive = false;
       contributions = [];
       el("sheetSec").hidden = true;
@@ -1446,17 +1685,259 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       if (gameActive && !isModelTurn()) el("wordInput").focus();
     });
 
-    /* ── keep, print, pin ───────────────────────────────────────────────── */
-    el("exportMdBtn").addEventListener("click", () => {
-      const md = `# Exquisite Corpse\n\n${poemText}\n\n` +
-        (readingText ? `## Close reading\n\n${readingText}\n\n` : "") +
-        `— played ${new Date().toLocaleDateString()} · model \`${activeModel}\`\n`;
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([md], { type: "text/markdown" }));
-      a.download = `exquisite-corpse-${Date.now()}.md`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-    });
+    /* ── accounts, saved poems, keep, print, pin ───────────────────────── */
+    async function api(path, options = {}) {
+      const response = await fetch(`/api/cadavre${path}`, {
+        credentials: "same-origin",
+        ...options,
+        headers: {
+          ...(options.body ? { "Content-Type": "application/json" } : {}),
+          ...(options.headers || {}),
+        },
+      });
+      const body = response.status === 204 ? null : await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.error || `request failed (${response.status})`);
+      return body;
+    }
+
+    function renderAccount() {
+      const area = el("accountArea");
+      area.innerHTML = "";
+      if (!authUser) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "sign in / register";
+        button.addEventListener("click", () => openAuth("login"));
+        area.appendChild(button);
+        return;
+      }
+      const name = document.createElement("span");
+      name.className = "account-name";
+      name.textContent = authUser.username;
+      const signOut = document.createElement("button");
+      signOut.type = "button";
+      signOut.textContent = "sign out";
+      signOut.addEventListener("click", async () => {
+        await api("/auth/logout", { method: "POST" }).catch(() => null);
+        authUser = null;
+        activePoem = null;
+        el("librarySec").hidden = true;
+        renderAccount();
+      });
+      area.append(name, signOut);
+    }
+
+    async function restoreAccount() {
+      try {
+        authUser = await api("/auth/me");
+        await loadLibrary();
+      } catch {
+        authUser = null;
+      }
+      renderAccount();
+    }
+
+    async function savePoem() {
+      if (!authUser) {
+        setRevealStatus("sign in or register to save poems", true);
+        openAuth("login");
+        return;
+      }
+      const payload = {
+        title: el("poemTitle").value || currentPoemLines()[0] || "Exquisite Corpse",
+        lines: currentPoemLines(),
+        reading: readingText,
+      };
+      try {
+        if (activePoem) {
+          const saved = await api(`/poems/${activePoem.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ ...payload, expected_revision: activePoem.revision }),
+          });
+          activePoem = { id: saved.id, revision: saved.revision };
+          setRevealStatus("changes saved to my poems");
+        } else {
+          const saved = await api("/poems", { method: "POST", body: JSON.stringify(payload) });
+          activePoem = { id: saved.id, revision: saved.revision };
+          setRevealStatus("poem saved to my poems");
+        }
+        await loadLibrary();
+      } catch (error) {
+        setRevealStatus(error.message, true);
+      }
+    }
+
+    function openSavedPoem(poem) {
+      clearTurnTimer();
+      readingRequestId++;
+      gameActive = false;
+      contributions = poem.lines.map((text) => ({ text, isModel: false, seat: 0 }));
+      poemText = poem.lines.join("\n");
+      readingText = poem.reading || "";
+      activePoem = { id: poem.id, revision: poem.revision };
+      el("poemTitle").value = poem.title;
+      renderCurrentPoem(poem.lines);
+      if (readingText) renderReadingLinked(el("reading"), readingText, poemTokens);
+      else el("reading").textContent = "";
+      el("editPanel").hidden = true;
+      el("sheetSec").hidden = true;
+      el("revealSec").hidden = false;
+      setRevealStatus("opened from my poems");
+      el("revealSec").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    async function deleteSavedPoem(poem) {
+      if (!confirm(`Delete “${poem.title}”?`)) return;
+      try {
+        await api(`/poems/${poem.id}`, { method: "DELETE" });
+        if (activePoem?.id === poem.id) activePoem = null;
+        await loadLibrary();
+      } catch (error) {
+        setRevealStatus(error.message, true);
+      }
+    }
+
+    async function loadLibrary() {
+      if (!authUser) return;
+      const data = await api("/poems");
+      const list = el("libraryList");
+      list.innerHTML = "";
+      if (!data.poems.length) list.textContent = "No saved poems yet.";
+      data.poems.forEach((poem) => {
+        const row = document.createElement("div");
+        row.className = "library-row";
+        const title = document.createElement("span");
+        title.textContent = `${poem.title} · ${new Date(poem.updated_at).toLocaleDateString()}`;
+        const open = document.createElement("button");
+        open.type = "button";
+        open.textContent = "open";
+        open.addEventListener("click", () => openSavedPoem(poem));
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.textContent = "delete";
+        remove.addEventListener("click", () => deleteSavedPoem(poem));
+        row.append(title, open, remove);
+        list.appendChild(row);
+      });
+      el("librarySec").hidden = false;
+    }
+
+    function renderAuthMode() {
+      const modes = {
+        login: { title: "Sign in", submit: "sign in", login: true, password: true, forgot: true, tabs: true },
+        register: { title: "Create account", submit: "register", username: true, email: true, password: true, confirm: true, tabs: true },
+        forgot: { title: "Reset password", submit: "send reset link", email: true },
+        reset: { title: "Choose a new password", submit: "reset password", password: true, confirm: true },
+      };
+      const mode = modes[authMode];
+      el("authTitle").textContent = mode.title;
+      el("authSubmitBtn").textContent = mode.submit;
+      el("usernameRow").hidden = !mode.username;
+      el("loginRow").hidden = !mode.login;
+      el("emailRow").hidden = !mode.email;
+      el("passwordRow").hidden = !mode.password;
+      el("confirmRow").hidden = !mode.confirm;
+      el("forgotBtn").hidden = !mode.forgot;
+      el("authTabs").hidden = !mode.tabs;
+      el("loginTab").classList.toggle("primary", authMode === "login");
+      el("registerTab").classList.toggle("primary", authMode === "register");
+      el("authPassword").autocomplete = authMode === "login" ? "current-password" : "new-password";
+      el("authMessage").textContent = authMode === "register" || authMode === "reset"
+        ? "Use 8 or more characters, including an uppercase letter and a number."
+        : "";
+      el("authMessage").classList.remove("err");
+    }
+
+    function openAuth(mode) {
+      authMode = mode;
+      renderAuthMode();
+      if (!el("authDialog").open) el("authDialog").showModal();
+    }
+
+    async function submitAuth(event) {
+      event.preventDefault();
+      const password = el("authPassword").value;
+      if ((authMode === "register" || authMode === "reset") && password !== el("authConfirm").value) {
+        el("authMessage").textContent = "Passwords do not match.";
+        el("authMessage").classList.add("err");
+        return;
+      }
+      el("authSubmitBtn").disabled = true;
+      try {
+        if (authMode === "login") {
+          authUser = await api("/auth/login", {
+            method: "POST", body: JSON.stringify({ login: el("authLogin").value, password }),
+          });
+        } else if (authMode === "register") {
+          authUser = await api("/auth/register", {
+            method: "POST",
+            body: JSON.stringify({ username: el("authUsername").value, email: el("authEmail").value, password }),
+          });
+        } else if (authMode === "forgot") {
+          const result = await api("/auth/forgot-password", {
+            method: "POST", body: JSON.stringify({ email: el("authEmail").value }),
+          });
+          el("authMessage").textContent = result.message;
+          el("authMessage").classList.remove("err");
+          return;
+        } else {
+          await api("/auth/reset-password", {
+            method: "POST",
+            body: JSON.stringify({ token: new URLSearchParams(location.search).get("reset"), password }),
+          });
+          history.replaceState({}, "", location.pathname);
+          openAuth("login");
+          el("authMessage").textContent = "Password reset. Sign in with the new password.";
+          return;
+        }
+        el("authDialog").close();
+        renderAccount();
+        await loadLibrary();
+        setRevealStatus("signed in — your poems can now be saved");
+      } catch (error) {
+        el("authMessage").textContent = error.message;
+        el("authMessage").classList.add("err");
+      } finally {
+        el("authSubmitBtn").disabled = false;
+      }
+    }
+
+    async function exportPdf() {
+      setRevealStatus("preparing print-ready PDF…");
+      try {
+        const response = await fetch("/api/cadavre/pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: el("poemTitle").value || currentPoemLines()[0] || "Exquisite Corpse",
+            lines: currentPoemLines(),
+            reading: readingText,
+          }),
+        });
+        if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "PDF export failed");
+        const url = URL.createObjectURL(await response.blob());
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = (el("poemTitle").value || "exquisite-corpse")
+          .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + ".pdf";
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        setRevealStatus("PDF ready — Letter size with protected print margins");
+      } catch (error) {
+        setRevealStatus(error.message, true);
+      }
+    }
+
+    el("editBtn").addEventListener("click", openEditor);
+    el("applyEditBtn").addEventListener("click", applyEdits);
+    el("cancelEditBtn").addEventListener("click", () => { el("editPanel").hidden = true; });
+    el("savePoemBtn").addEventListener("click", savePoem);
+    el("exportPdfBtn").addEventListener("click", exportPdf);
+    el("authCloseBtn").addEventListener("click", () => el("authDialog").close());
+    el("loginTab").addEventListener("click", () => openAuth("login"));
+    el("registerTab").addEventListener("click", () => openAuth("register"));
+    el("forgotBtn").addEventListener("click", () => openAuth("forgot"));
+    el("authForm").addEventListener("submit", submitAuth);
 
     el("printBtn").addEventListener("click", () => window.print());
 
@@ -1775,8 +2256,18 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     el("connModel").textContent = CFG.model;
     el("connHost").textContent = endpointHost();
 
-    loadModelOptions();
+    if ([2, 3, 4].includes(Number(savedSettings.players))) el("playerCount").value = savedSettings.players;
     syncSeats();
+    if (Number(savedSettings.modelSeat) <= Number(el("playerCount").value)) {
+      el("modelSlot").value = savedSettings.modelSeat || 2;
+    }
+    if ([1, 2, 3, 4, 5].includes(Number(savedSettings.maxWords))) el("maxWords").value = savedSettings.maxWords;
+    if ([15, 30, 60].includes(Number(savedSettings.countdownSeconds))) {
+      el("countdown").value = savedSettings.countdownSeconds;
+    }
+    loadModelOptions();
+    restoreAccount();
+    if (new URLSearchParams(location.search).get("reset")) openAuth("reset");
     rebuildWall();
     el("loadWallMore").addEventListener("click", () => loadWall(wallCursor));
     loadWall();

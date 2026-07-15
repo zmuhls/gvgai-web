@@ -243,13 +243,15 @@ app.use('/api/marble', require('./routes/marble'));
 app.use('/api/traces', require('./routes/traces-local'));
 app.use('/api/finetune', require('./routes/finetune'));
 app.use('/api/cadavre', cadavreRoutes);
+app.use('/api/cadavre', require('./routes/cadavre-users'));
 
 // Clean URL for the embeddable spectator page (also served as /marquee.html).
 app.get('/marquee', (req, res) => res.sendFile(path.join(__dirname, 'public', 'marquee.html')));
 
-// Cadavre follows the canonical GitHub Pages UI at runtime. A short server cache
-// keeps page loads fast, and public/cadavre.html remains the offline fallback.
-app.get('/cadavre', (req, res) => cadavreMirror.handler('main', req, res));
+// The integrated Cadavre page is release-controlled with this service. Serving
+// the committed file prevents an older upstream mirror from replacing features
+// that were deployed with the backend in the same revision.
+app.get('/cadavre', (req, res) => res.sendFile(path.join(__dirname, 'public', 'cadavre.html')));
 app.get('/cadavre/open-sheet', (req, res) => cadavreMirror.handler('openSheet', req, res));
 app.get('/haggle', (req, res) => res.sendFile(path.join(__dirname, 'public', 'haggle.html')));
 app.get('/langgames', (req, res) => res.sendFile(path.join(__dirname, 'public', 'langgames.html')));
