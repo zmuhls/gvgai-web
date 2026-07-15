@@ -115,7 +115,13 @@ class TelemetryStore {
       fallback: 0,
       failures: 0,
       dropped: 0,
+      // lastError mirrors the most recent failure of either kind for
+      // backward-compatible consumers; lastWriteError / lastReadError let the
+      // status surface tell a flush (write) failure apart from a fetch (read)
+      // failure instead of labeling every error a "write error".
       lastError: null,
+      lastWriteError: null,
+      lastReadError: null,
       lastFlushAt: null
     };
   }
@@ -153,8 +159,7 @@ class TelemetryStore {
     if (this.enabled && this.flushMs > 0) {
       this.flushTimer = setInterval(() => {
         this.flush().catch(error => {
-          this.stats.failures += 1;
-          this.stats.lastError = error.message;
+          this.recordWriteError(error.message);
         });
       }, this.flushMs);
       if (this.flushTimer.unref) this.flushTimer.unref();
@@ -191,13 +196,26 @@ class TelemetryStore {
       };
     }
 
-    if (this.stats.lastError) {
+    if (this.stats.lastWriteError) {
       return {
         state: 'error',
         label: 'Supabase write error',
         table: this.tableName,
         fallbackPath: this.fallbackPath,
-        lastError: this.stats.lastError
+        lastError: this.stats.lastWriteError,
+        lastWriteError: this.stats.lastWriteError,
+        lastReadError: this.stats.lastReadError
+      };
+    }
+
+    if (this.stats.lastReadError) {
+      return {
+        state: 'degraded',
+        label: 'Supabase read error',
+        table: this.tableName,
+        fallbackPath: this.fallbackPath,
+        lastError: this.stats.lastReadError,
+        lastReadError: this.stats.lastReadError
       };
     }
 
@@ -207,6 +225,18 @@ class TelemetryStore {
       table: this.tableName,
       fallbackPath: this.fallbackPath
     };
+  }
+
+  recordWriteError(message) {
+    this.stats.failures += 1;
+    this.stats.lastWriteError = message;
+    this.stats.lastError = message;
+  }
+
+  recordReadError(message) {
+    this.stats.failures += 1;
+    this.stats.lastReadError = message;
+    this.stats.lastError = message;
   }
 
   normalizeEvent(input = {}) {
@@ -261,8 +291,7 @@ class TelemetryStore {
       this.buffer.push(event);
       if (this.buffer.length >= this.batchSize) {
         this.flush().catch(error => {
-          this.stats.failures += 1;
-          this.stats.lastError = error.message;
+          this.recordWriteError(error.message);
         });
       }
     }
@@ -278,10 +307,13 @@ class TelemetryStore {
 
     try {
       if (this.isSupabaseReady()) {
-        await this.writeSupabase(batch);
+        // Idempotent insert: event_id has a unique index, so a re-flushed or
+        // backfilled batch resolves as a no-op instead of a 409 write error.
+        await this.writeSupabase(batch, { ignoreDuplicates: true });
         this.stats.persisted += batch.length;
         this.stats.lastFlushAt = new Date().toISOString();
-        this.stats.lastError = null;
+        this.stats.lastWriteError = null;
+        if (!this.stats.lastReadError) this.stats.lastError = null;
 
         if (this.fallbackMode === 'always') {
           this.writeFallback(batch);
@@ -290,8 +322,7 @@ class TelemetryStore {
         this.writeFallback(batch);
       }
     } catch (error) {
-      this.stats.failures += 1;
-      this.stats.lastError = error.message;
+      this.recordWriteError(error.message);
       this.writeFallback(batch);
     } finally {
       this.flushInFlight = false;
@@ -526,11 +557,11 @@ class TelemetryStore {
           limit,
           windowMs: options.windowMs || 24 * 60 * 60 * 1000
         });
-        this.stats.lastError = null;
+        this.stats.lastReadError = null;
+        if (!this.stats.lastWriteError) this.stats.lastError = null;
         return events.map(event => this.publicEvent(event));
       } catch (error) {
-        this.stats.failures += 1;
-        this.stats.lastError = error.message;
+        this.recordReadError(error.message);
       }
     }
     return this.getLocalRecentEvents(limit);
@@ -545,15 +576,15 @@ class TelemetryStore {
           limit: Math.max(limit, this.maxEvents),
           windowMs
         });
-        this.stats.lastError = null;
+        this.stats.lastReadError = null;
+        if (!this.stats.lastWriteError) this.stats.lastError = null;
         return this.buildDashboardSnapshot(cloudEvents, {
           dataSource: 'supabase',
           limit,
           windowMs
         });
       } catch (error) {
-        this.stats.failures += 1;
-        this.stats.lastError = error.message;
+        this.recordReadError(error.message);
       }
     }
 

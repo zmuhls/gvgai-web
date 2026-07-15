@@ -342,3 +342,79 @@ test('telemetry dashboard can hydrate from Supabase rows', async () => {
     global.fetch = originalFetch;
   }
 });
+
+test('telemetry flush writes to Supabase idempotently on event_id', async () => {
+  const originalFetch = global.fetch;
+  const store = new TelemetryStore();
+  store.configure({
+    enabled: true,
+    useEnv: false,
+    flushMs: 0,
+    batchSize: 10,
+    supabaseUrl: 'https://example.supabase.co',
+    supabaseServiceRoleKey: 'service-role-key'
+  });
+
+  let requestedUrl = null;
+  let requestedHeaders = null;
+  global.fetch = async (url, options) => {
+    requestedUrl = url;
+    requestedHeaders = options.headers;
+    return { ok: true, async text() { return ''; } };
+  };
+
+  try {
+    store.track({ eventFamily: 'evaluation', eventType: 'run_summary', source: 'test' });
+    await store.flush();
+
+    assert.match(requestedUrl, /on_conflict=event_id/);
+    assert.match(requestedHeaders.Prefer, /resolution=ignore-duplicates/);
+    assert.equal(store.stats.lastWriteError, null);
+    assert.equal(store.getStorageStatus().state, 'connected');
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('telemetry status separates read failures from write failures', async () => {
+  const originalFetch = global.fetch;
+  const fallbackPath = path.join(os.tmpdir(), `gvgai-telemetry-rw-${Date.now()}.jsonl`);
+  const store = new TelemetryStore();
+  store.configure({
+    enabled: true,
+    useEnv: false,
+    flushMs: 0,
+    batchSize: 10,
+    supabaseUrl: 'https://example.supabase.co',
+    supabaseServiceRoleKey: 'service-role-key',
+    fallbackPath
+  });
+
+  try {
+    // A failing read must report a read error, not a write error.
+    global.fetch = async () => ({ ok: false, status: 500, async text() { return 'boom'; } });
+    await store.getDashboardSnapshot({ limit: 10 });
+    let status = store.getStorageStatus();
+    assert.equal(status.state, 'degraded');
+    assert.equal(status.label, 'Supabase read error');
+    assert.equal(store.stats.lastWriteError, null);
+
+    // A failing flush reports a write error and falls back to JSONL.
+    global.fetch = async () => ({ ok: false, status: 400, async text() { return 'bad row'; } });
+    store.track({ eventFamily: 'evaluation', eventType: 'run_summary', source: 'test' });
+    await store.flush();
+    status = store.getStorageStatus();
+    assert.equal(status.state, 'error');
+    assert.equal(status.label, 'Supabase write error');
+    assert.match(status.lastWriteError, /Supabase 400/);
+
+    // A later successful read clears the read error but leaves the write error.
+    global.fetch = async () => ({ ok: true, async json() { return []; } });
+    await store.getDashboardSnapshot({ limit: 10 });
+    assert.equal(store.stats.lastReadError, null);
+    assert.equal(store.getStorageStatus().state, 'error');
+  } finally {
+    global.fetch = originalFetch;
+    fs.rmSync(fallbackPath, { force: true });
+  }
+});

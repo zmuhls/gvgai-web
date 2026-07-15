@@ -393,58 +393,24 @@
       </div>
     </div><!-- /prompt-dashboard -->
 
-    <!-- Telemetry Dashboard Section: a guided exhibit of four stations, A → D.
+    <!-- Telemetry Dashboard Section: a guided exhibit of three stations, A → C.
          Every station letter is a real waypoint; plaques tie the live data to
          the GVGAI research lineage. Renderer: js/telemetry-dashboard.js. -->
     <div id="telemetry-dashboard" class="section telemetry-section" aria-labelledby="telemetry-dashboard-title" hidden>
       <div class="dashboard-heading telemetry-heading">
         <p class="step-label">live data</p>
         <h2 id="telemetry-dashboard-title">Telemetry Stream</h2>
-        <p>Four stations. A: is it alive. B: what the models did. C: how they decided. D: where it all goes.</p>
+        <p>Three stations. A: what the models did. B: how they decided. C: where it all goes.</p>
       </div>
 
-      <section class="telemetry-station station-static" id="station-a" aria-labelledby="station-a-title">
-        <div class="station-head">
+      <details class="telemetry-station" id="station-a" aria-labelledby="station-a-title" open>
+        <summary class="station-head">
           <span class="station-letter" aria-hidden="true">A</span>
           <span class="station-title-group">
-            <span class="step-label">is it alive</span>
-            <h3 class="station-title" id="station-a-title">Signal</h3>
-          </span>
-          <span class="station-stat"><strong id="telemetry-events-rate">0</strong><small>events / min</small></span>
-        </div>
-        <p class="station-plaque">A fork of GVGAI — the General Video Game AI framework: 122 grid games written in VGDL, a description language built so agents can't memorize any single game. Here, small open-weight language models take the controls.</p>
-        <div class="station-body">
-          <div class="telemetry-status-strip" aria-live="polite">
-            <div>
-              <span>Supabase</span>
-              <strong id="telemetry-storage-status">checking</strong>
-            </div>
-            <div>
-              <span>Live socket</span>
-              <strong id="telemetry-live-clients">0 clients</strong>
-            </div>
-            <div>
-              <span>Data source</span>
-              <strong id="telemetry-fallback-status">ready</strong>
-            </div>
-            <div>
-              <span>Active backend</span>
-              <strong id="telemetry-backend-active">checking</strong>
-            </div>
-          </div>
-          <div id="telemetry-backend-grid" class="telemetry-backend-grid"></div>
-        </div>
-        <a class="station-next" href="#station-b" data-station-next="station-b">Next: B — Runs ↓</a>
-      </section>
-
-      <details class="telemetry-station" id="station-b" aria-labelledby="station-b-title">
-        <summary class="station-head">
-          <span class="station-letter" aria-hidden="true">B</span>
-          <span class="station-title-group">
             <span class="step-label">what the models did</span>
-            <h3 class="station-title" id="station-b-title">Runs</h3>
+            <h3 class="station-title" id="station-a-title">Runs</h3>
           </span>
-          <span class="station-stat"><strong id="station-b-stat">—</strong><small>runs · wins</small></span>
+          <span class="station-stat"><strong id="station-a-stat">—</strong><small>runs · wins</small></span>
           <span class="station-caret" aria-hidden="true">▸</span>
         </summary>
         <div class="station-inner">
@@ -478,18 +444,18 @@
               </div>
             </div>
           </div>
-          <a class="station-next" href="#station-c" data-station-next="station-c">Next: C — Decisions ↓</a>
+          <a class="station-next" href="#station-b" data-station-next="station-b">Next: B — Decisions ↓</a>
         </div>
       </details>
 
-      <details class="telemetry-station" id="station-c" aria-labelledby="station-c-title">
+      <details class="telemetry-station" id="station-b" aria-labelledby="station-b-title">
         <summary class="station-head">
-          <span class="station-letter" aria-hidden="true">C</span>
+          <span class="station-letter" aria-hidden="true">B</span>
           <span class="station-title-group">
             <span class="step-label">how they decided</span>
-            <h3 class="station-title" id="station-c-title">Decisions</h3>
+            <h3 class="station-title" id="station-b-title">Decisions</h3>
           </span>
-          <span class="station-stat"><strong id="station-c-stat">—</strong><small>avg latency</small></span>
+          <span class="station-stat"><strong id="station-b-stat">—</strong><small>avg latency</small></span>
           <span class="station-caret" aria-hidden="true">▸</span>
         </summary>
         <div class="station-inner">
@@ -510,18 +476,18 @@
               <div id="telemetry-guardrail" class="telemetry-bars"></div>
             </div>
           </div>
-          <a class="station-next" href="#station-d" data-station-next="station-d">Next: D — Records ↓</a>
+          <a class="station-next" href="#station-c" data-station-next="station-c">Next: C — Records ↓</a>
         </div>
       </details>
 
-      <details class="telemetry-station" id="station-d" aria-labelledby="station-d-title">
+      <details class="telemetry-station" id="station-c" aria-labelledby="station-c-title">
         <summary class="station-head">
-          <span class="station-letter" aria-hidden="true">D</span>
+          <span class="station-letter" aria-hidden="true">C</span>
           <span class="station-title-group">
             <span class="step-label">where it all goes</span>
-            <h3 class="station-title" id="station-d-title">Records</h3>
+            <h3 class="station-title" id="station-c-title">Records</h3>
           </span>
-          <span class="station-stat"><strong id="station-d-stat">—</strong><small>events stored</small></span>
+          <span class="station-stat"><strong id="station-c-stat">—</strong><small>events stored</small></span>
           <span class="station-caret" aria-hidden="true">▸</span>
         </summary>
         <div class="station-inner">
