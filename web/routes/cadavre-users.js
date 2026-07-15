@@ -57,12 +57,18 @@ function publicUser(user) {
   return { userId: user.id, username: user.username, email: user.email };
 }
 
+function resetEmailConfigured() {
+  return Boolean(
+    String(process.env.RESEND_API_KEY || '').trim() &&
+    String(process.env.CADAVRE_FROM_EMAIL || '').trim()
+  );
+}
+
 async function sendResetEmail(user, resetUrl) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.CADAVRE_FROM_EMAIL;
   if (!apiKey || !from) {
-    console.warn('[Cadavre Auth] Password reset email not sent: RESEND_API_KEY or CADAVRE_FROM_EMAIL is missing');
-    return;
+    throw new Error('Password reset email delivery is not configured');
   }
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -85,6 +91,7 @@ async function sendResetEmail(user, resetUrl) {
 function createCadavreUserRouter(options = {}) {
   const router = express.Router();
   const store = options.store || new CadavreUserStore({ sendReset: options.sendReset || sendResetEmail });
+  const canSendResetEmail = options.resetEmailConfigured || resetEmailConfigured;
 
   function currentUser(req) {
     return store.sessionUser(cookies(req)[SESSION_COOKIE]);
@@ -143,6 +150,9 @@ function createCadavreUserRouter(options = {}) {
   router.post('/auth/forgot-password', route(async (req, res) => {
     requireSameOrigin(req);
     store.rateLimit(`reset:${clientAddress(req)}`, 5, 60 * 60 * 1000);
+    if (!canSendResetEmail()) {
+      throw new StoreError(503, 'Password reset email is temporarily unavailable.');
+    }
     const baseUrl = process.env.PUBLIC_BASE_URL || requestOrigin(req);
     try {
       await store.requestPasswordReset(req.body?.email, (token) =>
@@ -151,6 +161,7 @@ function createCadavreUserRouter(options = {}) {
     } catch (error) {
       if (error instanceof StoreError) throw error;
       console.error('[Cadavre Auth] Password reset delivery failed', error);
+      throw new StoreError(502, 'Password reset email could not be sent. Please try again later.');
     }
     res.status(202).json({ ok: true, message: 'If that account exists, a reset link is on its way.' });
   }));
@@ -203,6 +214,7 @@ module.exports = {
     requestOrigin,
     requireSameOrigin,
     sessionCookie,
-    publicUser
+    publicUser,
+    resetEmailConfigured
   }
 };

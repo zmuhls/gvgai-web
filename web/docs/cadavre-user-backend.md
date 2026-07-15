@@ -20,6 +20,8 @@ Required production variables:
 - `RESEND_API_KEY` for transactional password-reset email
 - `CADAVRE_FROM_EMAIL`, using a verified sender such as `Cadavre Exquis <poems@example.org>`
 
+The forgot-password route returns `503` while either mail variable is absent and `502` when the provider rejects a delivery request. It returns `202` only when the request is accepted or the submitted address has no matching account.
+
 ## Data model
 
 - `cadavre_users`: case-insensitive username and email, scrypt password hash, creation and login timestamps.

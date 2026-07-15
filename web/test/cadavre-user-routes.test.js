@@ -8,11 +8,14 @@ const express = require('express');
 const { CadavreUserStore } = require('../lib/cadavre-user-store');
 const { createCadavreUserRouter } = require('../routes/cadavre-users');
 
-async function startAccountServer(t, databasePath) {
-  const store = new CadavreUserStore({ databasePath });
+async function startAccountServer(t, databasePath, options = {}) {
+  const store = new CadavreUserStore({ databasePath, sendReset: options.sendReset });
   const app = express();
   app.use(express.json());
-  app.use('/api/cadavre', createCadavreUserRouter({ store }));
+  app.use('/api/cadavre', createCadavreUserRouter({
+    store,
+    resetEmailConfigured: options.resetEmailConfigured
+  }));
   const server = await new Promise((resolve) => {
     const listener = app.listen(0, '127.0.0.1', () => resolve(listener));
   });
@@ -144,4 +147,67 @@ test('saved poems remain available after the account store reopens', (t) => {
   t.after(() => store.close());
   const loggedIn = store.login('archivefold', 'ArchiveFold7');
   assert.equal(store.listPoems(loggedIn.user.id)[0].title, 'Kept fold');
+});
+
+test('password reset reports missing email delivery configuration', async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cadavre-reset-config-'));
+  const databasePath = path.join(directory, 'cadavre.db');
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const { baseUrl } = await startAccountServer(t, databasePath, {
+    resetEmailConfigured: () => false
+  });
+
+  const result = await jsonRequest(baseUrl, '/auth/forgot-password', {
+    method: 'POST',
+    body: { email: 'paper@example.com' }
+  });
+  assert.equal(result.response.status, 503);
+  assert.equal(result.body.error, 'Password reset email is temporarily unavailable.');
+});
+
+test('password reset reports provider rejection instead of false success', async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cadavre-reset-provider-'));
+  const databasePath = path.join(directory, 'cadavre.db');
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const { baseUrl } = await startAccountServer(t, databasePath, {
+    resetEmailConfigured: () => true,
+    sendReset: async () => { throw new Error('provider rejected request'); }
+  });
+
+  const registration = await jsonRequest(baseUrl, '/auth/register', {
+    method: 'POST',
+    body: { username: 'resetfold', email: 'paper@example.com', password: 'FoldedPage9' }
+  });
+  assert.equal(registration.response.status, 201);
+
+  const result = await jsonRequest(baseUrl, '/auth/forgot-password', {
+    method: 'POST',
+    body: { email: 'paper@example.com' }
+  });
+  assert.equal(result.response.status, 502);
+  assert.equal(result.body.error, 'Password reset email could not be sent. Please try again later.');
+});
+
+test('password reset reports success after the provider accepts delivery', async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cadavre-reset-accepted-'));
+  const databasePath = path.join(directory, 'cadavre.db');
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  let deliveredUrl = '';
+  const { baseUrl } = await startAccountServer(t, databasePath, {
+    resetEmailConfigured: () => true,
+    sendReset: async (_user, url) => { deliveredUrl = url; }
+  });
+
+  const registration = await jsonRequest(baseUrl, '/auth/register', {
+    method: 'POST',
+    body: { username: 'mailfold', email: 'paper@example.com', password: 'FoldedPage9' }
+  });
+  assert.equal(registration.response.status, 201);
+
+  const result = await jsonRequest(baseUrl, '/auth/forgot-password', {
+    method: 'POST',
+    body: { email: 'paper@example.com' }
+  });
+  assert.equal(result.response.status, 202);
+  assert.match(deliveredUrl, /\/cadavre\?reset=/);
 });
