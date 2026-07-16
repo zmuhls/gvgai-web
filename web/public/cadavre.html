@@ -520,107 +520,6 @@
     }
     .edit-panel textarea { min-height: 13rem; resize: vertical; line-height: 1.55; }
 
-    /* ── the wall ───────────────────────────────────────────────────────── */
-    .wall { margin-top: 4rem; }
-
-    .wall-note {
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      color: var(--label);
-      text-align: center;
-      margin: -0.6rem 0 1.6rem;
-    }
-
-    .wall-more { margin-top: 1.4rem; text-align: center; }
-
-    .pin { border-top: 1px solid var(--crease); padding: 1.5rem 0.2rem; }
-
-    .pin-poem { white-space: pre-wrap; font-size: 1.08rem; line-height: 1.55; overflow-wrap: break-word; }
-
-    .pin-pages {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.38rem;
-      margin-top: 1rem;
-    }
-
-    .pin-page {
-      min-width: 2.1rem;
-      padding: 0.38rem 0.55rem;
-      font-size: 0.68rem;
-    }
-
-    .pin-page[aria-current="page"] {
-      border-color: var(--wine);
-      color: var(--wine-bright);
-      background: var(--wine-wash);
-    }
-
-    .pin-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 1rem;
-      margin-top: 0.8rem;
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      color: var(--label);
-    }
-
-    .pin-meta .linklike { font-size: 0.72rem; }
-
-    .pin-controls, .pin-votes {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 0.48rem;
-    }
-
-    .pin-vote {
-      min-width: 3.3rem;
-      padding: 0.38rem 0.58rem;
-      font-size: 0.7rem;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .pin-vote[aria-pressed="true"] {
-      border-color: var(--wine);
-      color: var(--wine-bright);
-      background: var(--wine-wash);
-    }
-
-    .pin-vote-status {
-      flex-basis: 100%;
-      color: var(--wine-bright);
-      font-size: 0.66rem;
-    }
-
-    .pin-reading { margin-top: 0.9rem; }
-
-    .pin-reading > summary {
-      font-family: var(--mono);
-      font-size: 0.66rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--label);
-      cursor: pointer;
-      list-style: none;
-    }
-
-    .pin-reading > summary::-webkit-details-marker { display: none; }
-    .pin-reading > summary::before { content: "+ "; }
-    .pin-reading[open] > summary::before { content: "\2013 "; }
-
-    .pin-reading-body {
-      margin-top: 0.6rem;
-      max-width: 40rem;
-      font-style: italic;
-      font-size: 0.98rem;
-      line-height: 1.6;
-      color: var(--reading);
-    }
-
     /* ── footer ─────────────────────────────────────────────────────────── */
     footer {
       margin-top: 4.5rem;
@@ -654,8 +553,6 @@
 
       .eyebrow { margin-bottom: 1rem; }
 
-      .pin-meta { align-items: flex-start; }
-      .pin-controls { width: 100%; justify-content: space-between; }
       .account-name { max-width: 7rem; }
     }
 
@@ -674,9 +571,6 @@
       .entry input, .entry button { width: 100%; }
       .sheet-actions, .reveal-actions { flex-direction: column; }
       .sheet-actions button, .reveal-actions button { width: 100%; }
-      .pin-controls { align-items: stretch; flex-direction: column; }
-      .pin-votes { width: 100%; }
-      .pin-vote { flex: 1; }
     }
 
     /* ── pin dialog ─────────────────────────────────────────────────────── */
@@ -736,7 +630,7 @@
       :root { color-scheme: light; }
       html, body { min-height: 0; background: #fff; color: #111; }
       .page { max-width: none; margin: 0; padding: 0; }
-      header .epigraph, .prose, .table, .sheet, .wall, footer,
+      header .epigraph, .prose, .table, .sheet, footer,
       .account-bar, .reveal-actions, .edit-panel, dialog,
       .eyebrow, .reading .pending, .reading .err { display: none !important; }
       h1 { font-size: 1.6rem; margin-bottom: 1.5rem; }
@@ -878,13 +772,6 @@
 
     </main>
 
-    <section class="wall" id="wallSec" aria-label="the wall">
-      <h2 class="eyebrow">The Wall</h2>
-      <p class="wall-note" id="wallNote">shared corpses, across browsers</p>
-      <div id="wallList"></div>
-      <div class="wall-more" id="wallMore" hidden><button id="loadWallMore" type="button">earlier corpses</button></div>
-    </section>
-
     <footer>
       <div>a barer surface for solo play: <a href="/cadavre/open-sheet">the open sheet</a> · <a href="https://github.com/milwrite/cadavre-exquis">source</a></div>
       <div id="connLine">model <span id="connModel"></span> at <span id="connHost"></span>
@@ -961,7 +848,7 @@
     if (params.get("endpoint")) paramConn.endpoint = params.get("endpoint");
     if (params.get("model")) paramConn.model = params.get("model");
     const CFG = Object.assign({}, DEFAULTS, window.CORPSE_CONFIG || {}, paramConn);
-    const WALL_API = REMOTE_API + "/wall";
+    const WALL_API = "/api/cadavre/wall";
     const TIMER_API = LOCAL_PAGE ? "/api/cadavre/turn-timer" : REMOTE_API + "/turn-timer";
     const isHttpEndpoint = (value) => /^https?:$/.test(new URL(value, location.href).protocol);
     try {
@@ -1032,20 +919,8 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     let authUser = null, activePoem = null, authMode = "login";
     let readingRequestId = 0;
     let poemTokens = [];      // { norm, el } per revealed poem word — the reading links to these
-    const LEGACY_WALL_KEY = "cadavreWall";
     const WALL_TOKENS_KEY = "cadavreWallDeleteTokens";
-    const WALL_VOTER_TOKEN_KEY = "cadavreWallVoterToken";
-    const WALL_VOTES_KEY = "cadavreWallVotes";
-    let legacyWall = readLegacyWall();
-    let remoteWall = [];
-    let wall = [];
-    let wallCursor = null;
-    let wallLoading = false;
     let wallTokens = readWallTokens();
-    let wallVoterToken = readOrCreateWallVoterToken();
-    let wallVotes = readWallVotes();
-    const wallViews = new Map();
-    const wallVoting = new Set();
     const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     const el = (id) => document.getElementById(id);
@@ -1177,33 +1052,6 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       }, 1000);
     }
 
-    function readLegacyWall() {
-      try {
-        const saved = JSON.parse(localStorage.getItem(LEGACY_WALL_KEY) || "[]");
-        if (!Array.isArray(saved)) return [];
-        return saved
-          .filter((item) => item && typeof item.poem === "string")
-          .map((item, index) => ({
-            name: String(item.name || "anonymous"),
-            poem: item.poem,
-            analysis: String(item.analysis || ""),
-            ts: item.ts || new Date(0).toISOString(),
-            legacyKey: `${index}:${item.ts || ""}:${item.poem}`,
-            local: true,
-          }));
-      } catch {
-        return [];
-      }
-    }
-
-    function saveLegacyWall() {
-      try {
-        localStorage.setItem(LEGACY_WALL_KEY, JSON.stringify(legacyWall.map((item) => ({
-          name: item.name, poem: item.poem, analysis: item.analysis, ts: item.ts,
-        }))));
-      } catch {}
-    }
-
     function readWallTokens() {
       try {
         const saved = JSON.parse(localStorage.getItem(WALL_TOKENS_KEY) || "{}");
@@ -1217,48 +1065,6 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       try {
         localStorage.setItem(WALL_TOKENS_KEY, JSON.stringify(wallTokens));
       } catch {}
-    }
-
-    function readOrCreateWallVoterToken() {
-      let saved = "";
-      try {
-        saved = String(localStorage.getItem(WALL_VOTER_TOKEN_KEY) || "").toLowerCase();
-      } catch {}
-      if (/^[0-9a-f]{64}$/.test(saved)) return saved;
-
-      try {
-        const bytes = new Uint8Array(32);
-        crypto.getRandomValues(bytes);
-        const token = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-        try {
-          localStorage.setItem(WALL_VOTER_TOKEN_KEY, token);
-        } catch {}
-        return token;
-      } catch {
-        return "";
-      }
-    }
-
-    function readWallVotes() {
-      try {
-        const saved = JSON.parse(localStorage.getItem(WALL_VOTES_KEY) || "{}");
-        if (!saved || typeof saved !== "object" || Array.isArray(saved)) return {};
-        return Object.fromEntries(Object.entries(saved).filter(([, value]) => value === 1 || value === -1));
-      } catch {
-        return {};
-      }
-    }
-
-    function saveWallVotes() {
-      try {
-        localStorage.setItem(WALL_VOTES_KEY, JSON.stringify(wallVotes));
-      } catch {}
-    }
-
-    function rebuildWall() {
-      const remote = remoteWall.map((item) => ({ ...item, remote: true }));
-      wall = [...remote, ...legacyWall].sort((a, b) => Date.parse(b.ts) - Date.parse(a.ts));
-      renderWall();
     }
 
     /* ── the poem ↔ reading link ─────────────────────────────────────────
@@ -1799,7 +1605,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       area.innerHTML = "";
       const wall = document.createElement("a");
       wall.className = "account-link";
-      wall.href = "#wallSec";
+      wall.href = "/cadavre/wall";
       wall.textContent = "The Wall";
       if (!authUser) {
         const button = document.createElement("button");
@@ -2002,7 +1808,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     async function pinToWall() {
       const confirm = el("pinConfirm");
       const status = el("pinStatus");
-      if (!poemText || wallLoading) return;
+      if (!poemText) return;
       confirm.disabled = true;
       status.hidden = false;
       status.textContent = "pinning…";
@@ -2020,281 +1826,15 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
         if (!response.ok || !data.item || !data.deleteToken) {
           throw new Error(data.error || "the shared wall did not accept this corpse");
         }
-        remoteWall.unshift(data.item);
         wallTokens[data.item.id] = data.deleteToken;
         saveWallTokens();
-        rebuildWall();
         el("pinDialog").close();
-        el("wallSec").scrollIntoView({ behavior: "smooth", block: "start" });
+        location.href = "/cadavre/wall";
       } catch (error) {
         status.textContent = error.message || "the shared wall is unavailable";
       } finally {
         confirm.disabled = false;
       }
-    }
-
-    /* ── the wall ───────────────────────────────────────────────────────── */
-    async function loadWall(cursor = null) {
-      if (wallLoading || (cursor && !wallCursor)) return;
-      wallLoading = true;
-      el("loadWallMore").disabled = true;
-      try {
-        const url = new URL(WALL_API, location.href);
-        url.searchParams.set("limit", "40");
-        if (cursor) url.searchParams.set("cursor", cursor);
-        const response = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !Array.isArray(data.items)) {
-          throw new Error(data.error || "the shared wall is unavailable");
-        }
-        if (cursor) {
-          const seen = new Set(remoteWall.map((item) => item.id));
-          remoteWall.push(...data.items.filter((item) => item?.id && !seen.has(item.id)));
-        } else {
-          remoteWall = data.items;
-        }
-        wallCursor = data.nextCursor || null;
-        rebuildWall();
-      } catch {
-        rebuildWall();
-      } finally {
-        wallLoading = false;
-        el("loadWallMore").disabled = false;
-      }
-    }
-
-    async function unpinWallItem(item, button) {
-      if (item.local) {
-        legacyWall = legacyWall.filter((entry) => entry.legacyKey !== item.legacyKey);
-        wallViews.delete(wallItemKey(item));
-        saveLegacyWall();
-        rebuildWall();
-        return;
-      }
-      const deleteToken = wallTokens[item.id];
-      if (!deleteToken) return;
-      button.disabled = true;
-      try {
-        const response = await fetch(`${WALL_API}/${encodeURIComponent(item.id)}/remove`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deleteToken }),
-        });
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({}));
-          throw new Error(data.error || "the pin could not be removed");
-        }
-        remoteWall = remoteWall.filter((entry) => entry.id !== item.id);
-        delete wallTokens[item.id];
-        delete wallVotes[item.id];
-        saveWallTokens();
-        saveWallVotes();
-        wallViews.delete(wallItemKey(item));
-        rebuildWall();
-      } catch (error) {
-        button.disabled = false;
-        button.title = error.message || "the pin could not be removed";
-      }
-    }
-
-    function wallItemKey(item) {
-      return item.id ? `remote:${item.id}` : `local:${item.legacyKey}`;
-    }
-
-    function wallView(item) {
-      const key = wallItemKey(item);
-      if (!wallViews.has(key)) {
-        wallViews.set(key, { page: 0, readingOpen: false, voteError: "" });
-      }
-      return wallViews.get(key);
-    }
-
-    function wallCount(value) {
-      const count = Number(value);
-      return Number.isSafeInteger(count) && count >= 0 ? count : 0;
-    }
-
-    function replaceWallItem(item) {
-      const key = wallItemKey(item);
-      const current = Array.from(el("wallList").children)
-        .find((node) => node.dataset.wallKey === key);
-      if (!current) {
-        renderWall();
-        return;
-      }
-      const details = current.querySelector(".pin-reading");
-      if (details) wallView(item).readingOpen = details.open;
-      current.replaceWith(renderWallItem(item));
-    }
-
-    async function voteWallItem(item, requested) {
-      if (!item.remote || !item.id || wallVoting.has(item.id)) return;
-      const view = wallView(item);
-      if (!wallVoterToken) wallVoterToken = readOrCreateWallVoterToken();
-      if (!wallVoterToken) {
-        view.voteError = "voting is unavailable in this browser";
-        replaceWallItem(item);
-        return;
-      }
-
-      const value = Core.nextWallVote(wallVotes[item.id] || 0, requested);
-      view.voteError = "";
-      wallVoting.add(item.id);
-      replaceWallItem(item);
-      try {
-        const response = await fetch(`${WALL_API}/${encodeURIComponent(item.id)}/vote`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ voterToken: wallVoterToken, value }),
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "the vote could not be saved");
-        if (data.id !== item.id) throw new Error("the wall returned the wrong corpse");
-
-        const viewerVote = Number(data.viewerVote);
-        if (viewerVote !== -1 && viewerVote !== 0 && viewerVote !== 1) {
-          throw new Error("the wall returned an invalid vote");
-        }
-        const upvotes = wallCount(data.upvotes);
-        const downvotes = wallCount(data.downvotes);
-        const returnedScore = Number(data.score);
-        const score = Number.isSafeInteger(returnedScore) ? returnedScore : upvotes - downvotes;
-        const index = remoteWall.findIndex((entry) => entry.id === item.id);
-        if (index < 0) throw new Error("the corpse is no longer on the wall");
-
-        remoteWall[index] = { ...remoteWall[index], upvotes, downvotes, score, viewerVote };
-        if (viewerVote) wallVotes[item.id] = viewerVote;
-        else delete wallVotes[item.id];
-        saveWallVotes();
-      } catch (error) {
-        view.voteError = error.message || "the vote could not be saved";
-      } finally {
-        wallVoting.delete(item.id);
-        const current = remoteWall.find((entry) => entry.id === item.id) || item;
-        replaceWallItem({ ...current, remote: true });
-      }
-    }
-
-    function renderWallItem(item) {
-      const view = wallView(item);
-      const pages = Core.paginateLines(item.poem, 20);
-      view.page = Math.min(Math.max(0, view.page), pages.length - 1);
-
-      const pin = document.createElement("div");
-      pin.className = "pin";
-      pin.dataset.wallKey = wallItemKey(item);
-      const poem = document.createElement("div");
-      poem.className = "pin-poem";
-      poem.setAttribute("aria-label", pages.length > 1
-        ? `poem page ${view.page + 1} of ${pages.length}`
-        : "poem");
-      const pinTokens = renderPoemWords(poem, pages[view.page], false);
-      pin.append(poem);
-
-      if (pages.length > 1) {
-        const pageNav = document.createElement("nav");
-        pageNav.className = "pin-pages";
-        pageNav.setAttribute("aria-label", `poem pages, ${pages.length} total`);
-        pages.forEach((unused, index) => {
-          const pageButton = document.createElement("button");
-          pageButton.type = "button";
-          pageButton.className = "pin-page";
-          pageButton.textContent = String(index + 1);
-          pageButton.setAttribute("aria-label", `page ${index + 1} of ${pages.length}`);
-          if (index === view.page) pageButton.setAttribute("aria-current", "page");
-          pageButton.addEventListener("click", () => {
-            if (view.page === index) return;
-            view.page = index;
-            replaceWallItem(item);
-            const replacement = Array.from(el("wallList").children)
-              .find((node) => node.dataset.wallKey === wallItemKey(item));
-            replacement?.querySelectorAll(".pin-page")[index]?.focus();
-          });
-          pageNav.append(pageButton);
-        });
-        pin.append(pageNav);
-      }
-
-      if (item.analysis) {
-        const det = document.createElement("details");
-        det.className = "pin-reading";
-        det.open = view.readingOpen;
-        const sum = document.createElement("summary");
-        sum.textContent = "close reading";
-        const body = document.createElement("div");
-        body.className = "pin-reading-body";
-        renderReadingLinked(body, item.analysis, pinTokens);
-        det.addEventListener("toggle", () => { view.readingOpen = det.open; });
-        det.append(sum, body);
-        pin.append(det);
-      }
-
-      const meta = document.createElement("div");
-      meta.className = "pin-meta";
-      const who = document.createElement("span");
-      const when = new Date(item.ts);
-      who.textContent = `— ${item.name} · ${isNaN(when) ? "" : when.toLocaleDateString()}`;
-      meta.append(who);
-
-      const controls = document.createElement("div");
-      controls.className = "pin-controls";
-      if (item.remote) {
-        const votes = document.createElement("div");
-        votes.className = "pin-votes";
-        votes.setAttribute("role", "group");
-        votes.setAttribute("aria-label", `votes for ${item.name}'s poem`);
-        const selected = wallVotes[item.id] || 0;
-        const pending = wallVoting.has(item.id);
-        [
-          { value: 1, label: "upvote", mark: "↑", count: wallCount(item.upvotes) },
-          { value: -1, label: "downvote", mark: "↓", count: wallCount(item.downvotes) },
-        ].forEach(({ value, label, mark, count }) => {
-          const vote = document.createElement("button");
-          vote.type = "button";
-          vote.className = "pin-vote";
-          vote.textContent = `${mark} ${count}`;
-          vote.disabled = pending;
-          vote.setAttribute("aria-pressed", String(selected === value));
-          vote.setAttribute("aria-label", `${label}, ${count} ${count === 1 ? "vote" : "votes"}`);
-          vote.addEventListener("click", () => voteWallItem(item, value));
-          votes.append(vote);
-        });
-        controls.append(votes);
-      }
-      if (item.local || wallTokens[item.id]) {
-        const unpin = document.createElement("button");
-        unpin.type = "button";
-        unpin.className = "linklike";
-        unpin.textContent = "unpin";
-        unpin.addEventListener("click", () => unpinWallItem(item, unpin));
-        controls.append(unpin);
-      }
-      if (controls.childElementCount) meta.append(controls);
-      if (view.voteError) {
-        const error = document.createElement("div");
-        error.className = "pin-vote-status";
-        error.setAttribute("role", "status");
-        error.setAttribute("aria-live", "polite");
-        error.textContent = view.voteError;
-        meta.append(error);
-      }
-      pin.append(meta);
-      return pin;
-    }
-
-    function renderWall() {
-      const list = el("wallList");
-      Array.from(list.children).forEach((pin) => {
-        const details = pin.querySelector(".pin-reading");
-        const view = wallViews.get(pin.dataset.wallKey);
-        if (details && view) view.readingOpen = details.open;
-      });
-      list.innerHTML = "";
-      el("wallNote").textContent = legacyWall.length
-        ? "shared corpses, plus earlier pins kept in this browser"
-        : "shared corpses, across browsers";
-      el("wallMore").hidden = !wallCursor;
-      wall.forEach((item) => list.appendChild(renderWallItem(item)));
     }
 
     /* ── footer connection line ─────────────────────────────────────────── */
@@ -2314,9 +1854,6 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     restoreAccount();
     if (new URLSearchParams(location.search).get("reset")) openAuth("reset");
     else if (new URLSearchParams(location.search).get("auth") === "login") openAuth("login");
-    rebuildWall();
-    el("loadWallMore").addEventListener("click", () => loadWall(wallCursor));
-    loadWall();
   </script>
 </body>
 </html>

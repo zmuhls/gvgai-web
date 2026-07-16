@@ -5,6 +5,7 @@ const test = require('node:test');
 
 const htmlPath = path.join(__dirname, '..', 'public', 'cadavre.html');
 const poemsPath = path.join(__dirname, '..', 'public', 'cadavre-poems.html');
+const wallPath = path.join(__dirname, '..', 'public', 'cadavre-wall.html');
 const titlePath = path.join(__dirname, '..', 'public', 'assets', 'cadavre-title.png');
 const serverPath = path.join(__dirname, '..', 'server.js');
 const routesPath = path.join(__dirname, '..', 'routes', 'cadavre.js');
@@ -34,9 +35,11 @@ test('Cadavre ships the model catalog UI with additive account and poem features
   assert.match(html, /id="editBtn"/);
   assert.match(html, /id="savePoemBtn"/);
   assert.match(html, /poems\.href = "\/cadavre\/poems"/);
-  assert.match(html, /wall\.href = "#wallSec"/);
+  assert.match(html, /wall\.href = "\/cadavre\/wall"/);
   assert.match(html, /area\.append\(poems, wall, name, signOut\)/);
   assert.doesNotMatch(html, /id="librarySec"|id="libraryList"|function loadLibrary/);
+  assert.doesNotMatch(html, /id="wallSec"|id="wallList"|id="loadWallMore"/);
+  assert.match(html, /location\.href = "\/cadavre\/wall"/);
   assert.match(html, /id="exportPdfBtn"/);
   assert.doesNotMatch(html, /exportMdBtn|text\/markdown|save as markdown/i);
   assert.match(html, /\[502, 503, 504\]\.includes/);
@@ -59,7 +62,7 @@ test('Cadavre keeps saved poem editing on its own account page', () => {
   const html = fs.readFileSync(poemsPath, 'utf8');
 
   assert.match(html, /<title>My Poems — Cadavre Exquis<\/title>/);
-  assert.match(html, /href="\/cadavre#wallSec">The Wall<\/a>/);
+  assert.match(html, /href="\/cadavre\/wall">The Wall<\/a>/);
   assert.match(html, /id="accountName"/);
   assert.match(html, /id="signOutBtn"/);
   assert.match(html, /id="poemTitle"/);
@@ -69,6 +72,24 @@ test('Cadavre keeps saved poem editing on its own account page', () => {
   assert.match(html, /expected_revision: poem\.revision/);
   assert.match(html, /method: "DELETE"/);
   assert.match(html, /await loadPoems\(poem\.id\)/);
+
+  for (const match of html.matchAll(/<script(?: [^>]*)?>([\s\S]*?)<\/script>/g)) {
+    if (match[1].trim()) assert.doesNotThrow(() => new Function(match[1]));
+  }
+});
+
+test('Cadavre serves the shared wall on its own page', () => {
+  const html = fs.readFileSync(wallPath, 'utf8');
+
+  assert.match(html, /<title>The Wall — Cadavre Exquis<\/title>/);
+  assert.match(html, /<main class="wall" aria-label="The Wall">/);
+  assert.match(html, /id="wallList"/);
+  assert.match(html, /id="loadWallMore"/);
+  assert.match(html, /\/vote`/);
+  assert.match(html, /\/remove`/);
+  assert.match(html, /Core\.paginateLines/);
+  assert.match(html, /renderReadingLinked/);
+  assert.match(html, /area\.append\(poems, name, signOut\)/);
 
   for (const match of html.matchAll(/<script(?: [^>]*)?>([\s\S]*?)<\/script>/g)) {
     if (match[1].trim()) assert.doesNotThrow(() => new Function(match[1]));
@@ -97,5 +118,6 @@ test('production Cadavre route serves the committed integrated page', () => {
   const source = fs.readFileSync(serverPath, 'utf8');
   assert.match(source, /app\.get\('\/cadavre',[\s\S]*?public', 'cadavre\.html'/);
   assert.match(source, /app\.get\('\/cadavre\/poems',[\s\S]*?public', 'cadavre-poems\.html'/);
+  assert.match(source, /app\.get\('\/cadavre\/wall',[\s\S]*?public', 'cadavre-wall\.html'/);
   assert.doesNotMatch(source, /app\.get\('\/cadavre', \(req, res\) => cadavreMirror\.handler\('main'/);
 });

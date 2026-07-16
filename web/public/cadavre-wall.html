@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Wall — Cadavre Exquis</title>
+  <meta name="description" content="Read, discuss, and vote on Exquisite Corpse poems shared across browsers." />
+  <meta name="theme-color" content="#0C0D10" />
+  <link rel="icon" type="image/png" sizes="32x32" href="https://milwrite.github.io/cadavre-exquis/assets/favicon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="https://milwrite.github.io/cadavre-exquis/assets/apple-touch-icon.png" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #0C0D10;
+      --bone: #E7E0D0;
+      --ash: #6E6A61;
+      --label: #8A8375;
+      --reading: #B8B2A4;
+      --crease: rgba(231, 224, 208, 0.13);
+      --wine: #A44856;
+      --wine-bright: #C57080;
+      --wine-wash: rgba(197, 112, 128, 0.14);
+      --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L", "P052", "Liberation Serif", "Noto Serif", Georgia, serif;
+      --mono: ui-monospace, "DejaVu Sans Mono", "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+    html, body { min-height: 100%; }
+
+    body {
+      background: var(--ink);
+      color: var(--bone);
+      font-family: var(--serif);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: underline;
+      text-decoration-color: var(--ash);
+      text-underline-offset: 0.18em;
+    }
+
+    a:hover { color: var(--wine-bright); text-decoration-color: var(--wine-bright); }
+    :focus-visible { outline: 2px solid var(--wine-bright); outline-offset: 2px; }
+
+    button {
+      color: var(--bone);
+      background: transparent;
+      border: 1px solid var(--crease);
+      padding: 0.7em 1.3em;
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+    }
+
+    button:hover { color: var(--wine-bright); border-color: var(--wine-bright); }
+    button:disabled { cursor: wait; opacity: 0.55; }
+    button.linklike { border: 0; padding: 0; color: var(--label); letter-spacing: 0; text-decoration: underline; }
+
+    .page {
+      width: min(100%, 76rem);
+      margin: 0 auto;
+      padding: clamp(1rem, 3vw, 2.5rem) clamp(0.85rem, 2.5vw, 2rem) 4rem;
+    }
+
+    .account-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 0.7rem;
+      min-height: 2.2rem;
+      margin-bottom: 0.8rem;
+      overflow: hidden;
+      color: var(--label);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      white-space: nowrap;
+    }
+
+    .account-area { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
+
+    .account-name {
+      max-width: 12rem;
+      overflow: hidden;
+      color: var(--bone);
+      text-overflow: ellipsis;
+    }
+
+    .masthead {
+      padding-bottom: clamp(1.7rem, 4vw, 3.5rem);
+      border-bottom: 1px solid var(--crease);
+    }
+
+    .brand {
+      display: block;
+      width: min(100%, 32rem);
+      line-height: 1;
+      text-decoration: none;
+    }
+
+    .brand img {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1300 / 155;
+      object-fit: contain;
+      object-position: left center;
+    }
+
+    h1 {
+      margin-top: clamp(1.5rem, 3vw, 2.4rem);
+      font-size: clamp(2.2rem, 1.7rem + 2.5vw, 4rem);
+      font-weight: 400;
+      line-height: 1.08;
+    }
+
+    .intro {
+      max-width: 39rem;
+      margin-top: 0.65rem;
+      color: var(--reading);
+      font-size: clamp(1rem, 0.96rem + 0.25vw, 1.16rem);
+    }
+
+    .wall {
+      width: min(100%, 56rem);
+      margin: clamp(2.4rem, 6vw, 4.5rem) auto 0;
+    }
+
+    .wall-note, .wall-status {
+      color: var(--label);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      text-align: center;
+    }
+
+    .wall-note { margin-bottom: 1.7rem; }
+    .wall-status { min-height: 1.5em; margin: 1.5rem 0; }
+    .wall-status.error { color: var(--wine-bright); }
+    .wall-more { margin-top: 1.4rem; text-align: center; }
+
+    .pin { border-top: 1px solid var(--crease); padding: 1.7rem 0.2rem; }
+    .pin:last-child { border-bottom: 1px solid var(--crease); }
+
+    .pin-poem {
+      white-space: pre-wrap;
+      font-size: clamp(1.05rem, 0.98rem + 0.35vw, 1.2rem);
+      line-height: 1.58;
+      overflow-wrap: break-word;
+    }
+
+    .pin-pages { display: flex; flex-wrap: wrap; gap: 0.38rem; margin-top: 1rem; }
+    .pin-page { min-width: 2.1rem; padding: 0.38rem 0.55rem; font-size: 0.68rem; }
+
+    .pin-page[aria-current="page"] {
+      border-color: var(--wine);
+      color: var(--wine-bright);
+      background: var(--wine-wash);
+    }
+
+    .pin-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 0.9rem;
+      color: var(--label);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+    }
+
+    .pin-controls, .pin-votes { display: flex; align-items: center; flex-wrap: wrap; gap: 0.48rem; }
+    .pin-vote { min-width: 3.3rem; padding: 0.38rem 0.58rem; font-size: 0.7rem; font-variant-numeric: tabular-nums; }
+
+    .pin-vote[aria-pressed="true"] {
+      border-color: var(--wine);
+      color: var(--wine-bright);
+      background: var(--wine-wash);
+    }
+
+    .pin-vote-status { flex-basis: 100%; color: var(--wine-bright); font-size: 0.66rem; }
+    .pin-reading { margin-top: 0.95rem; }
+
+    .pin-reading > summary {
+      color: var(--label);
+      font-family: var(--mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .pin-reading > summary::-webkit-details-marker { display: none; }
+    .pin-reading > summary::before { content: "+ "; }
+    .pin-reading[open] > summary::before { content: "\2013 "; }
+
+    .pin-reading-body {
+      max-width: 42rem;
+      margin-top: 0.65rem;
+      color: var(--reading);
+      font-size: 1rem;
+      font-style: italic;
+      line-height: 1.65;
+    }
+
+    .w { padding: 0 0.04em; transition: background-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease; }
+    .w.lit { color: var(--bone); background: var(--wine-wash); box-shadow: 0 2px 0 var(--wine); border-radius: 1px; }
+    .quote { border-bottom: 1px dotted var(--wine); cursor: default; }
+    .quote:hover, .quote:focus-visible { color: var(--wine-bright); }
+
+    footer {
+      margin-top: 3.5rem;
+      color: var(--label);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      text-align: center;
+    }
+
+    @media (max-width: 47.99rem) {
+      .account-name { max-width: 7rem; }
+      .pin-meta { align-items: flex-start; }
+      .pin-controls { width: 100%; justify-content: space-between; }
+    }
+
+    @media (max-width: 30rem) {
+      .account-bar, .account-area { gap: 0.52rem; font-size: 0.66rem; }
+      .account-name { max-width: 5rem; }
+      .account-bar button { padding-inline: 0.72em; font-size: 0.66rem; }
+      .pin-controls { align-items: stretch; flex-direction: column; }
+      .pin-votes { width: 100%; }
+      .pin-vote { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <nav class="account-bar" aria-label="Cadavre account and pages">
+      <a href="/cadavre">The Game</a>
+      <span class="account-area" id="accountArea">
+        <a href="/cadavre?auth=login">sign in / register</a>
+      </span>
+    </nav>
+
+    <header class="masthead">
+      <a class="brand" href="/cadavre" aria-label="Exquisite Corpse game">
+        <img src="/assets/cadavre-title.png" alt="Exquisite Corpse" width="1300" height="155">
+      </a>
+      <h1>The Wall</h1>
+      <p class="intro">Finished corpses shared from the table, gathered across browsers.</p>
+    </header>
+
+    <main class="wall" aria-label="The Wall">
+      <p class="wall-note" id="wallNote">shared corpses, across browsers</p>
+      <p class="wall-status" id="wallStatus" role="status" aria-live="polite">loading the wall…</p>
+      <div id="wallList"></div>
+      <div class="wall-more" id="wallMore" hidden>
+        <button id="loadWallMore" type="button">earlier corpses</button>
+      </div>
+    </main>
+
+    <footer><a href="/cadavre">return to the table</a></footer>
+  </div>
+
+  <script src="https://milwrite.github.io/cadavre-exquis/assets/cadavre-core.js"></script>
+  <script>
+    const API_BASE = "/api/cadavre";
+    const WALL_API = `${API_BASE}/wall`;
+    const LEGACY_WALL_KEY = "cadavreWall";
+    const WALL_TOKENS_KEY = "cadavreWallDeleteTokens";
+    const WALL_VOTER_TOKEN_KEY = "cadavreWallVoterToken";
+    const WALL_VOTES_KEY = "cadavreWallVotes";
+    const Core = window.CadavreCore;
+    const byId = (id) => document.getElementById(id);
+
+    let authUser = null;
+    let legacyWall = readLegacyWall();
+    let remoteWall = [];
+    let wall = [];
+    let wallCursor = null;
+    let wallLoading = false;
+    let wallTokens = readWallTokens();
+    let wallVoterToken = readOrCreateWallVoterToken();
+    let wallVotes = readWallVotes();
+    const wallViews = new Map();
+    const wallVoting = new Set();
+
+    async function api(path, options = {}) {
+      const response = await fetch(`${API_BASE}${path}`, {
+        credentials: "same-origin",
+        ...options,
+        headers: {
+          ...(options.body ? { "Content-Type": "application/json" } : {}),
+          ...(options.headers || {}),
+        },
+      });
+      const body = response.status === 204 ? null : await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.error || `request failed (${response.status})`);
+      return body;
+    }
+
+    function renderAccount() {
+      const area = byId("accountArea");
+      area.innerHTML = "";
+      if (!authUser) {
+        const signIn = document.createElement("a");
+        signIn.href = "/cadavre?auth=login";
+        signIn.textContent = "sign in / register";
+        area.appendChild(signIn);
+        return;
+      }
+      const poems = document.createElement("a");
+      poems.href = "/cadavre/poems";
+      poems.textContent = "My Poems";
+      const name = document.createElement("span");
+      name.className = "account-name";
+      name.title = authUser.username;
+      name.textContent = authUser.username;
+      const signOut = document.createElement("button");
+      signOut.type = "button";
+      signOut.textContent = "sign out";
+      signOut.addEventListener("click", async () => {
+        await api("/auth/logout", { method: "POST" }).catch(() => null);
+        location.href = "/cadavre";
+      });
+      area.append(poems, name, signOut);
+    }
+
+    async function restoreAccount() {
+      try {
+        authUser = await api("/auth/me");
+      } catch {
+        authUser = null;
+      }
+      renderAccount();
+    }
+
+    function readLegacyWall() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(LEGACY_WALL_KEY) || "[]");
+        if (!Array.isArray(saved)) return [];
+        return saved.filter((item) => item && typeof item.poem === "string").map((item, index) => ({
+          name: String(item.name || "anonymous"),
+          poem: item.poem,
+          analysis: String(item.analysis || ""),
+          ts: item.ts || new Date(0).toISOString(),
+          legacyKey: `${index}:${item.ts || ""}:${item.poem}`,
+          local: true,
+        }));
+      } catch {
+        return [];
+      }
+    }
+
+    function saveLegacyWall() {
+      try {
+        localStorage.setItem(LEGACY_WALL_KEY, JSON.stringify(legacyWall.map((item) => ({
+          name: item.name, poem: item.poem, analysis: item.analysis, ts: item.ts,
+        }))));
+      } catch {}
+    }
+
+    function readWallTokens() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(WALL_TOKENS_KEY) || "{}");
+        return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveWallTokens() {
+      try { localStorage.setItem(WALL_TOKENS_KEY, JSON.stringify(wallTokens)); } catch {}
+    }
+
+    function readOrCreateWallVoterToken() {
+      let saved = "";
+      try { saved = String(localStorage.getItem(WALL_VOTER_TOKEN_KEY) || "").toLowerCase(); } catch {}
+      if (/^[0-9a-f]{64}$/.test(saved)) return saved;
+      try {
+        const bytes = new Uint8Array(32);
+        crypto.getRandomValues(bytes);
+        const token = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+        try { localStorage.setItem(WALL_VOTER_TOKEN_KEY, token); } catch {}
+        return token;
+      } catch {
+        return "";
+      }
+    }
+
+    function readWallVotes() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(WALL_VOTES_KEY) || "{}");
+        if (!saved || typeof saved !== "object" || Array.isArray(saved)) return {};
+        return Object.fromEntries(Object.entries(saved).filter(([, value]) => value === 1 || value === -1));
+      } catch {
+        return {};
+      }
+    }
+
+    function saveWallVotes() {
+      try { localStorage.setItem(WALL_VOTES_KEY, JSON.stringify(wallVotes)); } catch {}
+    }
+
+    const normWord = Core.normalizeWord;
+    const matchPhrase = Core.matchPhrase;
+
+    function renderPoemWords(container, lines) {
+      container.innerHTML = "";
+      const tokens = [];
+      lines.forEach((text) => {
+        const line = document.createElement("div");
+        line.className = "line";
+        String(text).split(/\s+/).filter(Boolean).forEach((word, index) => {
+          if (index) line.appendChild(document.createTextNode(" "));
+          const span = document.createElement("span");
+          span.className = "w";
+          span.textContent = word;
+          tokens.push({ norm: normWord(word), el: span });
+          line.appendChild(span);
+        });
+        container.appendChild(line);
+      });
+      return tokens;
+    }
+
+    function renderReadingLinked(target, text, tokens) {
+      target.textContent = "";
+      const quotes = /“([^”]+)”|"([^"]+)"|«([^»]+)»/g;
+      let last = 0;
+      let match;
+      while ((match = quotes.exec(text))) {
+        if (match.index > last) target.appendChild(document.createTextNode(text.slice(last, match.index)));
+        const refs = matchPhrase(tokens, match[1] ?? match[2] ?? match[3]);
+        if (refs) {
+          const quote = document.createElement("span");
+          quote.className = "quote";
+          quote.tabIndex = 0;
+          quote.textContent = match[0];
+          const light = () => refs.forEach((index) => tokens[index].el.classList.add("lit"));
+          const clear = () => refs.forEach((index) => tokens[index].el.classList.remove("lit"));
+          quote.addEventListener("mouseenter", light);
+          quote.addEventListener("mouseleave", clear);
+          quote.addEventListener("focus", light);
+          quote.addEventListener("blur", clear);
+          target.appendChild(quote);
+        } else {
+          target.appendChild(document.createTextNode(match[0]));
+        }
+        last = quotes.lastIndex;
+      }
+      if (last < text.length) target.appendChild(document.createTextNode(text.slice(last)));
+    }
+
+    function wallItemKey(item) {
+      return item.id ? `remote:${item.id}` : `local:${item.legacyKey}`;
+    }
+
+    function wallView(item) {
+      const key = wallItemKey(item);
+      if (!wallViews.has(key)) wallViews.set(key, { page: 0, readingOpen: false, voteError: "" });
+      return wallViews.get(key);
+    }
+
+    function wallCount(value) {
+      const count = Number(value);
+      return Number.isSafeInteger(count) && count >= 0 ? count : 0;
+    }
+
+    function rebuildWall() {
+      const remote = remoteWall.map((item) => ({ ...item, remote: true }));
+      wall = [...remote, ...legacyWall].sort((a, b) => Date.parse(b.ts) - Date.parse(a.ts));
+      renderWall();
+    }
+
+    function replaceWallItem(item) {
+      const current = Array.from(byId("wallList").children)
+        .find((node) => node.dataset.wallKey === wallItemKey(item));
+      if (!current) {
+        renderWall();
+        return;
+      }
+      const details = current.querySelector(".pin-reading");
+      if (details) wallView(item).readingOpen = details.open;
+      current.replaceWith(renderWallItem(item));
+    }
+
+    async function voteWallItem(item, requested) {
+      if (!item.remote || !item.id || wallVoting.has(item.id)) return;
+      const view = wallView(item);
+      if (!wallVoterToken) wallVoterToken = readOrCreateWallVoterToken();
+      if (!wallVoterToken) {
+        view.voteError = "voting is unavailable in this browser";
+        replaceWallItem(item);
+        return;
+      }
+      const value = Core.nextWallVote(wallVotes[item.id] || 0, requested);
+      view.voteError = "";
+      wallVoting.add(item.id);
+      replaceWallItem(item);
+      try {
+        const response = await fetch(`${WALL_API}/${encodeURIComponent(item.id)}/vote`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ voterToken: wallVoterToken, value }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "the vote could not be saved");
+        if (data.id !== item.id) throw new Error("the wall returned the wrong corpse");
+        const viewerVote = Number(data.viewerVote);
+        if (![-1, 0, 1].includes(viewerVote)) throw new Error("the wall returned an invalid vote");
+        const upvotes = wallCount(data.upvotes);
+        const downvotes = wallCount(data.downvotes);
+        const returnedScore = Number(data.score);
+        const score = Number.isSafeInteger(returnedScore) ? returnedScore : upvotes - downvotes;
+        const index = remoteWall.findIndex((entry) => entry.id === item.id);
+        if (index < 0) throw new Error("the corpse is no longer on the wall");
+        remoteWall[index] = { ...remoteWall[index], upvotes, downvotes, score, viewerVote };
+        if (viewerVote) wallVotes[item.id] = viewerVote;
+        else delete wallVotes[item.id];
+        saveWallVotes();
+      } catch (error) {
+        view.voteError = error.message || "the vote could not be saved";
+      } finally {
+        wallVoting.delete(item.id);
+        replaceWallItem({ ...(remoteWall.find((entry) => entry.id === item.id) || item), remote: true });
+      }
+    }
+
+    async function unpinWallItem(item, button) {
+      if (item.local) {
+        legacyWall = legacyWall.filter((entry) => entry.legacyKey !== item.legacyKey);
+        wallViews.delete(wallItemKey(item));
+        saveLegacyWall();
+        rebuildWall();
+        return;
+      }
+      const deleteToken = wallTokens[item.id];
+      if (!deleteToken) return;
+      button.disabled = true;
+      try {
+        const response = await fetch(`${WALL_API}/${encodeURIComponent(item.id)}/remove`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deleteToken }),
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || "the pin could not be removed");
+        }
+        remoteWall = remoteWall.filter((entry) => entry.id !== item.id);
+        delete wallTokens[item.id];
+        delete wallVotes[item.id];
+        saveWallTokens();
+        saveWallVotes();
+        wallViews.delete(wallItemKey(item));
+        rebuildWall();
+      } catch (error) {
+        button.disabled = false;
+        button.title = error.message || "the pin could not be removed";
+      }
+    }
+
+    function renderWallItem(item) {
+      const view = wallView(item);
+      const pages = Core.paginateLines(item.poem, 20);
+      view.page = Math.min(Math.max(0, view.page), pages.length - 1);
+      const pin = document.createElement("article");
+      pin.className = "pin";
+      pin.dataset.wallKey = wallItemKey(item);
+      const poem = document.createElement("div");
+      poem.className = "pin-poem";
+      poem.setAttribute("aria-label", pages.length > 1
+        ? `poem page ${view.page + 1} of ${pages.length}`
+        : "poem");
+      const tokens = renderPoemWords(poem, pages[view.page]);
+      pin.appendChild(poem);
+
+      if (pages.length > 1) {
+        const pageNav = document.createElement("nav");
+        pageNav.className = "pin-pages";
+        pageNav.setAttribute("aria-label", `poem pages, ${pages.length} total`);
+        pages.forEach((unused, index) => {
+          const pageButton = document.createElement("button");
+          pageButton.type = "button";
+          pageButton.className = "pin-page";
+          pageButton.textContent = String(index + 1);
+          pageButton.setAttribute("aria-label", `page ${index + 1} of ${pages.length}`);
+          if (index === view.page) pageButton.setAttribute("aria-current", "page");
+          pageButton.addEventListener("click", () => {
+            if (view.page === index) return;
+            view.page = index;
+            replaceWallItem(item);
+          });
+          pageNav.appendChild(pageButton);
+        });
+        pin.appendChild(pageNav);
+      }
+
+      if (item.analysis) {
+        const reading = document.createElement("details");
+        reading.className = "pin-reading";
+        reading.open = view.readingOpen;
+        const summary = document.createElement("summary");
+        summary.textContent = "close reading";
+        const body = document.createElement("div");
+        body.className = "pin-reading-body";
+        renderReadingLinked(body, item.analysis, tokens);
+        reading.addEventListener("toggle", () => { view.readingOpen = reading.open; });
+        reading.append(summary, body);
+        pin.appendChild(reading);
+      }
+
+      const meta = document.createElement("div");
+      meta.className = "pin-meta";
+      const who = document.createElement("span");
+      const when = new Date(item.ts);
+      who.textContent = `— ${item.name} · ${Number.isNaN(when.getTime()) ? "" : when.toLocaleDateString()}`;
+      meta.appendChild(who);
+      const controls = document.createElement("div");
+      controls.className = "pin-controls";
+
+      if (item.remote) {
+        const votes = document.createElement("div");
+        votes.className = "pin-votes";
+        votes.setAttribute("role", "group");
+        votes.setAttribute("aria-label", `votes for ${item.name}'s poem`);
+        const selected = wallVotes[item.id] || 0;
+        const pending = wallVoting.has(item.id);
+        [
+          { value: 1, label: "upvote", mark: "↑", count: wallCount(item.upvotes) },
+          { value: -1, label: "downvote", mark: "↓", count: wallCount(item.downvotes) },
+        ].forEach(({ value, label, mark, count }) => {
+          const vote = document.createElement("button");
+          vote.type = "button";
+          vote.className = "pin-vote";
+          vote.textContent = `${mark} ${count}`;
+          vote.disabled = pending;
+          vote.setAttribute("aria-pressed", String(selected === value));
+          vote.setAttribute("aria-label", `${label}, ${count} ${count === 1 ? "vote" : "votes"}`);
+          vote.addEventListener("click", () => voteWallItem(item, value));
+          votes.appendChild(vote);
+        });
+        controls.appendChild(votes);
+      }
+
+      if (item.local || wallTokens[item.id]) {
+        const unpin = document.createElement("button");
+        unpin.type = "button";
+        unpin.className = "linklike";
+        unpin.textContent = "unpin";
+        unpin.addEventListener("click", () => unpinWallItem(item, unpin));
+        controls.appendChild(unpin);
+      }
+
+      if (controls.childElementCount) meta.appendChild(controls);
+      if (view.voteError) {
+        const error = document.createElement("div");
+        error.className = "pin-vote-status";
+        error.setAttribute("role", "status");
+        error.setAttribute("aria-live", "polite");
+        error.textContent = view.voteError;
+        meta.appendChild(error);
+      }
+      pin.appendChild(meta);
+      return pin;
+    }
+
+    function renderWall() {
+      const list = byId("wallList");
+      list.innerHTML = "";
+      byId("wallNote").textContent = legacyWall.length
+        ? "shared corpses, plus earlier pins kept in this browser"
+        : "shared corpses, across browsers";
+      byId("wallMore").hidden = !wallCursor;
+      if (!wall.length && !wallLoading) byId("wallStatus").textContent = "No corpses have been pinned yet.";
+      wall.forEach((item) => list.appendChild(renderWallItem(item)));
+    }
+
+    async function loadWall(cursor = null) {
+      if (wallLoading || (cursor && !wallCursor)) return;
+      wallLoading = true;
+      byId("loadWallMore").disabled = true;
+      byId("wallStatus").classList.remove("error");
+      byId("wallStatus").textContent = cursor ? "loading earlier corpses…" : "loading the wall…";
+      try {
+        const url = new URL(WALL_API, location.href);
+        url.searchParams.set("limit", "40");
+        if (cursor) url.searchParams.set("cursor", cursor);
+        const response = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !Array.isArray(data.items)) {
+          throw new Error(data.error || "the shared wall is unavailable");
+        }
+        if (cursor) {
+          const seen = new Set(remoteWall.map((item) => item.id));
+          remoteWall.push(...data.items.filter((item) => item?.id && !seen.has(item.id)));
+        } else {
+          remoteWall = data.items;
+        }
+        wallCursor = data.nextCursor || null;
+        byId("wallStatus").textContent = "";
+      } catch (error) {
+        byId("wallStatus").textContent = error.message || "the shared wall is unavailable";
+        byId("wallStatus").classList.add("error");
+      } finally {
+        wallLoading = false;
+        byId("loadWallMore").disabled = false;
+        rebuildWall();
+      }
+    }
+
+    byId("loadWallMore").addEventListener("click", () => loadWall(wallCursor));
+    restoreAccount();
+    rebuildWall();
+    loadWall();
+  </script>
+</body>
+</html>
