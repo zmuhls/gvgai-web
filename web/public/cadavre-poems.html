@@ -75,21 +75,40 @@
 
     .account-bar {
       display: flex;
+      flex-wrap: wrap;
       justify-content: flex-end;
       align-items: center;
-      gap: 0.7rem;
+      gap: 0.5rem;
       min-height: 2.2rem;
       margin-bottom: 0.8rem;
-      overflow: hidden;
       color: var(--label);
       font-family: var(--mono);
       font-size: 0.72rem;
+    }
+
+    .account-user { display: flex; align-items: center; gap: 0.5rem; min-width: 0; white-space: nowrap; }
+    .account-bar a,
+    .account-bar button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.75rem;
+      padding: 0.65rem 0.9rem;
+      border: 1px solid var(--crease);
+      color: var(--label);
+      font: inherit;
+      line-height: 1.1;
+      letter-spacing: 0.08em;
+      text-decoration: none;
       white-space: nowrap;
     }
+    .account-bar a:hover,
+    .account-bar button:hover { border-color: var(--wine-bright); color: var(--wine-bright); }
 
     .account-name {
       max-width: 12rem;
       overflow: hidden;
+      padding-inline: 0.25rem;
       color: var(--bone);
       text-overflow: ellipsis;
     }
@@ -267,7 +286,7 @@
     @media (max-width: 30rem) {
       .account-bar { gap: 0.52rem; font-size: 0.66rem; }
       .account-name { max-width: 5rem; }
-      .account-bar button { padding-inline: 0.72em; font-size: 0.66rem; }
+      .account-bar a, .account-bar button { padding-inline: 0.72em; font-size: 0.66rem; }
       .delete { margin-left: 0; }
       .editor-actions button { flex: 1; }
     }
@@ -278,8 +297,10 @@
     <nav class="account-bar" aria-label="Cadavre account and pages">
       <a href="/cadavre">The Game</a>
       <a href="/cadavre/wall">The Wall</a>
-      <span class="account-name" id="accountName" hidden></span>
-      <button id="signOutBtn" type="button" hidden>sign out</button>
+      <span class="account-user">
+        <span class="account-name" id="accountName" hidden></span>
+        <button id="signOutBtn" type="button" hidden>sign out</button>
+      </span>
     </nav>
 
     <header class="masthead">

@@ -36,7 +36,11 @@ test('Cadavre ships the model catalog UI with additive account and poem features
   assert.match(html, /id="savePoemBtn"/);
   assert.match(html, /poems\.href = "\/cadavre\/poems"/);
   assert.match(html, /wall\.href = "\/cadavre\/wall"/);
-  assert.match(html, /area\.append\(poems, wall, name, signOut\)/);
+  assert.match(html, /user\.append\(name, signOut\)/);
+  assert.match(html, /area\.append\(poems, wall, user\)/);
+  assert.match(html, /minmax\(10\.75rem, 2fr\)/);
+  assert.match(html, /@media \(max-width: 58\.99rem\)/);
+  assert.match(html, /OpenRouter;\\s\*Ollama fallback\|Ollama Cloud/);
   assert.doesNotMatch(html, /id="librarySec"|id="libraryList"|function loadLibrary/);
   assert.doesNotMatch(html, /id="wallSec"|id="wallList"|id="loadWallMore"/);
   assert.match(html, /location\.href = "\/cadavre\/wall"/);
@@ -89,7 +93,8 @@ test('Cadavre serves the shared wall on its own page', () => {
   assert.match(html, /\/remove`/);
   assert.match(html, /Core\.paginateLines/);
   assert.match(html, /renderReadingLinked/);
-  assert.match(html, /area\.append\(poems, name, signOut\)/);
+  assert.match(html, /user\.append\(name, signOut\)/);
+  assert.match(html, /area\.append\(poems, user\)/);
 
   for (const match of html.matchAll(/<script(?: [^>]*)?>([\s\S]*?)<\/script>/g)) {
     if (match[1].trim()) assert.doesNotThrow(() => new Function(match[1]));
