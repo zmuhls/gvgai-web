@@ -98,8 +98,13 @@ test('Cadavre serves the shared wall on its own page', () => {
 
 test('Railway keeps health-checked deploys while the browser covers volume remounts', () => {
   const railway = JSON.parse(fs.readFileSync(railwayPath, 'utf8'));
+  const server = fs.readFileSync(serverPath, 'utf8');
   assert.equal(railway.deploy.overlapSeconds, undefined);
   assert.equal(railway.deploy.healthcheckPath, '/api/cadavre/wall/health');
+  assert.match(server, /server\.closeIdleConnections\?\.\(\)/);
+  assert.match(server, /server\.closeAllConnections\?\.\(\)/);
+  assert.match(server, /shutdown cleanup exceeded 15 seconds; forcing a clean exit/);
+  assert.doesNotMatch(server, /shutdown exceeded 15 seconds; exiting/);
 });
 
 test('Cadavre owns turn countdown deadlines on the backend', () => {

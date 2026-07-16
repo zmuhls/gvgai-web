@@ -521,6 +521,21 @@ io.on('connection', (socket) => {
 
 // Cleanup on server shutdown
 let shutdownStarted = false;
+const SHUTDOWN_TIMEOUT_MS = 15000;
+const SHUTDOWN_STEP_TIMEOUT_MS = 5000;
+
+function settleShutdownStep(task, label) {
+  let deadline;
+  const work = Promise.resolve().then(task);
+  const timedOut = new Promise(resolve => {
+    deadline = setTimeout(() => {
+      console.warn(`[Server] ${label} did not finish during shutdown; continuing.`);
+      resolve();
+    }, SHUTDOWN_STEP_TIMEOUT_MS);
+    deadline.unref();
+  });
+  return Promise.race([work, timedOut]).finally(() => clearTimeout(deadline));
+}
 
 async function shutdown(signal) {
   if (shutdownStarted) return;
@@ -528,14 +543,20 @@ async function shutdown(signal) {
   console.log(`\n[Server] Shutting down (${signal})...`);
 
   const forcedExit = setTimeout(() => {
-    console.error('[Server] shutdown exceeded 15 seconds; exiting.');
-    process.exit(1);
-  }, 15000);
+    console.warn('[Server] shutdown cleanup exceeded 15 seconds; forcing a clean exit.');
+    server.closeAllConnections?.();
+    process.exit(0);
+  }, SHUTDOWN_TIMEOUT_MS);
   forcedExit.unref();
   const httpClosed = server.listening
     ? new Promise(resolve => server.close(resolve))
     : Promise.resolve();
   io.disconnectSockets(true);
+  server.closeIdleConnections?.();
+  const lingeringConnections = setTimeout(() => {
+    server.closeAllConnections?.();
+  }, SHUTDOWN_STEP_TIMEOUT_MS);
+  lingeringConnections.unref();
 
   // Stop all games
   for (const [processId, game] of activeGames) {
@@ -553,14 +574,15 @@ async function shutdown(signal) {
     source: 'server'
   });
   await Promise.allSettled([
-    httpClosed,
-    telemetry.flush()
+    settleShutdownStep(() => httpClosed, 'HTTP server'),
+    settleShutdownStep(() => telemetry.flush(), 'telemetry flush')
   ]);
   await Promise.allSettled([
-    cadavreRoutes.closeWallStore(),
-    cadavreRoutes.closeTurnTimerStore(),
-    cadavreUserRoutes.closeStore()
+    settleShutdownStep(() => cadavreRoutes.closeWallStore(), 'wall database'),
+    settleShutdownStep(() => cadavreRoutes.closeTurnTimerStore(), 'turn timer store'),
+    settleShutdownStep(() => cadavreUserRoutes.closeStore(), 'account database')
   ]);
+  clearTimeout(lingeringConnections);
   clearTimeout(forcedExit);
   process.exit(0);
 }
