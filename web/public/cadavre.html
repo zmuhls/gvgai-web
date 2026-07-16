@@ -75,8 +75,14 @@
       color: var(--label);
     }
 
-    .account-area { display: flex; align-items: center; gap: 0.6rem; }
-    .account-name { color: var(--bone); }
+    .account-area { display: flex; align-items: center; gap: 0.6rem; min-width: 0; white-space: nowrap; }
+    .account-link { color: var(--label); }
+    .account-name {
+      max-width: 12rem;
+      overflow: hidden;
+      color: var(--bone);
+      text-overflow: ellipsis;
+    }
 
     a { color: inherit; text-decoration: underline; text-underline-offset: 0.18em; text-decoration-color: var(--ash); }
     a:hover { color: var(--wine-bright); text-decoration-color: var(--wine-bright); }
@@ -486,7 +492,7 @@
 
     .reveal-actions { display: flex; justify-content: center; gap: 0.8rem; flex-wrap: wrap; }
 
-    .edit-panel, .library {
+    .edit-panel {
       margin: 0 auto 2rem;
       padding: 1.1rem;
       border: 1px solid var(--crease);
@@ -513,21 +519,6 @@
       font-size: 1rem;
     }
     .edit-panel textarea { min-height: 13rem; resize: vertical; line-height: 1.55; }
-
-    .library { width: min(100%, 50rem); margin-top: 3rem; }
-    .library-list { display: grid; gap: 0.65rem; }
-    .library-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto;
-      align-items: center;
-      gap: 0.55rem;
-      padding: 0.65rem;
-      border-bottom: 1px solid var(--crease);
-      font-family: var(--mono);
-      font-size: 0.76rem;
-    }
-    .library-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .library-row button { padding: 0.38rem 0.55rem; font-size: 0.62rem; }
 
     /* ── the wall ───────────────────────────────────────────────────────── */
     .wall { margin-top: 4rem; }
@@ -665,8 +656,7 @@
 
       .pin-meta { align-items: flex-start; }
       .pin-controls { width: 100%; justify-content: space-between; }
-      .library-row { grid-template-columns: minmax(0, 1fr) auto; }
-      .library-row button:last-child { grid-column: 2; }
+      .account-name { max-width: 7rem; }
     }
 
     @media (max-width: 35rem) {
@@ -747,7 +737,7 @@
       html, body { min-height: 0; background: #fff; color: #111; }
       .page { max-width: none; margin: 0; padding: 0; }
       header .epigraph, .prose, .table, .sheet, .wall, footer,
-      .account-bar, .reveal-actions, .edit-panel, .library, dialog,
+      .account-bar, .reveal-actions, .edit-panel, dialog,
       .eyebrow, .reading .pending, .reading .err { display: none !important; }
       h1 { font-size: 1.6rem; margin-bottom: 1.5rem; }
       .game-shell, .game-stage { display: block; border: 0; padding: 0; }
@@ -888,12 +878,7 @@
 
     </main>
 
-    <section class="library" id="librarySec" hidden aria-label="My poems">
-      <h2 class="eyebrow">My Poems</h2>
-      <div class="library-list" id="libraryList"></div>
-    </section>
-
-    <section class="wall" id="wallSec" hidden aria-label="the wall">
+    <section class="wall" id="wallSec" aria-label="the wall">
       <h2 class="eyebrow">The Wall</h2>
       <p class="wall-note" id="wallNote">shared corpses, across browsers</p>
       <div id="wallList"></div>
@@ -1812,16 +1797,25 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     function renderAccount() {
       const area = el("accountArea");
       area.innerHTML = "";
+      const wall = document.createElement("a");
+      wall.className = "account-link";
+      wall.href = "#wallSec";
+      wall.textContent = "The Wall";
       if (!authUser) {
         const button = document.createElement("button");
         button.type = "button";
         button.textContent = "sign in / register";
         button.addEventListener("click", () => openAuth("login"));
-        area.appendChild(button);
+        area.append(wall, button);
         return;
       }
+      const poems = document.createElement("a");
+      poems.className = "account-link";
+      poems.href = "/cadavre/poems";
+      poems.textContent = "My Poems";
       const name = document.createElement("span");
       name.className = "account-name";
+      name.title = authUser.username;
       name.textContent = authUser.username;
       const signOut = document.createElement("button");
       signOut.type = "button";
@@ -1830,16 +1824,14 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
         await api("/auth/logout", { method: "POST" }).catch(() => null);
         authUser = null;
         activePoem = null;
-        el("librarySec").hidden = true;
         renderAccount();
       });
-      area.append(name, signOut);
+      area.append(poems, wall, name, signOut);
     }
 
     async function restoreAccount() {
       try {
         authUser = await api("/auth/me");
-        await loadLibrary();
       } catch {
         authUser = null;
       }
@@ -1870,65 +1862,9 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
           activePoem = { id: saved.id, revision: saved.revision };
           setRevealStatus("poem saved to my poems");
         }
-        await loadLibrary();
       } catch (error) {
         setRevealStatus(error.message, true);
       }
-    }
-
-    function openSavedPoem(poem) {
-      clearTurnTimer();
-      readingRequestId++;
-      gameActive = false;
-      contributions = poem.lines.map((text) => ({ text, isModel: false, seat: 0 }));
-      poemText = poem.lines.join("\n");
-      readingText = poem.reading || "";
-      activePoem = { id: poem.id, revision: poem.revision };
-      el("poemTitle").value = poem.title;
-      renderCurrentPoem(poem.lines);
-      if (readingText) renderReadingLinked(el("reading"), readingText, poemTokens);
-      else el("reading").textContent = "";
-      el("editPanel").hidden = true;
-      el("sheetSec").hidden = true;
-      el("revealSec").hidden = false;
-      setRevealStatus("opened from my poems");
-      el("revealSec").scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-
-    async function deleteSavedPoem(poem) {
-      if (!confirm(`Delete “${poem.title}”?`)) return;
-      try {
-        await api(`/poems/${poem.id}`, { method: "DELETE" });
-        if (activePoem?.id === poem.id) activePoem = null;
-        await loadLibrary();
-      } catch (error) {
-        setRevealStatus(error.message, true);
-      }
-    }
-
-    async function loadLibrary() {
-      if (!authUser) return;
-      const data = await api("/poems");
-      const list = el("libraryList");
-      list.innerHTML = "";
-      if (!data.poems.length) list.textContent = "No saved poems yet.";
-      data.poems.forEach((poem) => {
-        const row = document.createElement("div");
-        row.className = "library-row";
-        const title = document.createElement("span");
-        title.textContent = `${poem.title} · ${new Date(poem.updated_at).toLocaleDateString()}`;
-        const open = document.createElement("button");
-        open.type = "button";
-        open.textContent = "open";
-        open.addEventListener("click", () => openSavedPoem(poem));
-        const remove = document.createElement("button");
-        remove.type = "button";
-        remove.textContent = "delete";
-        remove.addEventListener("click", () => deleteSavedPoem(poem));
-        row.append(title, open, remove);
-        list.appendChild(row);
-      });
-      el("librarySec").hidden = false;
     }
 
     function renderAuthMode() {
@@ -2003,7 +1939,6 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
         }
         el("authDialog").close();
         renderAccount();
-        await loadLibrary();
         setRevealStatus("signed in — your poems can now be saved");
       } catch (error) {
         el("authMessage").textContent = error.message;
@@ -2355,7 +2290,6 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
         if (details && view) view.readingOpen = details.open;
       });
       list.innerHTML = "";
-      el("wallSec").hidden = wall.length === 0;
       el("wallNote").textContent = legacyWall.length
         ? "shared corpses, plus earlier pins kept in this browser"
         : "shared corpses, across browsers";
@@ -2379,6 +2313,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     loadModelOptions();
     restoreAccount();
     if (new URLSearchParams(location.search).get("reset")) openAuth("reset");
+    else if (new URLSearchParams(location.search).get("auth") === "login") openAuth("login");
     rebuildWall();
     el("loadWallMore").addEventListener("click", () => loadWall(wallCursor));
     loadWall();

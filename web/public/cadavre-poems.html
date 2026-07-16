@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Poems — Cadavre Exquis</title>
+  <meta name="description" content="Read and edit the Exquisite Corpse poems saved to your account." />
+  <meta name="theme-color" content="#0C0D10" />
+  <link rel="icon" type="image/png" sizes="32x32" href="https://milwrite.github.io/cadavre-exquis/assets/favicon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="https://milwrite.github.io/cadavre-exquis/assets/apple-touch-icon.png" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #0C0D10;
+      --bone: #E7E0D0;
+      --ash: #6E6A61;
+      --label: #8A8375;
+      --reading: #B8B2A4;
+      --crease: rgba(231, 224, 208, 0.13);
+      --wine: #A44856;
+      --wine-bright: #C57080;
+      --wine-wash: rgba(197, 112, 128, 0.14);
+      --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L", "P052", "Liberation Serif", "Noto Serif", Georgia, serif;
+      --mono: ui-monospace, "DejaVu Sans Mono", "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+
+    html, body { min-height: 100%; }
+
+    body {
+      background: var(--ink);
+      color: var(--bone);
+      font-family: var(--serif);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: underline;
+      text-decoration-color: var(--ash);
+      text-underline-offset: 0.18em;
+    }
+
+    a:hover { color: var(--wine-bright); text-decoration-color: var(--wine-bright); }
+    :focus-visible { outline: 2px solid var(--wine-bright); outline-offset: 2px; }
+
+    button, input, textarea { font: inherit; }
+
+    button {
+      color: var(--bone);
+      background: transparent;
+      border: 1px solid var(--crease);
+      padding: 0.7em 1.3em;
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+    }
+
+    button:hover { color: var(--wine-bright); border-color: var(--wine-bright); }
+    button:disabled { cursor: wait; opacity: 0.55; }
+    button.primary { color: var(--wine-bright); border-color: var(--wine); }
+    button.primary:hover { background: var(--wine-wash); }
+
+    .page {
+      width: min(100%, 76rem);
+      margin: 0 auto;
+      padding: clamp(1rem, 3vw, 2.5rem) clamp(0.85rem, 2.5vw, 2rem) 4rem;
+    }
+
+    .account-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 0.7rem;
+      min-height: 2.2rem;
+      margin-bottom: 0.8rem;
+      overflow: hidden;
+      color: var(--label);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      white-space: nowrap;
+    }
+
+    .account-name {
+      max-width: 12rem;
+      overflow: hidden;
+      color: var(--bone);
+      text-overflow: ellipsis;
+    }
+
+    .masthead {
+      padding-bottom: clamp(1.7rem, 4vw, 3.5rem);
+      border-bottom: 1px solid var(--crease);
+    }
+
+    .brand {
+      display: block;
+      width: min(100%, 32rem);
+      line-height: 1;
+      text-decoration: none;
+    }
+
+    .brand img {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1300 / 155;
+      object-fit: contain;
+      object-position: left center;
+    }
+
+    h1 {
+      margin-top: clamp(1.5rem, 3vw, 2.4rem);
+      font-size: clamp(2.2rem, 1.7rem + 2.5vw, 4rem);
+      font-weight: 400;
+      line-height: 1.08;
+    }
+
+    .intro {
+      max-width: 39rem;
+      margin-top: 0.65rem;
+      color: var(--reading);
+      font-size: clamp(1rem, 0.96rem + 0.25vw, 1.16rem);
+    }
+
+    .notice {
+      margin-top: 3rem;
+      padding: clamp(1.4rem, 3vw, 2.2rem);
+      border: 1px solid var(--crease);
+    }
+
+    .notice h2 { font-size: 1.5rem; font-weight: 400; }
+    .notice p { margin-top: 0.55rem; color: var(--reading); }
+
+    .poems {
+      display: grid;
+      grid-template-columns: minmax(15rem, 0.74fr) minmax(0, 1.6fr);
+      min-height: 34rem;
+      margin-top: 3rem;
+      border: 1px solid var(--crease);
+    }
+
+    .poem-list {
+      min-width: 0;
+      border-right: 1px solid var(--crease);
+    }
+
+    .section-title {
+      padding: 1rem 1.1rem;
+      border-bottom: 1px solid var(--crease);
+      color: var(--label);
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 400;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .poem-list ul { list-style: none; }
+
+    .poem-choice {
+      display: block;
+      width: 100%;
+      padding: 1rem 1.1rem;
+      border: 0;
+      border-bottom: 1px solid var(--crease);
+      text-align: left;
+      letter-spacing: 0;
+    }
+
+    .poem-choice:hover { background: rgba(231, 224, 208, 0.025); }
+    .poem-choice[aria-current="true"] { background: var(--wine-wash); box-shadow: inset 2px 0 0 var(--wine); }
+
+    .poem-choice strong {
+      display: block;
+      overflow: hidden;
+      font-family: var(--serif);
+      font-size: 1rem;
+      font-weight: 400;
+      letter-spacing: 0;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .poem-choice span {
+      display: block;
+      margin-top: 0.25rem;
+      color: var(--label);
+      font-size: 0.62rem;
+      letter-spacing: 0.04em;
+    }
+
+    .editor { min-width: 0; padding: clamp(1.2rem, 3.5vw, 2.5rem); }
+
+    .editor label {
+      display: block;
+      margin-bottom: 1.15rem;
+      color: var(--label);
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .editor input, .editor textarea {
+      display: block;
+      width: 100%;
+      margin-top: 0.4rem;
+      padding: 0.75rem;
+      color: var(--bone);
+      background: rgba(12, 13, 16, 0.7);
+      border: 1px solid var(--crease);
+      border-radius: 0;
+      font-family: var(--serif);
+      font-size: 1.05rem;
+      line-height: 1.55;
+    }
+
+    .editor input:focus, .editor textarea:focus { border-color: var(--wine); outline: 0; }
+    #poemLines { min-height: 14rem; resize: vertical; }
+    #poemReading { min-height: 8rem; resize: vertical; color: var(--reading); font-style: italic; }
+
+    .editor-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+      padding-top: 0.3rem;
+    }
+
+    .delete { margin-left: auto; }
+
+    .status {
+      min-height: 1.5em;
+      margin-top: 1rem;
+      color: var(--label);
+      font-family: var(--mono);
+      font-size: 0.7rem;
+    }
+
+    .status.error { color: var(--wine-bright); }
+
+    footer {
+      margin-top: 3rem;
+      color: var(--label);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      text-align: center;
+    }
+
+    @media (max-width: 47.99rem) {
+      .account-name { max-width: 7rem; }
+      .poems { grid-template-columns: minmax(0, 1fr); }
+      .poem-list { border-right: 0; border-bottom: 1px solid var(--crease); }
+      .poem-list ul { display: flex; overflow-x: auto; }
+      .poem-list li { min-width: min(76vw, 18rem); }
+      .poem-choice { min-height: 5rem; border-right: 1px solid var(--crease); }
+      .poem-choice[aria-current="true"] { box-shadow: inset 0 2px 0 var(--wine); }
+    }
+
+    @media (max-width: 30rem) {
+      .account-bar { gap: 0.52rem; font-size: 0.66rem; }
+      .account-name { max-width: 5rem; }
+      .account-bar button { padding-inline: 0.72em; font-size: 0.66rem; }
+      .delete { margin-left: 0; }
+      .editor-actions button { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <nav class="account-bar" aria-label="Cadavre account and pages">
+      <a href="/cadavre">The Game</a>
+      <a href="/cadavre#wallSec">The Wall</a>
+      <span class="account-name" id="accountName" hidden></span>
+      <button id="signOutBtn" type="button" hidden>sign out</button>
+    </nav>
+
+    <header class="masthead">
+      <a class="brand" href="/cadavre" aria-label="Exquisite Corpse game">
+        <img src="/assets/cadavre-title.png" alt="Exquisite Corpse" width="1300" height="155">
+      </a>
+      <h1>My Poems</h1>
+      <p class="intro">Poems saved from the table live here. Choose one to revise its title, lines, or close reading.</p>
+    </header>
+
+    <main>
+      <section class="notice" id="signedOut" hidden>
+        <h2>Sign in to see your poems</h2>
+        <p>Your saved work is attached to your account. <a href="/cadavre?auth=login">Return to the game and sign in</a>.</p>
+      </section>
+
+      <section class="notice" id="emptyState" hidden>
+        <h2>Your first poem begins at the table</h2>
+        <p>Finish a game, reveal the poem, then choose “save to my poems.” <a href="/cadavre">Go to the game</a>.</p>
+      </section>
+
+      <section class="poems" id="poemsWorkspace" hidden aria-label="Saved poems">
+        <aside class="poem-list" aria-label="Your saved poems">
+          <h2 class="section-title">Saved poems</h2>
+          <ul id="poemList"></ul>
+        </aside>
+
+        <form class="editor" id="poemForm">
+          <label>
+            Title
+            <input id="poemTitle" type="text" maxlength="120" required>
+          </label>
+          <label>
+            Poem
+            <textarea id="poemLines" maxlength="20000" required></textarea>
+          </label>
+          <label>
+            Close reading
+            <textarea id="poemReading" maxlength="10000"></textarea>
+          </label>
+          <div class="editor-actions">
+            <button class="primary" id="saveBtn" type="submit">save changes</button>
+            <button id="revertBtn" type="button">revert</button>
+            <button class="delete" id="deleteBtn" type="button">delete poem</button>
+          </div>
+          <p class="status" id="status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+    </main>
+
+    <footer><a href="/cadavre">return to the table</a></footer>
+  </div>
+
+  <script>
+    const byId = (id) => document.getElementById(id);
+    let authUser = null;
+    let poems = [];
+    let selectedId = null;
+    let dirty = false;
+
+    async function api(path, options = {}) {
+      const response = await fetch(`/api/cadavre${path}`, {
+        credentials: "same-origin",
+        ...options,
+        headers: {
+          ...(options.body ? { "Content-Type": "application/json" } : {}),
+          ...(options.headers || {}),
+        },
+      });
+      const body = response.status === 204 ? null : await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(body?.error || `request failed (${response.status})`);
+        error.status = response.status;
+        error.details = body?.details;
+        throw error;
+      }
+      return body;
+    }
+
+    function setStatus(message, error = false) {
+      byId("status").textContent = message;
+      byId("status").classList.toggle("error", error);
+    }
+
+    function selectedPoem() {
+      return poems.find((poem) => poem.id === selectedId) || null;
+    }
+
+    function dateLabel(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString(undefined, {
+        year: "numeric", month: "short", day: "numeric",
+      });
+    }
+
+    function renderList() {
+      const list = byId("poemList");
+      list.innerHTML = "";
+      poems.forEach((poem) => {
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        const title = document.createElement("strong");
+        const date = document.createElement("span");
+        button.type = "button";
+        button.className = "poem-choice";
+        button.setAttribute("aria-current", String(poem.id === selectedId));
+        title.textContent = poem.title;
+        date.textContent = `edited ${dateLabel(poem.updated_at)}`;
+        button.append(title, date);
+        button.addEventListener("click", () => choosePoem(poem.id));
+        item.appendChild(button);
+        list.appendChild(item);
+      });
+    }
+
+    function fillEditor(poem) {
+      if (!poem) return;
+      byId("poemTitle").value = poem.title;
+      byId("poemLines").value = poem.lines.join("\n");
+      byId("poemReading").value = poem.reading || "";
+      dirty = false;
+      setStatus(`last saved ${dateLabel(poem.updated_at)}`);
+    }
+
+    function choosePoem(id, force = false) {
+      if (id === selectedId) return;
+      if (!force && dirty && !confirm("Discard the edits you have not saved?")) return;
+      selectedId = id;
+      renderList();
+      fillEditor(selectedPoem());
+    }
+
+    async function loadPoems(preferredId = null) {
+      const data = await api("/poems");
+      poems = data.poems;
+      byId("emptyState").hidden = poems.length > 0;
+      byId("poemsWorkspace").hidden = poems.length === 0;
+      if (!poems.length) {
+        selectedId = null;
+        return;
+      }
+      const nextId = poems.some((poem) => poem.id === preferredId) ? preferredId : poems[0].id;
+      selectedId = nextId;
+      renderList();
+      fillEditor(selectedPoem());
+    }
+
+    async function restoreAccount() {
+      try {
+        authUser = await api("/auth/me");
+        byId("accountName").textContent = authUser.username;
+        byId("accountName").title = authUser.username;
+        byId("accountName").hidden = false;
+        byId("signOutBtn").hidden = false;
+        await loadPoems();
+      } catch (error) {
+        if (error.status !== 401) {
+          byId("signedOut").querySelector("p").textContent = error.message;
+        }
+        byId("signedOut").hidden = false;
+      }
+    }
+
+    byId("poemForm").addEventListener("input", () => { dirty = true; });
+
+    byId("poemForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const poem = selectedPoem();
+      if (!poem) return;
+      const lines = byId("poemLines").value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      if (!lines.length) {
+        setStatus("The poem needs at least one line.", true);
+        return;
+      }
+      byId("saveBtn").disabled = true;
+      setStatus("saving…");
+      try {
+        const saved = await api(`/poems/${poem.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            title: byId("poemTitle").value,
+            lines,
+            reading: byId("poemReading").value,
+            expected_revision: poem.revision,
+          }),
+        });
+        Object.assign(poem, saved);
+        dirty = false;
+        renderList();
+        fillEditor(poem);
+        setStatus("changes saved");
+      } catch (error) {
+        if (error.status === 409) {
+          await loadPoems(poem.id).catch(() => null);
+          setStatus("This poem changed in another session. The latest version is now open.", true);
+        } else {
+          setStatus(error.message, true);
+        }
+      } finally {
+        byId("saveBtn").disabled = false;
+      }
+    });
+
+    byId("revertBtn").addEventListener("click", () => fillEditor(selectedPoem()));
+
+    byId("deleteBtn").addEventListener("click", async () => {
+      const poem = selectedPoem();
+      if (!poem || !confirm(`Delete “${poem.title}”?`)) return;
+      byId("deleteBtn").disabled = true;
+      setStatus("deleting…");
+      try {
+        await api(`/poems/${poem.id}`, { method: "DELETE" });
+        dirty = false;
+        await loadPoems();
+      } catch (error) {
+        setStatus(error.message, true);
+      } finally {
+        byId("deleteBtn").disabled = false;
+      }
+    });
+
+    byId("signOutBtn").addEventListener("click", async () => {
+      if (dirty && !confirm("Sign out and discard the edits you have not saved?")) return;
+      await api("/auth/logout", { method: "POST" }).catch(() => null);
+      location.href = "/cadavre";
+    });
+
+    addEventListener("beforeunload", (event) => {
+      if (!dirty) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
+
+    restoreAccount();
+  </script>
+</body>
+</html>

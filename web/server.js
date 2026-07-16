@@ -254,6 +254,7 @@ app.get('/marquee', (req, res) => res.sendFile(path.join(__dirname, 'public', 'm
 // the committed file prevents an older upstream mirror from replacing features
 // that were deployed with the backend in the same revision.
 app.get('/cadavre', (req, res) => res.sendFile(path.join(__dirname, 'public', 'cadavre.html')));
+app.get('/cadavre/poems', (req, res) => res.sendFile(path.join(__dirname, 'public', 'cadavre-poems.html')));
 app.get('/cadavre/open-sheet', (req, res) => cadavreMirror.handler('openSheet', req, res));
 app.get('/chess', (req, res) => res.sendFile(path.join(__dirname, 'public', 'chess.html')));
 app.get('/haggle', (req, res) => res.sendFile(path.join(__dirname, 'public', 'haggle.html')));

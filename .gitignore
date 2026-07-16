@@ -74,6 +74,7 @@ node_modules/
 !web/public/marquee.html
 # Companion room subpages (iframe hosts) — tracked despite the global *.html ignore
 !web/public/cadavre.html
+!web/public/cadavre-poems.html
 !web/public/chess.html
 !web/public/haggle.html
 !web/public/langgames.html
@@ -84,6 +85,7 @@ logs/
 web/.gvgai-runtime/
 web/data/telemetry-events.jsonl
 web/data/usage-guardrail.json
+web/data/cadavre.db*
 web/data/eval-runs/
 web/data/play-traces/
 !web/data/play-traces/.gitkeep
