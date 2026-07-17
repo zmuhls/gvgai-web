@@ -55,38 +55,33 @@
     const outcomes = snapshot.evalOutcomes || {};
     const total = outcomes.total || 0;
     const winPct = total ? Math.round(((outcomes.wins || 0) / total) * 100) : 0;
-    setText('station-b-stat', total ? `${formatNumber(total)} · ${winPct}% W` : '—');
+    setText('station-a-stat', total ? `${formatNumber(total)} · ${winPct}% W` : '—');
     const latency = snapshot.metrics?.averageModelLatencyMs || 0;
-    setText('station-c-stat', latency ? `${formatNumber(latency)}ms` : '—');
-    setText('station-d-stat', formatNumber(snapshot.metrics?.totalEvents || 0));
+    setText('station-b-stat', latency ? `${formatNumber(latency)}ms` : '—');
+    setText('station-c-stat', formatNumber(snapshot.metrics?.totalEvents || 0));
   }
 
   function render() {
     const snapshot = state.snapshot;
     if (!snapshot) return;
 
-    // Station A (always open) + the collapsed-station headline stats.
-    setText('telemetry-storage-status', snapshot.storage?.label || 'unknown');
-    setText('telemetry-live-clients', `${snapshot.liveClients || 0} clients`);
-    setText('telemetry-fallback-status', sourceLabel(snapshot));
-    setText('telemetry-events-rate', formatNumber(snapshot.metrics?.eventsPerMinute || 0));
+    // Headline stats paint for every station; interiors paint on open.
     renderStationStats(snapshot);
-    renderBackendStatus(snapshot);
 
-    if (stationOpen('station-b')) {
+    if (stationOpen('station-a')) {
       setText('telemetry-leaderboard-source', sourceLabel(snapshot));
       renderEvalChart(snapshot.evalOutcomes || {});
       renderRunLeaderboard((snapshot.leaderboards || {}).runs || []);
       renderMarbleRun(snapshot.marbleRun || {});
     }
 
-    if (stationOpen('station-c')) {
+    if (stationOpen('station-b')) {
       renderUsageLeaderboard((snapshot.leaderboards || {}).usage || []);
       renderModelChart(snapshot.models || []);
       renderGuardrail(state.guardrail);
     }
 
-    if (stationOpen('station-d')) {
+    if (stationOpen('station-c')) {
       setText('telemetry-stream-count', `${formatNumber(snapshot.metrics?.totalEvents || 0)} events`);
       setText('telemetry-pipeline-source', pipelineLabel(snapshot.pipeline, snapshot));
       renderPipeline(snapshot.pipeline || {});
@@ -190,84 +185,6 @@
     `;
     setText('telemetry-finetune-model',
       run.modelId || (run.state === 'failed' ? 'run failed' : 'run in progress'));
-  }
-
-  function renderBackendStatus(snapshot) {
-    const grid = document.getElementById('telemetry-backend-grid');
-    const activeEl = document.getElementById('telemetry-backend-active');
-    if (!grid) return;
-
-    const activeBackend = (document.getElementById('backend-label')?.textContent || 'unknown').trim();
-    const selectedModel = selectedModelLabel();
-    const models = Array.isArray(state.models) ? state.models : [];
-    const providerCounts = models.reduce((counts, model) => {
-      const provider = model.provider || 'unknown';
-      counts[provider] = (counts[provider] || 0) + 1;
-      return counts;
-    }, {});
-    const fallbackCount = models.filter(model => model.fallback || model.provider === 'openrouter').length;
-    const localCount = (providerCounts['ollama-local'] || 0) + (providerCounts.local || 0);
-    const socketLive = Boolean(socket && socket.connected);
-
-    if (activeEl) activeEl.textContent = activeBackend;
-
-    const cards = [
-      {
-        label: 'Active backend',
-        value: activeBackend || 'unselected',
-        detail: selectedModel || 'selected when a model is chosen',
-        state: activeBackend && activeBackend !== 'unknown' ? 'online' : 'warn'
-      },
-      {
-        label: 'Browser socket',
-        value: socketLive ? 'online' : 'offline',
-        detail: 'streams frames, traces, and run summaries',
-        state: socketLive ? 'online' : 'offline'
-      },
-      {
-        label: 'Ollama Cloud',
-        value: providerCounts['ollama-cloud'] ? `${providerCounts['ollama-cloud']} model(s)` : providerValueFromLabel(activeBackend, 'Ollama Cloud'),
-        detail: 'primary hosted open-weight inference',
-        state: providerCounts['ollama-cloud'] || activeBackend === 'Ollama Cloud' ? 'online' : 'warn'
-      },
-      {
-        label: 'OpenRouter fallback',
-        value: fallbackCount ? `${fallbackCount} route(s)` : providerValueFromLabel(activeBackend, 'OpenRouter'),
-        detail: 'backup route when primary calls fail',
-        state: fallbackCount || activeBackend === 'OpenRouter' ? 'online' : 'warn'
-      },
-      {
-        label: 'Local Ollama',
-        value: localCount ? `${localCount} model(s)` : providerValueFromLabel(activeBackend, 'Local Ollama'),
-        detail: 'fine-tuned or local registry models',
-        state: localCount || activeBackend === 'Local Ollama' ? 'online' : 'offline'
-      },
-      {
-        label: 'Telemetry store',
-        value: sourceLabel(snapshot),
-        detail: snapshot.storage?.label || snapshot.storage?.state || 'storage state pending',
-        state: snapshot.storage?.state === 'disabled' ? 'warn' : 'online'
-      }
-    ];
-
-    grid.innerHTML = cards.map(card => `
-      <article class="backend-status-card backend-status-${escapeHtml(card.state)}">
-        <span>${escapeHtml(card.label)}</span>
-        <strong>${escapeHtml(card.value)}</strong>
-        <small>${escapeHtml(card.detail)}</small>
-      </article>
-    `).join('');
-  }
-
-  function providerValueFromLabel(activeBackend, providerLabel) {
-    return activeBackend === providerLabel ? 'selected' : 'not listed';
-  }
-
-  function selectedModelLabel() {
-    const select = document.getElementById('model-select');
-    const option = select?.selectedOptions?.[0];
-    if (!option) return '';
-    return option.textContent.replace(/\s+/g, ' ').trim();
   }
 
   function renderGuardrail(g) {
@@ -574,7 +491,7 @@
   }
 
   function renderError(error) {
-    setText('telemetry-storage-status', error.message || 'summary failed');
+    console.warn('[telemetry] summary refresh failed:', error?.message || error);
   }
 
   function sourceLabel(snapshot) {
@@ -649,7 +566,7 @@
     });
   });
 
-  // The guided A → B → C → D path: each "Next" link opens the following
+  // The guided A → B → C path: each "Next" link opens the following
   // station before scrolling to it.
   document.querySelectorAll('#telemetry-dashboard .station-next').forEach(link => {
     link.addEventListener('click', event => {
@@ -663,16 +580,13 @@
     });
   });
 
-  // Deep links (#station-b/c/d) open their station on load.
-  if (/^#station-[b-d]$/.test(window.location.hash)) {
+  // Deep links (#station-b/c) open their station on load.
+  if (/^#station-[b-c]$/.test(window.location.hash)) {
     const target = document.getElementById(window.location.hash.slice(1));
     if (target && target.tagName === 'DETAILS') target.open = true;
   }
 
   if (socket) {
-    socket.on('connect', () => renderBackendStatus(state.snapshot || {}));
-    socket.on('disconnect', () => renderBackendStatus(state.snapshot || {}));
-    socket.on('connect_error', () => renderBackendStatus(state.snapshot || {}));
     socket.on('telemetry-event', () => {
       scheduleRefresh();
     });

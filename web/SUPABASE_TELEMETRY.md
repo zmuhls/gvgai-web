@@ -43,9 +43,25 @@ npm run telemetry:check
 
 The check inserts one `system/cloud_readiness_check` event through Supabase REST, reads `public.telemetry_minute_rollups`, and verifies the leaderboard read-model views. Before credentials are present, this command should fail with a missing `SUPABASE_URL` or `SUPABASE_SERVICE_ROLE_KEY` message.
 
-## Backfill Local Fallback Events
+## Durability: retry + automatic drain
 
-Events captured before Supabase credentials exist are appended to `web/data/telemetry-events.jsonl`. After the cloud check passes, upload those events with duplicate protection:
+Live writes are idempotent (`on_conflict=event_id`) and retried a few times on
+transient failures (network errors, 429, 5xx — never on a deterministic 4xx)
+before a batch is allowed to spill to `web/data/telemetry-events.jsonl`. Whenever
+Supabase is reachable again, the store **automatically replays** that fallback
+file back into the table on its next flush tick (rotating it to
+`telemetry-events.jsonl.draining` so concurrent writes are never lost), so events
+that spilled during an outage are not stranded on ephemeral disk. Because the
+replay is idempotent, a partially-uploaded file never produces duplicate rows.
+Retry/drain behaviour is tunable via `TELEMETRY_WRITE_RETRIES` and
+`TELEMETRY_WRITE_RETRY_MS`.
+
+## Backfill Local Fallback Events (manual)
+
+The automatic drain covers events that spill while the server is running. For a
+one-off upload of a `web/data/telemetry-events.jsonl` captured before credentials
+existed (or on another machine), run the manual backfill with the same duplicate
+protection:
 
 ```bash
 npm run telemetry:backfill -- --dry-run
