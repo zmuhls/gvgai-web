@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
+const net = require('net');
 const path = require('path');
 const { loadRootEnv } = require('./load-root-env');
 const telemetry = require('../lib/telemetry-store');
@@ -31,6 +32,39 @@ function parseArgs(argv) {
 function outputPath(now = new Date()) {
   const stamp = now.toISOString().replace(/[:.]/g, '-');
   return path.join(__dirname, '..', 'data', 'tournaments', `tournament-${stamp}.json`);
+}
+
+function availablePort(preferredPort = 8080) {
+  const requested = Number.parseInt(preferredPort, 10);
+  const port = Number.isInteger(requested) && requested > 0 ? requested : 8080;
+
+  return new Promise((resolve, reject) => {
+    const preferred = net.createServer();
+    preferred.unref();
+    preferred.once('error', error => {
+      if (error.code !== 'EADDRINUSE') {
+        reject(error);
+        return;
+      }
+
+      const fallback = net.createServer();
+      fallback.unref();
+      fallback.once('error', reject);
+      fallback.listen(0, '0.0.0.0', () => {
+        const address = fallback.address();
+        fallback.close(closeError => {
+          if (closeError) reject(closeError);
+          else resolve(address.port);
+        });
+      });
+    });
+    preferred.listen(port, '0.0.0.0', () => {
+      preferred.close(error => {
+        if (error) reject(error);
+        else resolve(port);
+      });
+    });
+  });
 }
 
 async function main() {
@@ -69,6 +103,12 @@ async function main() {
     return;
   }
 
+  if (!options.offline) {
+    const socketPort = await availablePort(process.env.GVGAI_SOCKET_PORT || 8080);
+    process.env.GVGAI_SOCKET_PORT = String(socketPort);
+    console.log(`[Tournament] GVGAI socket port: ${socketPort}`);
+  }
+
   telemetry.configure({
     fallbackPath: path.join(__dirname, '..', 'data', 'telemetry-events.jsonl')
   });
@@ -89,6 +129,7 @@ async function main() {
     availableModelCount: available.models.length,
     providerMode: available.providerMode,
     discoveryStatus: available.discoveryStatus,
+    socketPort: Number(process.env.GVGAI_SOCKET_PORT || 8080),
     levelId,
     strategyId: strategy.id,
     maxActions
@@ -111,4 +152,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { main, outputPath, parseArgs };
+module.exports = { availablePort, main, outputPath, parseArgs };

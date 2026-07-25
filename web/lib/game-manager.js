@@ -115,6 +115,7 @@ function buildJavaArgs(runtime, gameId, levelId, screenshotPath) {
     config.gvgai.mainClass,
     '-gameId', gameId.toString(),
     '-levelId', levelId.toString(),
+    '-socketPort', config.gvgai.socketPort.toString(),
     '-clientType', 'java',
     '-imgPath', screenshotPath
   ];

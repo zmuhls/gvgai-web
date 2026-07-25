@@ -73,6 +73,7 @@ function summarizeTournament(evaluation, roster, options = {}) {
     },
     methodology: {
       levelId: options.levelId,
+      socketPort: options.socketPort,
       strategyId: options.strategyId,
       maxActions: options.maxActions,
       ranking: ['wins', 'qualified games', 'total score', 'provider reliability']

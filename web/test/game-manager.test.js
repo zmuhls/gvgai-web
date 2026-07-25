@@ -52,6 +52,7 @@ test('Java launch args include the streamed screenshot path', () => {
   assert.equal(args[0], '-Djava.awt.headless=true');
   assert.deepEqual(args.slice(args.indexOf('-gameId'), args.indexOf('-gameId') + 2), ['-gameId', '3']);
   assert.deepEqual(args.slice(args.indexOf('-levelId'), args.indexOf('-levelId') + 2), ['-levelId', '2']);
+  assert.deepEqual(args.slice(args.indexOf('-socketPort'), args.indexOf('-socketPort') + 2), ['-socketPort', '8080']);
   assert.deepEqual(args.slice(args.indexOf('-imgPath'), args.indexOf('-imgPath') + 2), ['-imgPath', screenshotPath]);
   assert.deepEqual(args.slice(args.indexOf('-gamesDir'), args.indexOf('-gamesDir') + 2), ['-gamesDir', '/tmp/gvgai-runtime/source']);
 });

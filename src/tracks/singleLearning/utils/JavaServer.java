@@ -83,8 +83,11 @@ public class JavaServer {
         /** Now prepare to start */
         ElapsedWallTimer wallClock = new ElapsedWallTimer();
 
-        //Port for the socket.
-        String port = CompetitionParameters.SOCKET_PORT + "";
+        // Port for the socket. Web-managed runs can choose a free port without
+        // disturbing another local service that already owns the legacy 8080.
+        String port = params.containsKey("socketPort")
+                ? params.get("socketPort").get(0)
+                : CompetitionParameters.SOCKET_PORT + "";
 
         //Building the command line
         String cmd[] = new String[]{null, null, port, clientType};
