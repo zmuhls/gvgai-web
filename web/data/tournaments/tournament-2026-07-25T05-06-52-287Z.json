@@ -1,0 +1,604 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-25T05:06:52.287Z",
+  "status": "completed",
+  "champion": {
+    "modelId": "qwen3-agent:latest",
+    "modelName": "qwen3-agent:latest",
+    "reason": "2 wins, 2 qualified games, 33183 total score, and 0 provider errors."
+  },
+  "roster": {
+    "availableModelCount": 3,
+    "participantCount": 3,
+    "providerMode": "ollama-local",
+    "discoveryStatus": "ready"
+  },
+  "participants": [
+    {
+      "modelId": "qwen3-agent-nothink:latest",
+      "modelName": "qwen3-agent-nothink:latest"
+    },
+    {
+      "modelId": "qwen3-agent:latest",
+      "modelName": "qwen3-agent:latest"
+    },
+    {
+      "modelId": "qwen3:8b",
+      "modelName": "qwen3:8b"
+    }
+  ],
+  "newPlayers": [
+    "qwen3-agent-nothink:latest",
+    "qwen3-agent:latest",
+    "qwen3:8b"
+  ],
+  "summary": {
+    "matchesPlayed": 30,
+    "errors": 0,
+    "gameCount": 10
+  },
+  "methodology": {
+    "levelId": 1,
+    "socketPort": 51628,
+    "strategyId": "four-way-sweep",
+    "maxActions": 40,
+    "ranking": [
+      "wins",
+      "qualified games",
+      "total score",
+      "provider reliability"
+    ]
+  },
+  "standings": [
+    {
+      "modelId": "qwen3-agent:latest",
+      "modelName": "qwen3-agent:latest",
+      "stage": "tournament",
+      "runs": 10,
+      "wins": 2,
+      "losses": 0,
+      "qualifiedGames": 2,
+      "totalScore": 33183,
+      "providerErrors": 0,
+      "meanLatencyMs": 0,
+      "rank": 1
+    },
+    {
+      "modelId": "qwen3:8b",
+      "modelName": "qwen3:8b",
+      "stage": "tournament",
+      "runs": 10,
+      "wins": 2,
+      "losses": 0,
+      "qualifiedGames": 2,
+      "totalScore": 33183,
+      "providerErrors": 0,
+      "meanLatencyMs": 0,
+      "rank": 2
+    },
+    {
+      "modelId": "qwen3-agent-nothink:latest",
+      "modelName": "qwen3-agent-nothink:latest",
+      "stage": "tournament",
+      "runs": 10,
+      "wins": 0,
+      "losses": 0,
+      "qualifiedGames": 0,
+      "totalScore": 33066,
+      "providerErrors": 0,
+      "meanLatencyMs": 0,
+      "rank": 3
+    }
+  ],
+  "games": [
+    {
+      "gameId": 0,
+      "gameName": "aliens",
+      "matchesPlayed": 3,
+      "qualifiedModels": 0,
+      "winner": null
+    },
+    {
+      "gameId": 13,
+      "gameName": "butterflies",
+      "matchesPlayed": 3,
+      "qualifiedModels": 0,
+      "winner": null
+    },
+    {
+      "gameId": 15,
+      "gameName": "camelRace",
+      "matchesPlayed": 3,
+      "qualifiedModels": 0,
+      "winner": null
+    },
+    {
+      "gameId": 18,
+      "gameName": "chase",
+      "matchesPlayed": 3,
+      "qualifiedModels": 0,
+      "winner": null
+    },
+    {
+      "gameId": 20,
+      "gameName": "chopper",
+      "matchesPlayed": 3,
+      "qualifiedModels": 0,
+      "winner": null
+    },
+    {
+      "gameId": 26,
+      "gameName": "crossfire",
+      "matchesPlayed": 3,
+      "qualifiedModels": 2,
+      "winner": null
+    },
+    {
+      "gameId": 30,
+      "gameName": "digdug",
+      "matchesPlayed": 3,
+      "qualifiedModels": 0,
+      "winner": null
+    },
+    {
+      "gameId": 50,
+      "gameName": "hungrybirds",
+      "matchesPlayed": 3,
+      "qualifiedModels": 2,
+      "winner": null
+    },
+    {
+      "gameId": 63,
+      "gameName": "link",
+      "matchesPlayed": 3,
+      "qualifiedModels": 0,
+      "winner": null
+    },
+    {
+      "gameId": 68,
+      "gameName": "pacman",
+      "matchesPlayed": 3,
+      "qualifiedModels": 0,
+      "winner": null
+    }
+  ],
+  "qualification": {
+    "targetGameCount": 10,
+    "selectedModelCount": 3,
+    "requiredModelPasses": 2,
+    "qualifyingGameCount": 2,
+    "targetMet": false,
+    "games": [
+      {
+        "gameId": 26,
+        "gameName": "crossfire",
+        "levelId": 1,
+        "modelPasses": 2,
+        "requiredModelPasses": 2,
+        "qualified": true,
+        "models": [
+          {
+            "modelId": "qwen3-agent-nothink:latest",
+            "modelName": "qwen3-agent-nothink:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3-agent:latest",
+            "modelName": "qwen3-agent:latest",
+            "passed": true,
+            "reason": "won",
+            "evidenceRunId": "arcade-g26-l1-qwen3-agent-latest-s0",
+            "finalScore": 5,
+            "ticks": 35,
+            "strategyId": "four-way-sweep",
+            "winner": "PLAYER_WINS"
+          },
+          {
+            "modelId": "qwen3:8b",
+            "modelName": "qwen3:8b",
+            "passed": true,
+            "reason": "won",
+            "evidenceRunId": "arcade-g26-l1-qwen3-8b-s0",
+            "finalScore": 5,
+            "ticks": 35,
+            "strategyId": "four-way-sweep",
+            "winner": "PLAYER_WINS"
+          }
+        ]
+      },
+      {
+        "gameId": 50,
+        "gameName": "hungrybirds",
+        "levelId": 1,
+        "modelPasses": 2,
+        "requiredModelPasses": 2,
+        "qualified": true,
+        "models": [
+          {
+            "modelId": "qwen3-agent-nothink:latest",
+            "modelName": "qwen3-agent-nothink:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3-agent:latest",
+            "modelName": "qwen3-agent:latest",
+            "passed": true,
+            "reason": "won",
+            "evidenceRunId": "arcade-g50-l1-qwen3-agent-latest-s0",
+            "finalScore": 100,
+            "ticks": 21,
+            "strategyId": "four-way-sweep",
+            "winner": "PLAYER_WINS"
+          },
+          {
+            "modelId": "qwen3:8b",
+            "modelName": "qwen3:8b",
+            "passed": true,
+            "reason": "won",
+            "evidenceRunId": "arcade-g50-l1-qwen3-8b-s0",
+            "finalScore": 100,
+            "ticks": 21,
+            "strategyId": "four-way-sweep",
+            "winner": "PLAYER_WINS"
+          }
+        ]
+      },
+      {
+        "gameId": 0,
+        "gameName": "aliens",
+        "levelId": 1,
+        "modelPasses": 0,
+        "requiredModelPasses": 2,
+        "qualified": false,
+        "models": [
+          {
+            "modelId": "qwen3-agent-nothink:latest",
+            "modelName": "qwen3-agent-nothink:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3-agent:latest",
+            "modelName": "qwen3-agent:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3:8b",
+            "modelName": "qwen3:8b",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          }
+        ]
+      },
+      {
+        "gameId": 13,
+        "gameName": "butterflies",
+        "levelId": 1,
+        "modelPasses": 0,
+        "requiredModelPasses": 2,
+        "qualified": false,
+        "models": [
+          {
+            "modelId": "qwen3-agent-nothink:latest",
+            "modelName": "qwen3-agent-nothink:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3-agent:latest",
+            "modelName": "qwen3-agent:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3:8b",
+            "modelName": "qwen3:8b",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          }
+        ]
+      },
+      {
+        "gameId": 15,
+        "gameName": "camelRace",
+        "levelId": 1,
+        "modelPasses": 0,
+        "requiredModelPasses": 2,
+        "qualified": false,
+        "models": [
+          {
+            "modelId": "qwen3-agent-nothink:latest",
+            "modelName": "qwen3-agent-nothink:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3-agent:latest",
+            "modelName": "qwen3-agent:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3:8b",
+            "modelName": "qwen3:8b",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          }
+        ]
+      },
+      {
+        "gameId": 18,
+        "gameName": "chase",
+        "levelId": 1,
+        "modelPasses": 0,
+        "requiredModelPasses": 2,
+        "qualified": false,
+        "models": [
+          {
+            "modelId": "qwen3-agent-nothink:latest",
+            "modelName": "qwen3-agent-nothink:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3-agent:latest",
+            "modelName": "qwen3-agent:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3:8b",
+            "modelName": "qwen3:8b",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          }
+        ]
+      },
+      {
+        "gameId": 20,
+        "gameName": "chopper",
+        "levelId": 1,
+        "modelPasses": 0,
+        "requiredModelPasses": 2,
+        "qualified": false,
+        "models": [
+          {
+            "modelId": "qwen3-agent-nothink:latest",
+            "modelName": "qwen3-agent-nothink:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3-agent:latest",
+            "modelName": "qwen3-agent:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3:8b",
+            "modelName": "qwen3:8b",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          }
+        ]
+      },
+      {
+        "gameId": 30,
+        "gameName": "digdug",
+        "levelId": 1,
+        "modelPasses": 0,
+        "requiredModelPasses": 2,
+        "qualified": false,
+        "models": [
+          {
+            "modelId": "qwen3-agent-nothink:latest",
+            "modelName": "qwen3-agent-nothink:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3-agent:latest",
+            "modelName": "qwen3-agent:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3:8b",
+            "modelName": "qwen3:8b",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          }
+        ]
+      },
+      {
+        "gameId": 63,
+        "gameName": "link",
+        "levelId": 1,
+        "modelPasses": 0,
+        "requiredModelPasses": 2,
+        "qualified": false,
+        "models": [
+          {
+            "modelId": "qwen3-agent-nothink:latest",
+            "modelName": "qwen3-agent-nothink:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3-agent:latest",
+            "modelName": "qwen3-agent:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3:8b",
+            "modelName": "qwen3:8b",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          }
+        ]
+      },
+      {
+        "gameId": 68,
+        "gameName": "pacman",
+        "levelId": 1,
+        "modelPasses": 0,
+        "requiredModelPasses": 2,
+        "qualified": false,
+        "models": [
+          {
+            "modelId": "qwen3-agent-nothink:latest",
+            "modelName": "qwen3-agent-nothink:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3-agent:latest",
+            "modelName": "qwen3-agent:latest",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          },
+          {
+            "modelId": "qwen3:8b",
+            "modelName": "qwen3:8b",
+            "passed": false,
+            "reason": null,
+            "evidenceRunId": null,
+            "finalScore": null,
+            "ticks": null,
+            "strategyId": null,
+            "winner": null
+          }
+        ]
+      }
+    ]
+  }
+}
