@@ -6,6 +6,7 @@
 
   var expandBtn = document.getElementById('marble-popout-expand');
   var closeBtn = document.getElementById('marble-popout-close');
+  var reopenBtn = document.getElementById('marble-popout-reopen');
   var lamp = document.getElementById('marble-popout-lamp');
   var status = document.getElementById('marble-popout-status');
   var iframe = popout.querySelector('iframe');
@@ -50,8 +51,25 @@
 
   function closePopout() {
     popout.classList.add('is-hidden');
+    popout.classList.remove('is-expanded');
+    startRequested = false;   // let a later reopen re-request the stream
+    if (reopenBtn) {
+      reopenBtn.hidden = false;
+      reopenBtn.classList.add('is-visible');
+    }
     if (iframe) iframe.setAttribute('src', 'about:blank');
     track('marble_popout_closed');
+  }
+
+  function reopenPopout() {
+    popout.classList.remove('is-hidden');
+    if (reopenBtn) {
+      reopenBtn.hidden = true;
+      reopenBtn.classList.remove('is-visible');
+    }
+    if (iframe && iframeSrc) iframe.setAttribute('src', iframeUrl(false) || iframeSrc);
+    startUniversalMarbleRun('reopen');
+    track('marble_popout_reopened');
   }
 
   function updateStatus(mode) {
@@ -119,6 +137,8 @@
   }
 
   if (closeBtn) closeBtn.addEventListener('click', closePopout);
+
+  if (reopenBtn) reopenBtn.addEventListener('click', reopenPopout);
 
   popout.addEventListener('click', function (event) {
     if (!isMobileDrawer() || popout.classList.contains('is-expanded')) return;

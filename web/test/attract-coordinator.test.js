@@ -243,3 +243,26 @@ test('stops the loop after repeated case failures (engine-unavailable backstop)'
   assert.equal(coord.mode, 'IDLE');
   assert.equal(calls, 2, 'stops exactly at maxConsecutiveErrors');
 });
+
+test('stops the loop when cases fast-fail before the dwell window', async () => {
+  const io = makeIo();
+  const runner = autoRunner({ finalScore: 0, winner: 'NO_WINNER', won: false, ticks: 0, decisions: 0, adherence: { label: 'x' } }, 1);
+  const coord = new AttractCoordinator();
+  coord.configure({
+    io,
+    streamer: { start() {}, stop() {} },
+    isWalkupActive: () => false,
+    gameManager: { stopGameAndWait: () => Promise.resolve(true) },
+    buildArcadeEvalPlan: () => ({ cases: [makeCase(0), makeCase(1), makeCase(2)] }),
+    runEvalCase: runner.fn,
+    minCaseDwellMs: 50,
+    maxConsecutiveFastFailures: 2
+  });
+
+  coord.start();
+  await wait(300);
+  assert.equal(coord.enabled, false, 'loop disables itself after repeated fast failures');
+  assert.equal(coord.mode, 'IDLE');
+  assert.equal(runner.calls.length, 2, 'stops exactly at the fast-failure limit');
+  assert.equal(io.typesOf('marble-run-guardrail').length, 2);
+});

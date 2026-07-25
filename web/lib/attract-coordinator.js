@@ -30,6 +30,7 @@ class AttractCoordinator {
     this.walkupActive = false;
     this.currentCase = null;
     this.currentStartedAt = null;
+    this.currentStartedMs = null;
 
     this._currentHandle = null;   // { processId, llmClient } for the live marble case
     this._currentPromise = null;  // the in-flight runEvalCase promise
@@ -53,6 +54,9 @@ class AttractCoordinator {
     this._consecutiveErrors = 0;
     this.maxConsecutiveErrors = 3;  // stop churning if the engine is unavailable
     this.errorBackoffMs = 2000;     // brief pause after a failed case
+    this._consecutiveFastFailures = 0;
+    this.minCaseDwellMs = 0;        // production sets this to prevent visual flashing
+    this.maxConsecutiveFastFailures = 0; // 0 => one full playlist
   }
 
   configure(deps = {}) {
@@ -68,6 +72,8 @@ class AttractCoordinator {
     if (deps.resumeDebounceMs != null) this.resumeDebounceMs = deps.resumeDebounceMs;
     if (deps.maxConsecutiveErrors != null) this.maxConsecutiveErrors = deps.maxConsecutiveErrors;
     if (deps.errorBackoffMs != null) this.errorBackoffMs = deps.errorBackoffMs;
+    if (deps.minCaseDwellMs != null) this.minCaseDwellMs = Number.isFinite(deps.minCaseDwellMs) ? deps.minCaseDwellMs : 0;
+    if (deps.maxConsecutiveFastFailures != null) this.maxConsecutiveFastFailures = Number.isFinite(deps.maxConsecutiveFastFailures) ? deps.maxConsecutiveFastFailures : 0;
     this.configured = true;
     return this;
   }
@@ -78,6 +84,10 @@ class AttractCoordinator {
     if (!this.configured) throw new Error('AttractCoordinator.configure() must be called first');
     if (this.enabled) return this.getSnapshot();
     if (!this.cases.length) this.cases = this._buildCases();
+    // A fresh start grants a full grace window again: don't inherit the failure
+    // tallies that tripped a prior auto-stop, or the very next case re-stops it.
+    this._consecutiveErrors = 0;
+    this._consecutiveFastFailures = 0;
     this.enabled = true;
     // Fire-and-forget: the loop runs in the background; progress reaches clients
     // only via Socket.IO, mirroring the /api/game/start pattern.
@@ -238,6 +248,7 @@ class AttractCoordinator {
         this._abortReason = null;
         this.currentCase = evalCase;
         this.currentStartedAt = nowIso();
+        this.currentStartedMs = Date.now();
         this.mode = 'MARBLE_STARTING';
         this._emitState();
         // Tag the frame stream with this case's runId so walk-up viewers can
@@ -280,8 +291,35 @@ class AttractCoordinator {
           const result = await this._currentPromise;
           this._emit('case-completed', this._caseCompletedPayload(evalCase, result, this._abortReason || 'summary'));
           if (!this._abortReason) {
+            const elapsedMs = Date.now() - this.currentStartedMs;
+            const fastFailure = this._isFastFailure(result, elapsedMs);
+            if (fastFailure) {
+              this._consecutiveFastFailures += 1;
+              this._emit('marble-run-guardrail', {
+                type: 'fast_failure',
+                runId: evalCase.runId,
+                modelId: evalCase.modelId,
+                elapsedMs,
+                consecutive: this._consecutiveFastFailures,
+                limit: this._fastFailureLimit()
+              });
+            } else {
+              this._consecutiveFastFailures = 0;
+            }
             this._recordTelemetry(evalCase, result);
             this._consecutiveErrors = 0;
+            await this._dwellIfNeeded(elapsedMs);
+            // A walk-up (or stop) can arrive during the dwell; don't disable the
+            // run out from under it — the loop would strand walkupActive=true and
+            // never resume. Defer the backstop to the next real case instead.
+            if (!this._abortReason && !this.walkupActive
+                && this._consecutiveFastFailures >= this._fastFailureLimit()) {
+              console.error(`[Attract] ${this._consecutiveFastFailures} consecutive fast-failing cases; stopping marble run.`);
+              this.enabled = false;
+              this.mode = 'IDLE';
+              this._emitState();
+              break;
+            }
           }
         } catch (error) {
           this._emit('case-completed', {
@@ -297,6 +335,7 @@ class AttractCoordinator {
           this._currentHandle = null;
           this._currentPromise = null;
           this.currentCase = null;
+          this.currentStartedMs = null;
         }
 
         if (caseErrored) {
@@ -358,6 +397,26 @@ class AttractCoordinator {
 
   _buildPlan() {
     return this.buildArcadeEvalPlan(this.planOptions || {});
+  }
+
+  _fastFailureLimit() {
+    if (this.maxConsecutiveFastFailures > 0) return this.maxConsecutiveFastFailures;
+    return Math.max(this.cases.length, 1);
+  }
+
+  _isFastFailure(result, elapsedMs) {
+    if (this.minCaseDwellMs <= 0 || elapsedMs >= this.minCaseDwellMs) return false;
+    if (!result) return true;
+    const decisions = Number(result.decisions || 0);
+    const ticks = Number(result.ticks || 0);
+    const llmErrors = Array.isArray(result.llmErrors) ? result.llmErrors.length : 0;
+    return llmErrors > 0 || decisions <= 0 || ticks <= 0;
+  }
+
+  async _dwellIfNeeded(elapsedMs) {
+    const remaining = this.minCaseDwellMs - elapsedMs;
+    if (remaining <= 0 || this._abortReason || !this.enabled || this.walkupActive) return;
+    await new Promise(resolve => setTimeout(resolve, remaining));
   }
 
   _emit(event, payload) {
