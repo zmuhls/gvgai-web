@@ -35,7 +35,7 @@
     <nav id="main-nav" aria-label="Primary sections">
       <button class="nav-link active" type="button" data-target="play-section" aria-controls="play-section" aria-current="page">Java Arcade</button>
       <button class="nav-link" type="button" data-target="prompt-dashboard" aria-controls="prompt-dashboard">Operator Desk</button>
-      <button class="nav-link" type="button" data-target="telemetry-dashboard" aria-controls="telemetry-dashboard">Telemetry</button>
+      <button class="nav-link" type="button" data-target="leaderboard-dashboard" aria-controls="leaderboard-dashboard">Leaderboard</button>
     </nav>
     <div class="titlebar-status">
       <span id="conn-lamp" class="lamp" data-state="off"><span class="lamp-dot"></span><span id="conn-lamp-label">Socket offline</span></span>
@@ -437,142 +437,76 @@
       </div>
     </div><!-- /prompt-dashboard -->
 
-    <!-- Telemetry Dashboard Section: a guided exhibit of three stations, A → C.
-         Every station letter is a real waypoint; plaques tie the live data to
-         the GVGAI research lineage. Renderer: js/telemetry-dashboard.js. -->
-    <div id="telemetry-dashboard" class="section telemetry-section" aria-labelledby="telemetry-dashboard-title" hidden>
-      <div class="dashboard-heading telemetry-heading">
-        <p class="step-label">live data</p>
-        <h2 id="telemetry-dashboard-title">Telemetry Stream</h2>
-        <p>Three stations. A: what the models did. B: how they decided. C: where it all goes.</p>
+    <!-- Tournament records are durable build artifacts, so this surface stays
+         useful even when the live telemetry backend is unavailable. -->
+    <div id="leaderboard-dashboard" class="section leaderboard-section" aria-labelledby="leaderboard-title" hidden>
+      <div class="dashboard-heading leaderboard-heading">
+        <p class="step-label">tournament archive</p>
+        <h2 id="leaderboard-title">Leaderboard</h2>
+        <p>Recurring open-weight model tournaments. Every edition keeps its field, matches, standings, and game record.</p>
       </div>
 
-      <details class="telemetry-station" id="station-a" aria-labelledby="station-a-title" open>
-        <summary class="station-head">
-          <span class="station-letter" aria-hidden="true">A</span>
-          <span class="station-title-group">
-            <span class="step-label">what the models did</span>
-            <h3 class="station-title" id="station-a-title">Runs</h3>
-          </span>
-          <span class="station-stat"><strong id="station-a-stat">—</strong><small>runs · wins</small></span>
-          <span class="station-caret" aria-hidden="true">▸</span>
-        </summary>
-        <div class="station-inner">
-          <p class="station-plaque">GVGAI's competitions scored planners across unseen games — general competence, not one practiced high score. Runs here are grouped the same way, by archetype (shooter, pusher, chaser…), because scores across archetypes don't average.</p>
-          <div class="station-body">
-            <div class="station-cols">
-              <div class="station-block">
-                <h4 class="station-sub">Eval outcomes</h4>
-                <div id="telemetry-eval-chart" class="telemetry-bars"></div>
-              </div>
-              <div class="station-block">
-                <h4 class="station-sub">Run leaderboard <span id="telemetry-leaderboard-source">local memory</span></h4>
-                <div id="telemetry-run-leaderboard" class="leaderboard-table"></div>
-              </div>
-            </div>
-            <div class="station-block">
-              <h4 class="station-sub">Marble run — tote board <span id="telemetry-marble-total">0 cases</span></h4>
-              <div class="marble-controls">
-                <button id="marble-start-btn" class="btn-small" type="button">Start</button>
-                <button id="marble-stop-btn" class="btn-small btn-danger" type="button">Stop</button>
-              </div>
-              <div class="station-cols">
-                <div>
-                  <p class="station-microlabel">Standings · win rate</p>
-                  <div id="telemetry-marble-standings" class="telemetry-bars"></div>
-                </div>
-                <div>
-                  <p class="station-microlabel">By strategy · mean score</p>
-                  <div id="telemetry-marble-strategy" class="telemetry-bars"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <a class="station-next" href="#station-b" data-station-next="station-b">Next: B — Decisions ↓</a>
-        </div>
-      </details>
+      <p id="leaderboard-error" class="leaderboard-error" role="status" hidden></p>
 
-      <details class="telemetry-station" id="station-b" aria-labelledby="station-b-title">
-        <summary class="station-head">
-          <span class="station-letter" aria-hidden="true">B</span>
-          <span class="station-title-group">
-            <span class="step-label">how they decided</span>
-            <h3 class="station-title" id="station-b-title">Decisions</h3>
-          </span>
-          <span class="station-stat"><strong id="station-b-stat">—</strong><small>avg latency</small></span>
-          <span class="station-caret" aria-hidden="true">▸</span>
-        </summary>
-        <div class="station-inner">
-          <p class="station-plaque">The original planning track allowed a 40 ms forward-model budget per move. A language model spends seconds — and narrates a reason. That gap, speed traded for stated intent, is what this arcade measures.</p>
-          <div class="station-body">
-            <div class="station-cols">
-              <div class="station-block">
-                <h4 class="station-sub">Usage leaderboard</h4>
-                <div id="telemetry-usage-leaderboard" class="leaderboard-table"></div>
-              </div>
-              <div class="station-block">
-                <h4 class="station-sub">Decisions &amp; latency by model</h4>
-                <div id="telemetry-model-chart" class="telemetry-model-list"></div>
-              </div>
-            </div>
-            <div class="station-block">
-              <h4 class="station-sub">Ollama Cloud guardrail</h4>
-              <div id="telemetry-guardrail" class="telemetry-bars"></div>
-            </div>
-          </div>
-          <a class="station-next" href="#station-c" data-station-next="station-c">Next: C — Records ↓</a>
+      <section class="tournament-champion" aria-labelledby="leaderboard-champion-name">
+        <div>
+          <p class="tournament-kicker"><span class="lamp-dot"></span> Latest tournament · <span id="leaderboard-updated">loading</span></p>
+          <h3 id="leaderboard-champion-name">Loading champion…</h3>
+          <p id="leaderboard-champion-reason">Reading the durable tournament record.</p>
         </div>
-      </details>
+        <div class="tournament-crown" aria-hidden="true">01</div>
+      </section>
 
-      <details class="telemetry-station" id="station-c" aria-labelledby="station-c-title">
-        <summary class="station-head">
-          <span class="station-letter" aria-hidden="true">C</span>
-          <span class="station-title-group">
-            <span class="step-label">where it all goes</span>
-            <h3 class="station-title" id="station-c-title">Records</h3>
-          </span>
-          <span class="station-stat"><strong id="station-c-stat">—</strong><small>events stored</small></span>
-          <span class="station-caret" aria-hidden="true">▸</span>
-        </summary>
-        <div class="station-inner">
-          <p class="station-plaque">Every run leaves a trace: state, action, stated reason. Traces become training data, training data becomes adapters, adapters return to the cabinet as new players. Evaluation as a loop, not a leaderboard.</p>
-          <div class="station-body">
-            <div class="station-block">
-              <h4 class="station-sub">Persistence pipeline <span id="telemetry-pipeline-source">local memory</span></h4>
-              <div id="telemetry-pipeline" class="pipeline-rail"></div>
+      <div class="tournament-stats" aria-label="Latest tournament totals">
+        <article><strong id="leaderboard-player-count">—</strong><span>players</span></article>
+        <article><strong id="leaderboard-match-count">—</strong><span>matches played</span></article>
+        <article><strong id="leaderboard-game-count">—</strong><span>games tested</span></article>
+        <article><strong id="leaderboard-record-count">—</strong><span>tournaments archived</span></article>
+      </div>
+
+      <div class="tournament-layout">
+        <section class="tournament-panel tournament-standings-panel" aria-labelledby="leaderboard-standings-title">
+          <div class="tournament-panel-head">
+            <div>
+              <p class="step-label">official result</p>
+              <h3 id="leaderboard-standings-title">Standings</h3>
             </div>
-            <div class="station-block">
-              <h4 class="station-sub">Fine-tune pipeline <span id="telemetry-finetune-model">no runs yet</span></h4>
-              <div id="telemetry-finetune" class="telemetry-bars"></div>
-            </div>
-            <div class="station-cols">
-              <div class="station-block">
-                <h4 class="station-sub">Data flow <span id="telemetry-stream-count">0 events</span></h4>
-                <div id="telemetry-flow" class="telemetry-flow"></div>
-              </div>
-              <div class="station-block">
-                <h4 class="station-sub">Event log</h4>
-                <div class="telemetry-event-table" id="telemetry-event-table"></div>
-              </div>
-            </div>
-            <div class="station-cols station-cols-3">
-              <div class="station-block">
-                <h4 class="station-sub">Clickthrough funnel</h4>
-                <div id="telemetry-funnel-chart" class="telemetry-funnel"></div>
-              </div>
-              <div class="station-block">
-                <h4 class="station-sub">Trace categories</h4>
-                <div id="telemetry-trace-chart" class="telemetry-bars"></div>
-              </div>
-              <div class="station-block">
-                <h4 class="station-sub">Sessions</h4>
-                <div id="telemetry-session-leaderboard" class="leaderboard-table"></div>
-              </div>
+            <span id="leaderboard-source">artifact</span>
+          </div>
+          <div id="leaderboard-standings" class="tournament-standings" role="table" aria-label="Tournament standings"></div>
+        </section>
+
+        <aside class="tournament-panel" aria-labelledby="leaderboard-new-title">
+          <div class="tournament-panel-head">
+            <div>
+              <p class="step-label">new this edition</p>
+              <h3 id="leaderboard-new-title">New challengers</h3>
             </div>
           </div>
+          <div id="leaderboard-new-players" class="tournament-challengers"></div>
+        </aside>
+      </div>
+
+      <section class="tournament-panel" aria-labelledby="leaderboard-games-title">
+        <div class="tournament-panel-head">
+          <div>
+            <p class="step-label">cabinet record</p>
+            <h3 id="leaderboard-games-title">Games</h3>
+          </div>
         </div>
-      </details>
-    </div><!-- /telemetry-dashboard -->
+        <div id="leaderboard-games" class="tournament-games"></div>
+      </section>
+
+      <section class="tournament-panel" aria-labelledby="leaderboard-history-title">
+        <div class="tournament-panel-head">
+          <div>
+            <p class="step-label">persistent record</p>
+            <h3 id="leaderboard-history-title">Tournament history</h3>
+          </div>
+        </div>
+        <div id="leaderboard-history" class="tournament-history"></div>
+      </section>
+    </div><!-- /leaderboard-dashboard -->
 
   </div>
 
@@ -599,6 +533,6 @@
   <script src="js/marble-popout.js?v=uxmin-20260708"></script>
   <script src="js/app.js" type="module"></script>
   <script src="js/dashboard.js"></script>
-  <script src="js/telemetry-dashboard.js"></script>
+  <script src="js/leaderboard-dashboard.js"></script>
 </body>
 </html>

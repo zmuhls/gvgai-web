@@ -220,6 +220,19 @@ test('preferProviderFallback tries configured OpenRouter fallback before Ollama 
   ]);
 });
 
+test('provider override routes an ad hoc model through local Ollama', () => {
+  const client = new LLMClient({ providerOverride: 'ollama-local' });
+  client.model = 'qwen3:8b';
+  const catalogResolved = models.resolveModel(client.model);
+  const resolved = client.providerOverride
+    ? { ...catalogResolved, provider: client.providerOverride, fallback: null }
+    : catalogResolved;
+
+  assert.deepEqual(client.buildProviderRoutes(resolved), [
+    { provider: 'ollama-local', modelId: 'qwen3:8b', stage: 'primary' }
+  ]);
+});
+
 test('requestLLMAction falls back from legion vLLM through cloud guardrail to OpenRouter', async () => {
   const originalFetch = global.fetch;
   const savedRegistryPath = process.env.FINETUNE_REGISTRY_PATH;

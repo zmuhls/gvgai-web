@@ -66,6 +66,7 @@ function modelsForIds(modelIds) {
 }
 
 function modelsForOptions(options = {}) {
+  if (Array.isArray(options.models) && options.models.length > 0) return options.models;
   if (options.allModels) return getAllModels();
   return modelsForIds(options.modelIds);
 }
@@ -197,10 +198,11 @@ async function runEvalCase(evalCase, options = {}) {
         initialLevelId: evalCase.levelId,
         synchronousActions: options.synchronousActions !== false,
         actionTimeoutMs: options.actionTimeoutMs,
-        maxActions: positiveInteger(options.maxActions, DEFAULT_MAX_ACTIONS),
-        initResponseType: options.initResponseType,
-        actResponseType: options.actResponseType,
-        preferProviderFallback: options.preferProviderFallback,
+      maxActions: positiveInteger(options.maxActions, DEFAULT_MAX_ACTIONS),
+      initResponseType: options.initResponseType,
+      actResponseType: options.actResponseType,
+      providerOverride: evalCase.provider,
+      preferProviderFallback: options.preferProviderFallback,
         promptConfigOptions: options.promptConfigOptions || {}
       });
     llmClient.onSessionEnd = () => {

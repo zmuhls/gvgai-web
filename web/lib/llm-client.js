@@ -92,6 +92,7 @@ class LLMClient {
     this.actResponseType = options.actResponseType || (this.synchronousActions ? 'JSON' : 'BOTH');
     this.runId = options.runId || null;
     this.promptConfigOptions = options.promptConfigOptions || {};
+    this.providerOverride = options.providerOverride || null;
     this.preferProviderFallback = !!options.preferProviderFallback;
     this.lastTraceTickLogged = null;
     this.lastTraceScoreLogged = null;
@@ -1356,7 +1357,10 @@ class LLMClient {
         settings.maxTokens = tokenLimit;
       }
     }
-    const resolved = resolveModel(this.model);
+    const catalogResolved = resolveModel(this.model);
+    const resolved = this.providerOverride
+      ? { ...catalogResolved, provider: this.providerOverride, fallback: null }
+      : catalogResolved;
     const startTime = Date.now();
     let llmResponse;
     let usedProvider = resolved.provider;

@@ -240,6 +240,7 @@ app.use('/api/games', require('./routes/games-local'));
 app.use('/api/models', require('./routes/models-local'));
 app.use('/api/prompts', require('./routes/prompts-local'));
 app.use('/api/evals', require('./routes/evals'));
+app.use('/api/leaderboard', require('./routes/leaderboard'));
 app.use('/api/telemetry', require('./routes/telemetry'));
 app.use('/api/marble', require('./routes/marble'));
 app.use('/api/traces', require('./routes/traces-local'));

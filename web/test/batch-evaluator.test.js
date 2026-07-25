@@ -34,6 +34,21 @@ test('batch plan can select combinatorial movement strategies', () => {
   assert.ok(plan.strategies.every(strategy => /LEFT|RIGHT|UP|DOWN/.test(strategy.text)));
 });
 
+test('batch plan preserves an explicitly discovered local model provider', () => {
+  const plan = buildBatchPlan({
+    gameCount: 1,
+    models: [{
+      id: 'qwen3:8b',
+      name: 'qwen3:8b',
+      provider: 'ollama-local',
+      fallback: null
+    }]
+  });
+
+  assert.equal(plan.models[0].provider, 'ollama-local');
+  assert.equal(plan.cases[0].provider, 'ollama-local');
+});
+
 test('dry run returns selected cases without starting games', async () => {
   const result = await runArcadeBatchEvaluation({
     dryRun: true,
@@ -143,6 +158,7 @@ test('runEvalCase passes response type overrides to the live client', async () =
     gameName: 'aliens',
     levelId: 0,
     modelId: 'model-1',
+    provider: 'ollama-local',
     strategyId: 'safe',
     strategyLabel: 'Play it safe',
     strategy: 'Avoid danger.'
@@ -159,6 +175,7 @@ test('runEvalCase passes response type overrides to the live client', async () =
   assert.equal(receivedOptions.initResponseType, 'BOTH');
   assert.equal(receivedOptions.actResponseType, 'BOTH');
   assert.equal(receivedOptions.synchronousActions, true);
+  assert.equal(receivedOptions.providerOverride, 'ollama-local');
   assert.equal(receivedOptions.preferProviderFallback, true);
   assert.equal(result.finalScore, 3);
 });

@@ -970,6 +970,7 @@ function showStep(step) {
 function showSection(sectionId) {
   const section = document.getElementById(sectionId);
   if (!section) return;
+  document.body.dataset.section = sectionId;
 
   topLevelSections.forEach(item => {
     const isActive = item.id === sectionId;
