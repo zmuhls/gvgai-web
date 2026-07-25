@@ -32,6 +32,19 @@ class GameStateTracker {
         ? [sso.avatarPosition[0], sso.avatarPosition[1]]
         : [0, 0]
     };
+    // Finalize reward attribution for actions whose outcome was not yet
+    // visible: an action's effect only shows up in the NEXT tick's state.
+    // Without this, synchronous (eval/marble) runs compare same-tick states
+    // and report "no effect" for every action of the run.
+    for (let i = this.actionHistory.length - 1; i >= 0; i--) {
+      const entry = this.actionHistory[i];
+      if (!entry.pendingBaseState) break;
+      const base = entry.pendingBaseState;
+      entry.scoreDelta = snapshot.score - base.score;
+      entry.healthDelta = snapshot.health - base.health;
+      entry.positionDelta = `(${snapshot.position[0] - base.position[0]}, ${snapshot.position[1] - base.position[1]})`;
+      delete entry.pendingBaseState;
+    }
     this.lastState = snapshot;
     this.stateHistory.push(snapshot);
     if (this.stateHistory.length > this.maxHistory) {
@@ -39,22 +52,28 @@ class GameStateTracker {
     }
   }
 
-  // Record an LLM action result (called when LLM responds)
+  // Record an LLM action result (called when LLM responds). The deltas set
+  // here are a same-call estimate (zero in sync mode, the call's flight window
+  // in async mode); the next recordTick overwrites them with the actual
+  // decision-to-next-tick outcome via pendingBaseState.
   recordAction(action, tickAtCall) {
     const current = this.lastState;
     // Find the state at the tick when the LLM call was initiated
     const callState = this.stateHistory.find(s => s.tick === tickAtCall) || this.stateHistory[0];
+    let entry;
     if (!current || !callState) {
-      this.actionHistory.push({ tick: current?.tick || 0, action, scoreDelta: 0, healthDelta: 0, positionDelta: '(0, 0)' });
+      entry = { tick: current?.tick || 0, action, scoreDelta: 0, healthDelta: 0, positionDelta: '(0, 0)' };
     } else {
-      this.actionHistory.push({
+      entry = {
         tick: current.tick,
         action,
         scoreDelta: current.score - callState.score,
         healthDelta: current.health - callState.health,
         positionDelta: `(${current.position[0] - callState.position[0]}, ${current.position[1] - callState.position[1]})`
-      });
+      };
     }
+    if (current) entry.pendingBaseState = current;
+    this.actionHistory.push(entry);
     if (this.actionHistory.length > this.maxActions) {
       this.actionHistory.shift();
     }

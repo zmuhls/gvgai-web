@@ -155,6 +155,28 @@ test('registry entries can route to legion vLLM adapters', () => {
   }
 });
 
+test('a registry entry can opt out of the finetuned flag (plain local model)', () => {
+  withRegistry({
+    models: [{
+      id: 'unsloth/gemma-4-E4B-it',
+      name: 'Gemma 4 E4B (local vLLM)',
+      provider: 'legion-vllm',
+      finetuned: false,
+      description: 'Open-weight · served by a local OpenAI-compatible endpoint'
+    }]
+  });
+  try {
+    const merged = models.getAllModels().find(m => m.id === 'unsloth/gemma-4-E4B-it');
+    assert.ok(merged, 'plain local entry appears in the catalog');
+    assert.equal(merged.finetuned, false);
+    assert.equal(merged.provider, 'legion-vllm');
+    // The catalog entry must win over the "'/' implies OpenRouter" inference.
+    assert.equal(models.resolveModel('unsloth/gemma-4-E4B-it').provider, 'legion-vllm');
+  } finally {
+    restore();
+  }
+});
+
 test('a corrupt registry degrades to the built-in catalog', () => {
   withRegistry('{not json');
   try {

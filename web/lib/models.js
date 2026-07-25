@@ -165,7 +165,10 @@ function loadFinetunedModels() {
       speed: 'fast',
       cost: 'free',
       featured: false,
-      finetuned: true,
+      // An entry may declare `"finetuned": false` to register a plain machine-local
+      // model (e.g. a base model on a local vLLM endpoint) without wearing the
+      // fine-tuned badge in the picker/tote board.
+      finetuned: e.finetuned !== false,
       gameId: e.gameId ?? null,
       gameName: e.gameName ?? null,
       baseModel: e.baseModel ?? null,

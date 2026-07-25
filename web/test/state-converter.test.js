@@ -649,3 +649,36 @@ test('codeProtocol still short-circuits before the macro closing branch', () => 
   assert.equal(prompt.responseMode, 'code');
   assert.doesNotMatch(prompt.userMessage, /PLAN: <1 to/);
 });
+
+// --- GameStateTracker reward attribution ---------------------------------
+// An action's outcome is only visible at the NEXT tick. In synchronous
+// (eval/marble) mode the decision is recorded on the same tick it was made,
+// so same-tick deltas are always zero — the history layer then reports
+// "no effect" for every action of the run, which misleads the model.
+const { GameStateTracker } = require('../lib/state-converter');
+
+test('sync-mode reward attribution: score lands on the action at the next tick', () => {
+  const tracker = new GameStateTracker();
+  tracker.recordTick({ gameTick: 5, gameScore: 0, avatarHealthPoints: 100, avatarPosition: [16, 10] });
+  tracker.recordAction('ACTION_USE', 5); // decided on tick 5's state
+  tracker.recordTick({ gameTick: 6, gameScore: 2, avatarHealthPoints: 100, avatarPosition: [16, 10] });
+  const history = tracker.buildHistoryContext();
+  assert.match(history, /ACTION_USE, score \+2/);
+  assert.ok(!history.includes('no effect'), `history still claims no effect: ${history}`);
+});
+
+test('sync-mode reward attribution: movement lands on the action at the next tick', () => {
+  const tracker = new GameStateTracker();
+  tracker.recordTick({ gameTick: 1, gameScore: 0, avatarHealthPoints: 100, avatarPosition: [3, 4] });
+  tracker.recordAction('ACTION_RIGHT', 1);
+  tracker.recordTick({ gameTick: 2, gameScore: 0, avatarHealthPoints: 100, avatarPosition: [4, 4] });
+  assert.match(tracker.buildHistoryContext(), /moved \(1, 0\)/);
+});
+
+test('a genuinely blocked move still reads as no effect after attribution', () => {
+  const tracker = new GameStateTracker();
+  tracker.recordTick({ gameTick: 1, gameScore: 0, avatarHealthPoints: 100, avatarPosition: [3, 4] });
+  tracker.recordAction('ACTION_DOWN', 1);
+  tracker.recordTick({ gameTick: 2, gameScore: 0, avatarHealthPoints: 100, avatarPosition: [3, 4] });
+  assert.match(tracker.buildHistoryContext(), /ACTION_DOWN, no effect/);
+});
