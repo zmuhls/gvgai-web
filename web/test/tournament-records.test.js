@@ -53,7 +53,7 @@ test('the established tournament artifact produces a populated leaderboard', () 
   const leaderboard = getTournamentLeaderboard();
 
   assert.ok(leaderboard.recordCount >= 1);
-  assert.equal(leaderboard.latest.champion.modelId, 'deepseek-v4-flash');
+  assert.equal(leaderboard.latest.champion.modelId, leaderboard.latest.standings[0].modelId);
   assert.ok(leaderboard.latest.participantCount > 0);
   assert.ok(leaderboard.latest.matchesPlayed > 0);
   assert.ok(leaderboard.latest.gameCount > 0);
