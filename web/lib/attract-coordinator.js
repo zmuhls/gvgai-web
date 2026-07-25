@@ -191,10 +191,11 @@ class AttractCoordinator {
             maxActions: this.caseOptions.maxActions,
             onCaseStart: (handle) => {
               this._currentHandle = handle;
-              // If a walk-up arrived while this case was spawning, cut it now that
-              // the client exists — keeps beginWalkup responsive (seconds, not minutes).
-              if (this.walkupActive) {
-                this._abortReason = 'yield';
+              // If a walk-up or stop() arrived while this case was spawning, cut it
+              // now that the client exists — keeps beginWalkup responsive (seconds,
+              // not minutes) and keeps a late spawn from resurrecting MARBLE_PLAYING.
+              if (this.walkupActive || !this.enabled) {
+                this._abortReason = this.walkupActive ? 'yield' : 'stopped';
                 try { handle.llmClient.disconnect(); } catch (e) { /* already gone */ }
               } else {
                 this.mode = 'MARBLE_PLAYING';

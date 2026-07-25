@@ -144,6 +144,39 @@ test('beginWalkup(): interrupts the current case, yields, and does not advance',
   await wait(20);
 });
 
+test('stop() during case spawn: a late onCaseStart must not resurrect MARBLE_PLAYING', async () => {
+  const io = makeIo();
+  const disconnects = [];
+  let fireOnCaseStart = null;
+  const fn = (evalCase, options) => new Promise((resolve) => {
+    const handle = {
+      processId: `proc-${evalCase.runId}`,
+      llmClient: { disconnect: () => { disconnects.push(evalCase.runId); resolve({ finalScore: 0, winner: 'NO_WINNER', won: false, ticks: 0, decisions: 0, aborted: true }); } }
+    };
+    fireOnCaseStart = () => { if (options.onCaseStart) options.onCaseStart(handle); };
+  });
+  const coord = new AttractCoordinator();
+  coord.configure({
+    io,
+    streamer: { start() {}, stop() {} },
+    isWalkupActive: () => false,
+    gameManager: { stopGameAndWait: () => Promise.resolve(true) },
+    buildArcadeEvalPlan: () => ({ cases: [makeCase(0)] }),
+    runEvalCase: fn
+  });
+
+  coord.start();
+  await wait(10); // loop has invoked runEvalCase; handle not yet delivered
+  assert.ok(fireOnCaseStart, 'runEvalCase was invoked');
+  coord.stop();
+  assert.equal(coord.mode, 'IDLE');
+
+  fireOnCaseStart(); // the spawn completes after stop()
+  await wait(10);
+  assert.equal(coord.mode, 'IDLE', 'late onCaseStart must not flip mode back to MARBLE_PLAYING');
+  assert.ok(disconnects.includes('run-0'), 'the late-arriving case is disconnected, not left running');
+});
+
 test('stop(): tears down and returns to IDLE', async () => {
   const io = makeIo();
   const runner = holdOpenRunner({ finalScore: 0, winner: 'NO_WINNER', won: false, ticks: 1, decisions: 1, adherence: { label: 'x' } });

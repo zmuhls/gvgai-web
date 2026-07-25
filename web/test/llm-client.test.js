@@ -662,3 +662,18 @@ test('recordActionDecision stores null sso when omitted', () => {
 
   assert.equal(client.runLog[0].sso, null);
 });
+
+test('OLLAMA_LOCAL_API_URL overrides the ollama-local endpoint at construction time', () => {
+  const prior = process.env.OLLAMA_LOCAL_API_URL;
+  process.env.OLLAMA_LOCAL_API_URL = 'http://localhost:1234/v1/chat/completions';
+  try {
+    const client = new LLMClient();
+    assert.equal(client.ollamaLocalUrl, 'http://localhost:1234/v1/chat/completions');
+  } finally {
+    if (prior === undefined) delete process.env.OLLAMA_LOCAL_API_URL;
+    else process.env.OLLAMA_LOCAL_API_URL = prior;
+  }
+  const fallbackClient = new LLMClient();
+  assert.ok(fallbackClient.ollamaLocalUrl.includes('/chat/completions'),
+    'without the env var the config.ollama.apiUrl endpoint is used');
+});

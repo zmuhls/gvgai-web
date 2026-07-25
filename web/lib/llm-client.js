@@ -24,6 +24,12 @@ class LLMClient {
     // Load API keys from environment (Ollama Cloud is primary, OpenRouter is fallback)
     this.apiKey = process.env.OPENROUTER_API_KEY || null;          // OpenRouter (fallback)
     this.ollamaApiKey = process.env.OLLAMA_API_KEY || null;        // Ollama Cloud (primary)
+    // Machine-local override for the ollama-local chat endpoint (e.g. a vLLM
+    // OpenAI-compatible server). Read here, not in runtime-config, for two
+    // reasons: root .env loads after getConfig() has already cached, and
+    // ollama-loader derives the real Ollama daemon origin from config.ollama —
+    // that must not follow this override.
+    this.ollamaLocalUrl = process.env.OLLAMA_LOCAL_API_URL || config.ollama.apiUrl;
     this.model = config.openrouter.defaultModel;
     this.io = null;
     this.lastReceivedMessageId = null;  // Track the messageId from Java
@@ -673,7 +679,7 @@ class LLMClient {
       apiUrl = config.ollamaCloud.apiUrl;
       if (this.ollamaApiKey) headers['Authorization'] = `Bearer ${this.ollamaApiKey}`;
     } else if (provider === 'ollama-local') {
-      apiUrl = config.ollama.apiUrl;
+      apiUrl = this.ollamaLocalUrl;
     } else { // openrouter
       apiUrl = config.openrouter.apiUrl;
       if (this.apiKey) {

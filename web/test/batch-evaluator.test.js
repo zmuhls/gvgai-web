@@ -151,3 +151,17 @@ test('prompt comparison requires at least two strategies', () => {
   assert.equal(comparison.groupsWithMeaningfulDifference, 0);
   assert.equal(comparison.comparisons[0].meaningfulDifference, false);
 });
+
+test('resolveCaseMaxActions: default cap must clear the archetype survival gate', () => {
+  const { resolveCaseMaxActions, DEFAULT_MAX_ACTIONS } = require('../lib/batch-evaluator');
+  // Explicit option always wins.
+  assert.equal(resolveCaseMaxActions({ archetype: 'pusher-puzzle' }, { maxActions: 33 }), 33);
+  // pusher-puzzle gate is >80 ticks: the derived default must exceed it.
+  assert.ok(resolveCaseMaxActions({ archetype: 'pusher-puzzle' }, {}) > 80);
+  // collector gate is >60 ticks.
+  assert.ok(resolveCaseMaxActions({ archetype: 'collector' }, {}) > 60);
+  // Global gate is >50 ticks — an unclassified case must clear it too.
+  assert.ok(resolveCaseMaxActions({ archetype: null }, {}) > 50);
+  // Never lower than the historical default.
+  assert.ok(resolveCaseMaxActions({ archetype: 'shooter-lane' }, {}) >= DEFAULT_MAX_ACTIONS);
+});

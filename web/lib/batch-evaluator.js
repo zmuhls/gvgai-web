@@ -1,5 +1,6 @@
 const EventEmitter = require('events');
-const { buildArcadeEvalPlan, normalizeEvalResult } = require('./eval-plan');
+const { buildArcadeEvalPlan, normalizeEvalResult, MIN_SURVIVAL_TICKS } = require('./eval-plan');
+const { getClassDefaults } = require('./class-defaults');
 const { getAllModels, resolveModel } = require('./models');
 const defaultTelemetry = require('./telemetry-store');
 const { getConfig } = require('./runtime-config');
@@ -37,6 +38,19 @@ function toIntegerArray(value) {
 function positiveInteger(value, fallback) {
   const parsed = Number.parseInt(value, 10);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+// The action cap must clear the archetype's survival gate (survivedMinTicks is
+// a strict `ticks > minSurvivalTicks`), or a fully surviving run still reads as
+// a failure. Explicit options.maxActions always wins; the derived default is
+// 1.5x the gate so survival is decidable with headroom, never below the
+// historical 40-action default.
+function resolveCaseMaxActions(evalCase, options = {}) {
+  const explicit = positiveInteger(options.maxActions, null);
+  if (explicit) return explicit;
+  const classEval = evalCase && evalCase.archetype ? getClassDefaults(evalCase.archetype).eval || {} : {};
+  const gate = classEval.minSurvivalTicks || MIN_SURVIVAL_TICKS;
+  return Math.max(DEFAULT_MAX_ACTIONS, Math.ceil(gate * 1.5));
 }
 
 function modelsForIds(modelIds) {
@@ -184,7 +198,7 @@ async function runEvalCase(evalCase, options = {}) {
       : new LLMClient({
         synchronousActions: options.synchronousActions !== false,
         actionTimeoutMs: options.actionTimeoutMs,
-        maxActions: positiveInteger(options.maxActions, DEFAULT_MAX_ACTIONS),
+        maxActions: resolveCaseMaxActions(evalCase, options),
         promptConfigOptions: options.promptConfigOptions || {}
       });
     llmClient.onSessionEnd = () => {
@@ -441,6 +455,7 @@ async function runArcadeBatchEvaluation(options = {}) {
 module.exports = {
   DEFAULT_CASE_LIMIT,
   DEFAULT_MAX_ACTIONS,
+  resolveCaseMaxActions,
   buildBatchPlan,
   selectEvalCases,
   createEventSink,
