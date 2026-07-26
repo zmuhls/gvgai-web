@@ -143,7 +143,40 @@ function saveTrace(trace) {
   index.traces[key].push(summarizeTrace(record));
   writeIndex(index);
 
+  // Durable mirror: when DATABASE_URL is set (the Railway deployment, whose
+  // filesystem is wiped on redeploy) also archive to Postgres, fire-and-forget
+  // so the synchronous save path never blocks on the database.
+  try {
+    const archive = require('./trace-archive');
+    if (archive.isConfigured()) {
+      archive.archiveTrace(record).catch(err => {
+        console.warn('[TraceStore] Postgres archive failed:', err.message);
+      });
+    }
+  } catch (err) {
+    console.warn('[TraceStore] trace archive unavailable:', err.message);
+  }
+
   return record;
+}
+
+// Import a trace that already has an id (e.g. pulled from the Postgres archive
+// by scripts/sync-traces.js). Preserves the original traceId so re-running a
+// sync is idempotent; returns false when the trace is already present.
+function importTrace(record) {
+  if (!record || !record.traceId || record.gameId == null) return false;
+  const filePath = traceFilePath(record.gameId, record.traceId);
+  if (fs.existsSync(filePath)) return false;
+  writeJson(filePath, record);
+
+  const index = readIndex();
+  const key = String(record.gameId);
+  if (!index.traces[key]) index.traces[key] = [];
+  if (!index.traces[key].some(entry => entry.traceId === record.traceId)) {
+    index.traces[key].push(summarizeTrace(record));
+  }
+  writeIndex(index);
+  return true;
 }
 
 function getTracesForGame(gameId, options = {}) {
@@ -199,6 +232,7 @@ function pruneSsoForTrace(sso) {
 
 module.exports = {
   saveTrace,
+  importTrace,
   getTracesForGame,
   getTrace,
   getBestHumanTraces,
