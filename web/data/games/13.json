@@ -4,7 +4,7 @@
   "systemTemplateId": "default-system",
   "gameContext": {
     "templateId": null,
-    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: kill butterfly (+2). Win: clear all butterfly. Lose: cocoon count reaches 0."
+    "customOverride": "Scoring: kill butterfly (+2). Win: clear all butterfly. Lose: cocoon count reaches 0."
   },
   "progressionContexts": {},
   "llmSettings": {
@@ -45,7 +45,7 @@
       0
     ]
   },
-  "updatedAt": "2026-07-02T01:39:27.620Z",
+  "updatedAt": "2026-07-26T00:00:00.000Z",
   "classification": {
     "classifierVersion": 1,
     "archetype": "chaser",

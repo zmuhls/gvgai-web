@@ -1,0 +1,9 @@
+{
+  "id": "hungrybirds-strategy",
+  "name": "Hungry Birds Strategy",
+  "layer": "game",
+  "category": "strategy",
+  "content": "Hungry Birds. You are a bird that is always getting hungrier: your health drains on a timer, and you die when it empties. Eating a worm (food) restores health; a food pile (foodbank) restores health AND scores +40. Reaching the green exit door wins the game (+100).\n\nTactic: never linger — starvation is the clock. Follow the trail of worms toward the exit, eating as you go; detour to food piles for the +40, then push on to the green door before your health runs out.\n\nAVAILABLE ACTIONS: {{availableActions}}",
+  "createdAt": "2026-07-26T00:00:00.000Z",
+  "updatedAt": "2026-07-26T00:00:00.000Z"
+}

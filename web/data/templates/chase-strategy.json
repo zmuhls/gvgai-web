@@ -1,0 +1,9 @@
+{
+  "id": "chase-strategy",
+  "name": "Chase Strategy",
+  "layer": "game",
+  "category": "strategy",
+  "content": "Chase. Blue scared goats flee from you. Touching a scared goat turns it into a carcass (+1). If another scared goat touches a carcass, it turns orange and angry — angry goats hunt YOU and kill you on contact (-1). Win by catching every scared goat.\n\nTactic: pick the nearest blue goat and close the distance every single turn — they run away, so trap them against walls and corners instead of following in a straight line. Steer clear of orange goats; if one is closing in, step away first, then resume the hunt.\n\nAVAILABLE ACTIONS: {{availableActions}}",
+  "createdAt": "2026-07-26T00:00:00.000Z",
+  "updatedAt": "2026-07-26T00:00:00.000Z"
+}

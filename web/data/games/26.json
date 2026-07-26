@@ -3,8 +3,8 @@
   "gameName": "crossfire",
   "systemTemplateId": "default-system",
   "gameContext": {
-    "templateId": null,
-    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: kill goal (+5), bomb (-1). Avoid: bomb. Win: clear all goal. Lose: die."
+    "templateId": "crossfire-strategy",
+    "customOverride": ""
   },
   "progressionContexts": {},
   "llmSettings": {
@@ -56,7 +56,7 @@
     "dangerRadius": 1,
     "policyEntityLimit": 256
   },
-  "updatedAt": "2026-07-02T01:39:27.622Z",
+  "updatedAt": "2026-07-26T00:00:00.000Z",
   "classification": {
     "classifierVersion": 1,
     "archetype": "chaser",

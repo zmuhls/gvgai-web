@@ -4,7 +4,7 @@
   "systemTemplateId": "default-system",
   "gameContext": {
     "templateId": null,
-    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: collect goal (+1). Win: clear all winnerPlayer. Lose: all winnerNPC gone. Mechanics: collect goal to transform."
+    "customOverride": "Scoring: collect goal (+1). Win: clear all winnerPlayer. Lose: all winnerNPC gone. Mechanics: collect goal to transform."
   },
   "progressionContexts": {},
   "llmSettings": {
@@ -44,7 +44,7 @@
       0
     ]
   },
-  "updatedAt": "2026-07-02T01:39:27.620Z",
+  "updatedAt": "2026-07-26T00:00:00.000Z",
   "classification": {
     "classifierVersion": 1,
     "archetype": "collector",

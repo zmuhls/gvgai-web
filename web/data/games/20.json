@@ -4,14 +4,14 @@
   "systemTemplateId": "default-system",
   "gameContext": {
     "templateId": null,
-    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|BOMB|WAIT\nScoring: tank hit by bomb (+1). Avoid: sam. Win: clear all portalBase and tank. Lose: die; satellite count reaches 0."
+    "customOverride": "Scoring: tank hit by bomb (+1). Avoid: sam. Win: clear all portalBase and tank. Lose: die; satellite count reaches 0."
   },
   "progressionContexts": {},
   "llmSettings": {
     "maxTokens": 100,
     "temperature": 0.5
   },
-  "updatedAt": "2026-07-02T01:39:27.621Z",
+  "updatedAt": "2026-07-26T00:00:00.000Z",
   "classification": {
     "classifierVersion": 1,
     "archetype": "shooter-roaming",

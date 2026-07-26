@@ -185,6 +185,39 @@ function getAllModels() {
   return [...MODELS, ...fineTuned];
 }
 
+// --- Availability ---
+//
+// A model is "available" when its routing can actually serve a request on this
+// deployment: a provider key is present, or the provider is a machine-local
+// endpoint (ollama-local, legion-vllm) that only enters the catalog when the
+// operator registered it deliberately. Env is read at call time because some
+// entrypoints load the root .env after this module is required.
+function isModelAvailable(model, env = process.env) {
+  if (!model) return false;
+  switch (model.provider) {
+    case 'ollama-cloud':
+      return Boolean(env.OLLAMA_CLOUD_API_KEY || env.OLLAMA_API_KEY) ||
+        Boolean(model.fallback && env.OPENROUTER_API_KEY);
+    case 'openrouter':
+      return Boolean(env.OPENROUTER_API_KEY);
+    default:
+      return true;
+  }
+}
+
+// Marquee/attract default roster: the featured models that can actually play on
+// this deployment; on a keyless box the registry locals carry the marquee; if
+// availability finds nothing at all, fall back to the legacy featured list so
+// plan shape stays deterministic where it used to be.
+function availableEvalModels(env = process.env) {
+  const featured = MODELS.filter(m => m.featured);
+  const availableFeatured = featured.filter(m => isModelAvailable(m, env));
+  if (availableFeatured.length) return availableFeatured;
+  const availableRest = getAllModels().filter(m => isModelAvailable(m, env));
+  if (availableRest.length) return availableRest;
+  return featured;
+}
+
 // Resolve a model id (from the catalog, or inferred for ad-hoc ids) to its routing.
 // Fine-tuned registry models resolve to ollama-local — without this check the
 // inference below would send them to Ollama Cloud, which has no such tag.
@@ -198,4 +231,12 @@ function resolveModel(id) {
   return { id, provider: 'ollama-cloud', fallback: null };
 }
 
-module.exports = { MODELS, resolveModel, getAllModels, loadFinetunedModels, invalidateFinetunedCache };
+module.exports = {
+  MODELS,
+  resolveModel,
+  getAllModels,
+  loadFinetunedModels,
+  invalidateFinetunedCache,
+  isModelAvailable,
+  availableEvalModels
+};

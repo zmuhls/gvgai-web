@@ -276,3 +276,22 @@ test('stops the loop after repeated case failures (engine-unavailable backstop)'
   assert.equal(coord.mode, 'IDLE');
   assert.equal(calls, 2, 'stops exactly at maxConsecutiveErrors');
 });
+
+test('marble playlist forwards availability env so keyless boxes rotate local models', () => {
+  const coord = new AttractCoordinator();
+  const seen = [];
+  coord.configure({
+    io: makeIo(),
+    buildArcadeEvalPlan: (options = {}) => { seen.push(options); return { cases: [] }; },
+    runEvalCase: () => Promise.resolve({})
+  });
+  coord._buildPlan();
+  assert.equal(seen[0].availabilityEnv, process.env,
+    'plan builder receives the live env for availability filtering');
+
+  // Explicit planOptions still win over the availability default.
+  coord.planOptions = { availabilityEnv: null, models: [{ id: 'pinned' }] };
+  coord._buildPlan();
+  assert.equal(seen[1].availabilityEnv, null);
+  assert.deepEqual(seen[1].models, [{ id: 'pinned' }]);
+});

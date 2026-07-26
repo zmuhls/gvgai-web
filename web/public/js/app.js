@@ -591,7 +591,12 @@ function renderModels(models) {
   modelSelect.innerHTML = models.map(model => `
     <option value="${escapeHtml(model.id)}">${escapeHtml(model.name)}${model.featured ? ' ★' : ''}${model.description ? ` — ${escapeHtml(model.description)}` : ''}</option>
   `).join('');
-  const defaultModel = models.find(m => m.featured) || models[0];
+  // Prefer a model whose provider can actually answer here (the server marks
+  // dead-key providers available:false) so a keyless kiosk defaults to its
+  // local model instead of a cloud model that errors on the first move.
+  const usable = models.filter(m => m.available !== false);
+  const pool = usable.length ? usable : models;
+  const defaultModel = pool.find(m => m.featured) || pool[0];
   if (defaultModel) modelSelect.value = defaultModel.id;
   renderModelChips(models);
 }

@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { MODELS } = require('./models');
+const { MODELS, availableEvalModels } = require('./models');
 const { getCachedClassification } = require('./game-classifier');
 const { getClassDefaults } = require('./class-defaults');
 
@@ -132,7 +132,13 @@ function buildArcadeEvalPlan(options = {}) {
   const count = boundedGameCount(options.gameCount, featuredIds.length);
   const gameIds = featuredIds.slice(0, count);
   const strategies = normalizeStrategies(options.strategies || DEFAULT_STRATEGIES);
-  const models = (options.models || MODELS.filter(model => model.featured)).map(model => ({
+  // Default roster: deterministic featured list, unless the caller opts into
+  // availability filtering (the attract coordinator passes its process env so
+  // a keyless kiosk rotates registry locals instead of dead cloud models).
+  const defaultModels = options.availabilityEnv
+    ? availableEvalModels(options.availabilityEnv)
+    : MODELS.filter(model => model.featured);
+  const models = (options.models || defaultModels).map(model => ({
     id: model.id,
     name: model.name,
     provider: model.provider,

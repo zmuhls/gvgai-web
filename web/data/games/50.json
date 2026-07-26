@@ -3,8 +3,8 @@
   "gameName": "hungrybirds",
   "systemTemplateId": "default-system",
   "gameContext": {
-    "templateId": null,
-    "customOverride": "Output ONE token: UP|DOWN|LEFT|RIGHT|WAIT\nScoring: foodbank (+40), kill goal (+100). Win: clear all goal. Lose: die."
+    "templateId": "hungrybirds-strategy",
+    "customOverride": ""
   },
   "progressionContexts": {},
   "llmSettings": {
@@ -49,7 +49,7 @@
     ],
     "policyEntityLimit": 128
   },
-  "updatedAt": "2026-07-02T01:39:27.626Z",
+  "updatedAt": "2026-07-26T00:00:00.000Z",
   "classification": {
     "classifierVersion": 1,
     "archetype": "chaser",

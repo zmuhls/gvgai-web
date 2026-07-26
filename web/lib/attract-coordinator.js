@@ -357,7 +357,10 @@ class AttractCoordinator {
   }
 
   _buildPlan() {
-    return this.buildArcadeEvalPlan(this.planOptions || {});
+    // The live playlist should only rotate models that can actually answer on
+    // this deployment (a keyless kiosk runs its registry locals instead of
+    // churning dead cloud models). Explicit planOptions still win.
+    return this.buildArcadeEvalPlan({ availabilityEnv: process.env, ...(this.planOptions || {}) });
   }
 
   _emit(event, payload) {

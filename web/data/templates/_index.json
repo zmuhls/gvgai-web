@@ -29,6 +29,24 @@
       "name": "Avoid George Strategy",
       "layer": "game",
       "category": "strategy"
+    },
+    {
+      "id": "hungrybirds-strategy",
+      "name": "Hungry Birds Strategy",
+      "layer": "game",
+      "category": "strategy"
+    },
+    {
+      "id": "chase-strategy",
+      "name": "Chase Strategy",
+      "layer": "game",
+      "category": "strategy"
+    },
+    {
+      "id": "crossfire-strategy",
+      "name": "Crossfire Strategy",
+      "layer": "game",
+      "category": "strategy"
     }
   ]
 }
