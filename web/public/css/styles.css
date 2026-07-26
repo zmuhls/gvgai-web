@@ -3725,6 +3725,68 @@ details[open] > .station-head .station-caret {
   }
 }
 
+/* ---------- "under development" corner ribbon ----------
+   A service tag taped to the cabinet glass. Brass is the theme's existing
+   warning token and appears nowhere else in the header, so the band reads as
+   maintenance signage rather than a live control. Set in the micro-label
+   register (mono / 10px / wide tracking) shared with .titlebar-backend —
+   deliberately NOT the Silkscreen face, which .station-letter reserves as the
+   page's one loud element.
+
+   Geometry: a 45° band across a corner spans a chord of 2 x its distance from
+   that corner, so distance sets how much room the text gets. At ~83px out the
+   chord is ~166px against ~122px of text, leaving ~22px of band past the final
+   letter before the viewport clips it — closer in and the text reads as though
+   it were running off-screen. The band's outer edge therefore sweeps ~134px
+   along the titlebar, so .titlebar-status carries a matching padding-right to
+   move the status cluster clear of it. Inert and unselectable: it overlays the
+   titlebar and the page beneath it, and must never eat a tap. */
+.dev-ribbon {
+  position: fixed;
+  top: 54px;
+  right: -58px;
+  z-index: 101; /* over the sticky titlebar (100), under the boot screen (1000) */
+  width: 220px;
+  margin: 0;
+  padding: 4px 0;
+  background: linear-gradient(180deg, rgba(18, 37, 29, 0.97), rgba(13, 28, 22, 0.97));
+  border-top: 1px solid rgba(224, 178, 90, 0.32);
+  border-bottom: 1px solid rgba(224, 178, 90, 0.32);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  color: var(--brass);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  line-height: 13px;
+  letter-spacing: 0.12em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: rotate(45deg);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Clears the ribbon's diagonal sweep across the titlebar. Paired with
+   .dev-ribbon — if the ribbon goes, this goes with it. */
+.titlebar-status {
+  padding-right: 100px;
+}
+
+/* The ribbon costs the titlebar 100px of its right end, which the brand, nav
+   and status cluster can only spare on a wide viewport — below this the status
+   items start wrapping to two lines. A signage flourish is not worth breaking
+   the header over, so retire the ribbon and its clearance together and let the
+   narrow layout stand as it did before. */
+@media (max-width: 1100px) {
+  .dev-ribbon {
+    display: none;
+  }
+
+  .titlebar-status {
+    padding-right: 0;
+  }
+}
+
 @media (max-width: 900px) {
   /* minmax(0, 1fr) rather than 1fr: a plain 1fr keeps an `auto` minimum,
      so a wide child (event table, code editor) can force the collapsed
