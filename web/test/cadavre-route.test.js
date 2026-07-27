@@ -128,6 +128,10 @@ test('cadavre route derives provider discovery and native Ollama endpoints', () 
     _private.openRouterModelsUrl('https://openrouter.ai/api/v1/chat/completions'),
     'https://openrouter.ai/api/v1/models'
   );
+  assert.equal(
+    _private.openRouterKeyUrl('https://openrouter.ai/api/v1/chat/completions'),
+    'https://openrouter.ai/api/v1/key'
+  );
 });
 
 test('cadavre aligns every curated Ollama model with its OpenRouter fallback id', () => {
@@ -174,6 +178,8 @@ test('cadavre catalog returns the tuned adapter and OpenRouter-first model choic
       let data;
       if (url.startsWith('https://legion.example')) {
         data = [{ id: 'exquisite-corpse' }, { id: 'base-model' }];
+      } else if (url.endsWith('/api/v1/key')) {
+        data = { limit_remaining: 100 };
       } else if (url.startsWith('https://openrouter.ai')) {
         data = [..._private.CADAVRE_OPENROUTER_MODEL_IDS.values()].map((id) => ({ id }));
       } else {
@@ -260,14 +266,110 @@ test('cadavre catalog returns the tuned adapter and OpenRouter-first model choic
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:gemma3:12b'), false);
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:gemma3:27b'), false);
     assert.equal(catalog.models.some(({ id }) => id === 'ollama:devstral-small-2:24b'), false);
-    assert.equal(calls.length, 3);
-    assert.ok(calls.every(({ url }) => url.endsWith('/v1/models')));
+    assert.equal(calls.length, 4);
+    assert.equal(calls.filter(({ url }) => url.endsWith('/v1/models')).length, 3);
     assert.ok(calls.some(({ url, authorization }) =>
       url.startsWith('https://ollama.com/') && authorization === 'Bearer catalog-test-token'));
     assert.ok(calls.some(({ url, authorization }) =>
       url === 'https://openrouter.ai/api/v1/models' && authorization === 'Bearer openrouter-catalog-test-token'));
+    assert.ok(calls.some(({ url, authorization }) =>
+      url === 'https://openrouter.ai/api/v1/key' && authorization === 'Bearer openrouter-catalog-test-token'));
     const serialized = JSON.stringify(catalog);
     assert.doesNotMatch(serialized, /catalog-test-token|https:\/\//);
+  } finally {
+    global.fetch = originalFetch;
+    restoreEnv('CADAVRE_ENDPOINT', previousEndpoint);
+    restoreEnv('OLLAMA_API_KEY', previousOllamaKey);
+    restoreEnv('OLLAMA_CLOUD_API_KEY', previousCloudKey);
+    restoreEnv('OPENROUTER_API_KEY', previousOpenRouterKey);
+  }
+});
+
+test('cadavre catalog stops advertising OpenRouter when its key has no remaining capacity', async () => {
+  const originalFetch = global.fetch;
+  const previousEndpoint = process.env.CADAVRE_ENDPOINT;
+  const previousOllamaKey = process.env.OLLAMA_API_KEY;
+  const previousCloudKey = process.env.OLLAMA_CLOUD_API_KEY;
+  const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
+  try {
+    process.env.CADAVRE_ENDPOINT = 'https://legion.example/v1/chat/completions';
+    process.env.OLLAMA_API_KEY = 'catalog-test-token';
+    process.env.OPENROUTER_API_KEY = 'openrouter-catalog-test-token';
+    delete process.env.OLLAMA_CLOUD_API_KEY;
+    global.fetch = async (url) => {
+      let data;
+      if (url.endsWith('/api/v1/key')) {
+        data = { limit_remaining: 0 };
+      } else if (url.startsWith('https://openrouter.ai')) {
+        data = [
+          { id: 'google/gemma-3-4b-it' },
+          { id: 'moonshotai/kimi-k2.5' }
+        ];
+      } else if (url.startsWith('https://ollama.com')) {
+        data = [
+          { id: 'kimi-k2.5', name: 'Kimi K2.5' },
+          { id: 'minimax-m3', name: 'MiniMax M3' }
+        ];
+      } else {
+        data = [];
+      }
+      return new Response(JSON.stringify({ data }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    };
+
+    const catalog = await _private.buildModelCatalog();
+    assert.equal(catalog.default, 'ollama:kimi-k2.5');
+    assert.equal(catalog.providers.openrouter.available, false);
+    assert.equal(catalog.providers.openrouter.capacityChecked, true);
+    assert.deepEqual(catalog.models.map(({ id }) => id), [
+      'legion:exquisite-corpse',
+      'ollama:kimi-k2.5',
+      'ollama:minimax-m3'
+    ]);
+    assert.ok(catalog.models.slice(1).every(({ provider }) => provider === 'ollama'));
+    assert.equal(catalog.models.some(({ id }) => id === 'ollama:gemma3:4b'), false);
+  } finally {
+    global.fetch = originalFetch;
+    restoreEnv('CADAVRE_ENDPOINT', previousEndpoint);
+    restoreEnv('OLLAMA_API_KEY', previousOllamaKey);
+    restoreEnv('OLLAMA_CLOUD_API_KEY', previousCloudKey);
+    restoreEnv('OPENROUTER_API_KEY', previousOpenRouterKey);
+  }
+});
+
+test('cadavre adopts the live catalog default when a client requests a retired model', async () => {
+  const originalFetch = global.fetch;
+  const previousEndpoint = process.env.CADAVRE_ENDPOINT;
+  const previousOllamaKey = process.env.OLLAMA_API_KEY;
+  const previousCloudKey = process.env.OLLAMA_CLOUD_API_KEY;
+  const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
+  try {
+    process.env.CADAVRE_ENDPOINT = 'https://legion.example/v1/chat/completions';
+    process.env.OLLAMA_API_KEY = 'catalog-test-token';
+    delete process.env.OLLAMA_CLOUD_API_KEY;
+    delete process.env.OPENROUTER_API_KEY;
+    global.fetch = async (url) => {
+      const data = url.startsWith('https://ollama.com')
+        ? [
+            { id: 'kimi-k2.5', name: 'Kimi K2.5' },
+            { id: 'minimax-m3', name: 'MiniMax M3' }
+          ]
+        : [];
+      return new Response(JSON.stringify({ data }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    };
+
+    const pool = await _private.resolveListedRoutePool('ollama:gemma3:4b');
+    assert.equal(pool.requested.id, 'ollama:gemma3:4b');
+    assert.equal(pool.candidates[0].id, 'ollama:kimi-k2.5');
+    assert.deepEqual(pool.candidates.map(({ id }) => id), [
+      'ollama:kimi-k2.5',
+      'ollama:minimax-m3'
+    ]);
   } finally {
     global.fetch = originalFetch;
     restoreEnv('CADAVRE_ENDPOINT', previousEndpoint);
@@ -282,11 +384,13 @@ test('cadavre Ollama calls use native chat with thinking disabled and the shared
   const originalAdmit = usageGuardrail.admitOllamaCall;
   let guardrailCalls = 0;
   let guardrailSessionCount = null;
+  let guardrailOptions = null;
   let request;
   try {
-    usageGuardrail.admitOllamaCall = (sessionCount) => {
+    usageGuardrail.admitOllamaCall = (sessionCount, now, options) => {
       guardrailCalls += 1;
       guardrailSessionCount = sessionCount;
+      guardrailOptions = options;
       return { allowed: true };
     };
     global.fetch = async (url, options) => {
@@ -307,6 +411,10 @@ test('cadavre Ollama calls use native chat with thinking disabled and the shared
 
     assert.equal(guardrailCalls, 1);
     assert.equal(guardrailSessionCount, 0);
+    assert.deepEqual(guardrailOptions, {
+      consumer: 'cadavre',
+      allowReserve: true
+    });
     assert.equal(request.url, 'https://ollama.example/api/chat');
     assert.equal(request.body.think, false);
     assert.equal(request.body.stream, false);
@@ -365,6 +473,36 @@ test('cadavre uses the OpenRouter equivalent before spending an Ollama call', as
     usageGuardrail.admitOllamaCall = originalAdmit;
     restoreEnv('OPENROUTER_API_KEY', previousOpenRouterKey);
     restoreEnv('CADAVRE_FALLBACK_MODEL', previousFallbackModel);
+  }
+});
+
+test('cadavre skips OpenRouter generation when the catalog reports exhausted capacity', async () => {
+  const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
+  const calls = [];
+  try {
+    process.env.OPENROUTER_API_KEY = 'fallback-test-token';
+    const result = await _private.callCandidateReliably({
+      id: 'ollama:kimi-k2.5',
+      provider: 'ollama-cloud',
+      apiUrl: 'https://ollama.example/v1/chat/completions',
+      model: 'kimi-k2.5',
+      apiKey: 'ollama-test-token'
+    }, [{ role: 'user', content: 'silver' }], { maxTokens: 40, temperature: 0.6 }, {
+      openRouterAvailable: false,
+      callCandidateImpl: async (candidate) => {
+        calls.push(candidate.provider);
+        return {
+          content: 'silver tide',
+          provider: candidate.provider,
+          model: candidate.id
+        };
+      }
+    });
+
+    assert.deepEqual(calls, ['ollama-cloud']);
+    assert.equal(result.provider, 'ollama-cloud');
+  } finally {
+    restoreEnv('OPENROUTER_API_KEY', previousOpenRouterKey);
   }
 });
 

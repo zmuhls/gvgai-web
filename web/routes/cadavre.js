@@ -16,13 +16,14 @@ const MAX_CONTENT_CHARS = 9000;
 const MAX_TOTAL_CONTENT_CHARS = 24000;
 const MAX_MODEL_ID_CHARS = 120;
 const DEFAULT_ADAPTER_MODEL = 'exquisite-corpse';
-const DEFAULT_OLLAMA_MODEL = 'gemma3:4b';
+const DEFAULT_OLLAMA_MODEL = 'kimi-k2.5';
 const DEFAULT_ROUTE_MODEL = `legion:${DEFAULT_ADAPTER_MODEL}`;
 const DEFAULT_STANDBY_MODELS = Object.freeze([
-  'ollama:gemma3:4b',
-  'ollama:gemini-3-flash-preview',
+  'ollama:minimax-m3',
+  'ollama:deepseek-v4-flash',
   'ollama:gpt-oss:20b'
 ]);
+const MAX_ROUTE_CANDIDATES = 4;
 const CADAVRE_OPENROUTER_MODEL_IDS = new Map([
   ['deepseek-v3.2', 'deepseek/deepseek-v3.2'],
   ['deepseek-v4-flash', 'deepseek/deepseek-v4-flash'],
@@ -228,8 +229,9 @@ function providerCandidates(requestedModel) {
   }
 }
 
-function openRouterFallbackCandidate(candidate) {
+function openRouterFallbackCandidate(candidate, options = {}) {
   if (candidate?.provider !== 'ollama-cloud') return null;
+  if (options.openRouterAvailable === false) return null;
   const config = getConfig();
   const model = CADAVRE_OPENROUTER_MODEL_IDS.get(candidate.model) ||
     resolveModel(candidate.model).fallback || process.env.CADAVRE_FALLBACK_MODEL;
@@ -280,6 +282,10 @@ function openRouterModelsUrl(apiUrl) {
   return endpointUrl(apiUrl, '/api/v1/models');
 }
 
+function openRouterKeyUrl(apiUrl) {
+  return endpointUrl(apiUrl, '/api/v1/key');
+}
+
 function ollamaChatUrl(apiUrl) {
   return endpointUrl(apiUrl, '/api/chat');
 }
@@ -322,6 +328,37 @@ async function probeProviderModels(apiUrl, apiKey = '', modelListUrl = '') {
   }
 }
 
+async function probeOpenRouterCapacity(apiUrl, apiKey = '') {
+  if (!apiUrl || !apiKey) return { available: false, checked: false };
+  try {
+    const response = await fetchWithTimeout(
+      openRouterKeyUrl(apiUrl),
+      {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${apiKey}`
+        }
+      },
+      MODEL_PROBE_TIMEOUT_MS
+    );
+    if (!response.ok) return { available: false, checked: true };
+    const data = await response.json();
+    const rawRemaining = data?.data?.limit_remaining;
+    const remaining =
+      rawRemaining === null || rawRemaining === undefined || rawRemaining === ''
+        ? Number.NaN
+        : Number(rawRemaining);
+    return {
+      available: !Number.isFinite(remaining) || remaining > 0,
+      checked: true
+    };
+  } catch {
+    // A transient account-status failure must not erase a provider that still
+    // passed model discovery. Generation readiness remains the final gate.
+    return { available: true, checked: false };
+  }
+}
+
 async function buildModelCatalog() {
   const config = getConfig();
   const adapterModel = configuredAdapterModel();
@@ -332,15 +369,19 @@ async function buildModelCatalog() {
   const openRouterUrl = config.openrouter?.apiUrl;
   const openRouterKey = process.env.OPENROUTER_API_KEY || '';
 
-  const [legion, ollama, openRouter] = await Promise.all([
+  const [legion, ollama, openRouter, openRouterCapacity] = await Promise.all([
     probeProviderModels(legionUrl, legionKey),
     (!ollamaKey && !isLocalUrl(ollamaUrl))
       ? Promise.resolve({ available: false, models: [] })
       : probeProviderModels(ollamaUrl, ollamaKey),
     (!openRouterKey && !isLocalUrl(openRouterUrl))
       ? Promise.resolve({ available: false, models: [] })
-      : probeProviderModels(openRouterUrl, openRouterKey, openRouterModelsUrl(openRouterUrl))
+      : probeProviderModels(openRouterUrl, openRouterKey, openRouterModelsUrl(openRouterUrl)),
+    (!openRouterKey && !isLocalUrl(openRouterUrl))
+      ? Promise.resolve({ available: false, checked: false })
+      : probeOpenRouterCapacity(openRouterUrl, openRouterKey)
   ]);
+  const openRouterAvailable = openRouter.available && openRouterCapacity.available;
   const adapterAvailable = legion.available && legion.models.some(({ id }) => id === adapterModel);
   const models = [{
     id: `legion:${adapterModel}`,
@@ -353,11 +394,13 @@ async function buildModelCatalog() {
   const ollamaModels = new Map(ollama.models.map((model) => [model.id, model]));
   const openRouterModels = new Set(openRouter.models.map(({ id }) => id));
   const cloudModels = [...CADAVRE_OPENROUTER_MODEL_IDS]
-    .filter(([ollamaId, openRouterId]) => openRouterModels.has(openRouterId) || ollamaModels.has(ollamaId))
+    .filter(([ollamaId, openRouterId]) =>
+      (openRouterAvailable && openRouterModels.has(openRouterId)) ||
+      ollamaModels.has(ollamaId))
     .map(([ollamaId, openRouterId]) => ({
       id: ollamaId,
       label: ollamaModels.get(ollamaId)?.label || ollamaId,
-      openRouterAvailable: openRouterModels.has(openRouterId)
+      openRouterAvailable: openRouterAvailable && openRouterModels.has(openRouterId)
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
   for (const model of cloudModels) {
@@ -383,7 +426,11 @@ async function buildModelCatalog() {
     models,
     providers: {
       legion: { available: legion.available, modelAvailable: adapterAvailable },
-      openrouter: { available: openRouter.available, modelCount: openRouter.models.length },
+      openrouter: {
+        available: openRouterAvailable,
+        modelCount: openRouter.models.length,
+        capacityChecked: openRouterCapacity.checked
+      },
       ollama: { available: ollama.available, modelCount: ollama.models.length }
     }
   };
@@ -525,19 +572,17 @@ async function resolveListedRoutePool(routeModel) {
   const requested = resolveRouteModel(routeModel);
   const catalog = await getModelCatalog();
   const listed = catalog.models.find((model) => model.id === requested.id);
-  if (!listed) {
-    const error = new Error('The requested model is not in the current Cadavre catalog');
-    error.status = 400;
-    throw error;
-  }
 
   const cached = getModelReadyStatus(requested.id);
   const ids = [
     cached?.model,
-    requested.id,
-    ...configuredStandbyModelIds(),
+    listed?.id,
     catalog.default,
-    catalog.defaultModel
+    catalog.defaultModel,
+    ...configuredStandbyModelIds(),
+    ...catalog.models
+      .filter((model) => model.available !== false)
+      .map((model) => model.id)
   ].filter(Boolean);
   const seen = new Set();
   const candidates = [];
@@ -548,6 +593,7 @@ async function resolveListedRoutePool(routeModel) {
     if (!entry) continue;
     try {
       candidates.push(resolveRouteModel(id));
+      if (candidates.length >= MAX_ROUTE_CANDIDATES) break;
     } catch {
       // A catalog entry can outlive a removed credential until its short TTL ends.
     }
@@ -734,7 +780,10 @@ async function callCandidate(candidate, messages, settings, options = {}) {
   };
 
   if (candidate.provider === 'ollama-cloud') {
-    const verdict = usageGuardrail.admitOllamaCall(0);
+    const verdict = usageGuardrail.admitOllamaCall(0, new Date(), {
+      consumer: 'cadavre',
+      allowReserve: options.allowCadavreReserve !== false
+    });
     if (!verdict.allowed) {
       const error = new Error(verdict.reason);
       error.status = 429;
@@ -819,7 +868,10 @@ async function callCandidateWithRetry(candidate, messages, settings, options = {
         fallback: Boolean(options.fallback),
         timeoutMs
       });
-      return await callCandidateImpl(candidate, messages, settings, { timeoutMs });
+      return await callCandidateImpl(candidate, messages, settings, {
+        timeoutMs,
+        allowCadavreReserve: options.allowCadavreReserve
+      });
     } catch (error) {
       if (!shouldRetryOllama(candidate, error, attempt)) throw error;
       if (deadlineAt - nowImpl() <= OLLAMA_RETRY_DELAY_MS) throw error;
@@ -833,7 +885,7 @@ async function callCandidateReliably(candidate, messages, settings, options = {}
   const nowImpl = options.nowImpl || Date.now;
   const callCandidateImpl = options.callCandidateImpl || callCandidate;
   const deadlineAt = options.deadlineAt || (nowImpl() + CHAT_DEADLINE_MS);
-  const primary = openRouterFallbackCandidate(candidate);
+  const primary = openRouterFallbackCandidate(candidate, options);
   if (!primary) {
     return callCandidateWithRetry(candidate, messages, settings, {
       ...options,
@@ -889,6 +941,7 @@ async function callListedRoutePoolReliably(pool, messages, settings, options = {
       const result = await callCandidateReliably(candidate, messages, settings, {
         ...options,
         deadlineAt: routeDeadlineAt,
+        openRouterAvailable: pool.catalog?.providers?.openrouter?.available,
         onAttempt: (attempt) => options.onAttempt?.({
           ...attempt,
           routeModel: candidate.id,
@@ -905,6 +958,7 @@ async function callListedRoutePoolReliably(pool, messages, settings, options = {
     } catch (error) {
       lastError = error;
       modelReadyCache.delete(candidate.id);
+      console.warn(`[Cadavre] route ${candidate.id} failed: ${error.message}`);
     }
   }
 
@@ -971,7 +1025,10 @@ function startModelWarmer(options = {}) {
   );
   const warm = async () => {
     try {
-      const status = await ensureModelReady(`ollama:${DEFAULT_OLLAMA_MODEL}`, { force: true });
+      const status = await ensureModelReady(`ollama:${DEFAULT_OLLAMA_MODEL}`, {
+        force: true,
+        allowCadavreReserve: false
+      });
       console.log(`[Cadavre] model ready: ${status.model} via ${status.provider}`);
       return status;
     } catch (error) {
@@ -1381,8 +1438,10 @@ module.exports._private = {
   clampNumber,
   modelsUrl,
   openRouterModelsUrl,
+  openRouterKeyUrl,
   ollamaChatUrl,
   probeProviderModels,
+  probeOpenRouterCapacity,
   buildModelCatalog,
   getModelCatalog,
   getCatalogCacheStatus,

@@ -10,6 +10,8 @@ const GUARDRAIL_ENV = [
   'OLLAMA_GUARDRAIL_HOURLY',
   'OLLAMA_GUARDRAIL_DAILY',
   'OLLAMA_GUARDRAIL_SESSION',
+  'OLLAMA_GUARDRAIL_CADAVRE_HOURLY',
+  'OLLAMA_GUARDRAIL_CADAVRE_DAILY',
   'OLLAMA_GUARDRAIL_DISABLED',
   'OPENROUTER_API_KEY'
 ];
@@ -82,6 +84,46 @@ test('hour and day buckets rotate with the clock', () => {
     assert.equal(daily.allowed, false, 'daily cap hit even in a fresh hour');
     assert.equal(daily.scope, 'daily');
     assert.equal(guardrail.admitOllamaCall(0, nextDay).allowed, true, 'new day resets daily bucket');
+  });
+});
+
+test('Cadavre has a bounded reserve after general traffic exhausts the global cap', () => {
+  withCleanEnv(() => {
+    process.env.OLLAMA_GUARDRAIL_HOURLY = '1';
+    process.env.OLLAMA_GUARDRAIL_DAILY = '1';
+    process.env.OLLAMA_GUARDRAIL_CADAVRE_HOURLY = '2';
+    process.env.OLLAMA_GUARDRAIL_CADAVRE_DAILY = '2';
+    const now = new Date('2026-07-27T06:30:00Z');
+
+    assert.deepEqual(guardrail.admitOllamaCall(0, now), { allowed: true });
+    assert.equal(guardrail.admitOllamaCall(0, now).allowed, false);
+    assert.deepEqual(
+      guardrail.admitOllamaCall(0, now, { consumer: 'cadavre' }),
+      { allowed: true, reserve: true }
+    );
+    assert.deepEqual(
+      guardrail.admitOllamaCall(0, now, { consumer: 'cadavre' }),
+      { allowed: true, reserve: true }
+    );
+    const exhausted = guardrail.admitOllamaCall(0, now, { consumer: 'cadavre' });
+    assert.equal(exhausted.allowed, false);
+    assert.equal(exhausted.scope, 'hourly');
+  });
+});
+
+test('background Cadavre warmups cannot spend the user reserve', () => {
+  withCleanEnv(() => {
+    process.env.OLLAMA_GUARDRAIL_HOURLY = '1';
+    process.env.OLLAMA_GUARDRAIL_DAILY = '1';
+    const now = new Date('2026-07-27T07:30:00Z');
+
+    assert.equal(guardrail.admitOllamaCall(0, now).allowed, true);
+    const blocked = guardrail.admitOllamaCall(0, now, {
+      consumer: 'cadavre',
+      allowReserve: false
+    });
+    assert.equal(blocked.allowed, false);
+    assert.equal(blocked.scope, 'hourly');
   });
 });
 
