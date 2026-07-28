@@ -6,6 +6,7 @@ const { resolveModel } = require('../lib/models');
 const { CadavreWallStore } = require('../lib/cadavre-wall-store');
 const telemetry = require('../lib/telemetry-store');
 const usageGuardrail = require('../lib/usage-guardrail');
+const { authorizeOperator } = require('../lib/operator-auth');
 
 const router = express.Router();
 const wallStore = new CadavreWallStore();
@@ -292,11 +293,16 @@ function ollamaChatUrl(apiUrl) {
 
 async function fetchWithTimeout(url, options, timeoutMs) {
   const controller = new AbortController();
+  const externalSignal = options?.signal;
+  const abortFromCaller = () => controller.abort();
+  if (externalSignal?.aborted) controller.abort();
+  else externalSignal?.addEventListener('abort', abortFromCaller, { once: true });
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, { ...options, signal: controller.signal });
   } finally {
     clearTimeout(timer);
+    externalSignal?.removeEventListener('abort', abortFromCaller);
   }
 }
 
@@ -665,8 +671,15 @@ function clientIp(req) {
   return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
+function transportPeer(req) {
+  return req.socket?.remoteAddress || req.connection?.remoteAddress || 'global';
+}
+
 function rateLimitChat(req, res, next, now = Date.now()) {
-  const key = clientIp(req);
+  // The Railway service is also reachable outside Cloudflare, so forwarded
+  // address headers are caller-controlled on that path. Paid chat traffic uses
+  // the transport peer (or one global bucket) as its conservative limiter.
+  const key = transportPeer(req);
   const current = chatRateBuckets.get(key);
   const bucket = !current || now - current.startedAt >= CHAT_RATE_WINDOW_MS
     ? { startedAt: now, count: 0 }
@@ -763,6 +776,11 @@ function providerTokenUsage(candidate, data) {
 }
 
 async function callCandidate(candidate, messages, settings, options = {}) {
+  if (options.signal?.aborted) {
+    const error = new Error('Cadavre request cancelled');
+    error.cancelled = true;
+    throw error;
+  }
   const headers = { 'Content-Type': 'application/json' };
   if (candidate.apiKey) headers.Authorization = `Bearer ${candidate.apiKey}`;
   if (candidate.provider === 'openrouter') {
@@ -779,8 +797,8 @@ async function callCandidate(candidate, messages, settings, options = {}) {
     stream: false
   };
 
-  if (candidate.provider === 'ollama-cloud') {
-    const verdict = usageGuardrail.admitOllamaCall(0, new Date(), {
+  if (candidate.provider === 'ollama-cloud' || candidate.provider === 'openrouter') {
+    const verdict = usageGuardrail.admitRemoteCall(candidate.provider, 0, new Date(), {
       consumer: 'cadavre',
       allowReserve: options.allowCadavreReserve !== false
     });
@@ -791,6 +809,9 @@ async function callCandidate(candidate, messages, settings, options = {}) {
       error.scope = verdict.scope;
       throw error;
     }
+  }
+
+  if (candidate.provider === 'ollama-cloud') {
     apiUrl = ollamaChatUrl(candidate.apiUrl);
     body = {
       model: candidate.model,
@@ -809,10 +830,19 @@ async function callCandidate(candidate, messages, settings, options = {}) {
     response = await fetchWithTimeout(apiUrl, {
       method: 'POST',
       headers,
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: options.signal
     }, options.timeoutMs || FETCH_TIMEOUT_MS);
   } catch (error) {
-    if (error.name === 'AbortError') throw new Error(`${candidate.provider} timed out`);
+    if (error.name === 'AbortError') {
+      const aborted = new Error(
+        options.signal?.aborted
+          ? 'Cadavre request cancelled'
+          : `${candidate.provider} timed out`
+      );
+      aborted.cancelled = Boolean(options.signal?.aborted);
+      throw aborted;
+    }
     throw error;
   }
 
@@ -839,7 +869,12 @@ async function callCandidate(candidate, messages, settings, options = {}) {
 }
 
 function shouldRetryOllama(candidate, error, attempt) {
-  if (candidate.provider !== 'ollama-cloud' || error.guardrail || attempt >= OLLAMA_MAX_ATTEMPTS) {
+  if (
+    candidate.provider !== 'ollama-cloud' ||
+    error.guardrail ||
+    error.cancelled ||
+    attempt >= OLLAMA_MAX_ATTEMPTS
+  ) {
     return false;
   }
   if (!error.providerStatus) return true;
@@ -852,6 +887,11 @@ async function callCandidateWithRetry(candidate, messages, settings, options = {
   const nowImpl = options.nowImpl || Date.now;
   const deadlineAt = options.deadlineAt || (nowImpl() + CHAT_DEADLINE_MS);
   for (let attempt = 1; attempt <= OLLAMA_MAX_ATTEMPTS; attempt += 1) {
+    if (options.signal?.aborted) {
+      const error = new Error('Cadavre request cancelled');
+      error.cancelled = true;
+      throw error;
+    }
     const remainingMs = deadlineAt - nowImpl();
     if (remainingMs <= 0) throw new Error(`${candidate.provider} timed out`);
     const timeoutMs = Math.min(
@@ -870,7 +910,8 @@ async function callCandidateWithRetry(candidate, messages, settings, options = {
       });
       return await callCandidateImpl(candidate, messages, settings, {
         timeoutMs,
-        allowCadavreReserve: options.allowCadavreReserve
+        allowCadavreReserve: options.allowCadavreReserve,
+        signal: options.signal
       });
     } catch (error) {
       if (!shouldRetryOllama(candidate, error, attempt)) throw error;
@@ -885,6 +926,11 @@ async function callCandidateReliably(candidate, messages, settings, options = {}
   const nowImpl = options.nowImpl || Date.now;
   const callCandidateImpl = options.callCandidateImpl || callCandidate;
   const deadlineAt = options.deadlineAt || (nowImpl() + CHAT_DEADLINE_MS);
+  if (options.signal?.aborted) {
+    const error = new Error('Cadavre request cancelled');
+    error.cancelled = true;
+    throw error;
+  }
   const primary = openRouterFallbackCandidate(candidate, options);
   if (!primary) {
     return callCandidateWithRetry(candidate, messages, settings, {
@@ -909,8 +955,13 @@ async function callCandidateReliably(candidate, messages, settings, options = {}
       fallback: false,
       timeoutMs
     });
-    return await callCandidateImpl(primary, messages, settings, { timeoutMs });
-  } catch {
+    return await callCandidateImpl(primary, messages, settings, {
+      timeoutMs,
+      allowCadavreReserve: options.allowCadavreReserve,
+      signal: options.signal
+    });
+  } catch (error) {
+    if (error.guardrail || error.cancelled) throw error;
     return callCandidateWithRetry(candidate, messages, settings, {
       ...options,
       callCandidateImpl,
@@ -956,6 +1007,7 @@ async function callListedRoutePoolReliably(pool, messages, settings, options = {
         failover: ready.failover
       };
     } catch (error) {
+      if (error.guardrail || error.cancelled) throw error;
       lastError = error;
       modelReadyCache.delete(candidate.id);
       console.warn(`[Cadavre] route ${candidate.id} failed: ${error.message}`);
@@ -1017,15 +1069,20 @@ function stopModelWarmer() {
 
 function startModelWarmer(options = {}) {
   stopModelWarmer();
+  const env = options.env || process.env;
+  if (env.CADAVRE_MODEL_WARMER_ENABLED !== 'true') {
+    return Promise.resolve(null);
+  }
   const intervalMs = clampNumber(
-    options.intervalMs ?? process.env.CADAVRE_MODEL_WARM_INTERVAL_MS,
+    options.intervalMs ?? env.CADAVRE_MODEL_WARM_INTERVAL_MS,
     MODEL_WARM_INTERVAL_MS,
     30000,
     60 * 60 * 1000
   );
+  const ensureModelReadyImpl = options.ensureModelReadyImpl || ensureModelReady;
   const warm = async () => {
     try {
-      const status = await ensureModelReady(`ollama:${DEFAULT_OLLAMA_MODEL}`, {
+      const status = await ensureModelReadyImpl(`ollama:${DEFAULT_OLLAMA_MODEL}`, {
         force: true,
         allowCadavreReserve: false
       });
@@ -1066,7 +1123,8 @@ function guardrailRatios() {
   if (status.disabled) return {};
   return compactMetrics({
     guardrail_hour_ratio: status.limits.hourly ? status.hourCount / status.limits.hourly : null,
-    guardrail_day_ratio: status.limits.daily ? status.dayCount / status.limits.daily : null
+    guardrail_day_ratio: status.limits.daily ? status.dayCount / status.limits.daily : null,
+    guardrail_month_ratio: status.limits.monthly ? status.monthCount / status.limits.monthly : null
   });
 }
 
@@ -1215,9 +1273,40 @@ router.get('/models', async (req, res) => {
 
 router.post('/ready', rateLimitChat, async (req, res) => {
   try {
-    const status = await ensureModelReady(req.body?.model);
+    let status;
+    let ready;
+    let checked;
+    if (process.env.CADAVRE_READY_GENERATION_ENABLED === 'true') {
+      const authorization = authorizeOperator(req, {
+        enabledKey: 'CADAVRE_READY_GENERATION_ENABLED'
+      });
+      if (!authorization.ok) {
+        res.set('Cache-Control', 'no-store')
+          .status(authorization.status)
+          .json({ ready: false, checked: false, error: authorization.error });
+        return;
+      }
+      status = await ensureModelReady(req.body?.model);
+      ready = true;
+      checked = true;
+    } else {
+      const pool = await resolveListedRoutePool(req.body?.model);
+      const candidate = pool.candidates[0];
+      if (!candidate) throw new Error('No configured model route is available');
+      status = {
+        requestedModel: pool.requested.id,
+        model: candidate.id,
+        provider: candidate.provider,
+        failover: candidate.id !== pool.requested.id,
+        cached: false,
+        checkedAt: null
+      };
+      ready = null;
+      checked = false;
+    }
     res.set('Cache-Control', 'no-store').json({
-      ready: true,
+      ready,
+      checked,
       requestedModel: status.requestedModel,
       model: status.model,
       provider: status.provider,
@@ -1337,10 +1426,17 @@ router.post('/chat', rateLimitChat, async (req, res) => {
   };
   const usageContext = beginChatUsage();
   const attempts = [];
+  const requestController = new AbortController();
+  const abortRequest = () => {
+    if (!res.writableEnded) requestController.abort();
+  };
+  req.once('aborted', abortRequest);
+  res.once('close', abortRequest);
 
   try {
     const result = await callListedRoutePoolReliably(routePool, messages, settings, {
-      onAttempt: (attempt) => attempts.push(attempt)
+      onAttempt: (attempt) => attempts.push(attempt),
+      signal: requestController.signal
     });
     recordChatUsage({
       context: usageContext,
@@ -1372,10 +1468,14 @@ router.post('/chat', rateLimitChat, async (req, res) => {
       attempts,
       error
     });
+    if (requestController.signal.aborted || res.destroyed) return;
     res.status(error.status || 503).json({
       error: 'Cadavre model routes are temporarily unavailable.',
       retryable: true
     });
+  } finally {
+    req.off('aborted', abortRequest);
+    res.off('close', abortRequest);
   }
 });
 
@@ -1452,6 +1552,7 @@ module.exports._private = {
   isAllowedOrigin,
   cadavreCors,
   clientIp,
+  transportPeer,
   configuredWallVoteRateLimit,
   configuredTurnTimerRateLimit,
   rateLimitChat,

@@ -58,7 +58,7 @@ router.post('/flush', async (req, res) => {
   });
 });
 
-// GET /guardrail — Ollama Cloud usage guardrail status (hour/day counters + limits)
+// GET /guardrail — remote-provider guardrail status (hour/day/month counters + limits)
 router.get('/guardrail', (req, res) => {
   res.json(guardrail.getStatus());
 });

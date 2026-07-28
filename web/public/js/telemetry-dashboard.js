@@ -95,18 +95,7 @@
   }
 
   // Marble run controls
-  const marbleStartBtn = document.getElementById('marble-start-btn');
   const marbleStopBtn = document.getElementById('marble-stop-btn');
-  if (marbleStartBtn) {
-    marbleStartBtn.addEventListener('click', async () => {
-      marbleStartBtn.disabled = true;
-      try {
-        await fetch('/api/marble/start', { method: 'POST' });
-      } catch (e) { /* best-effort */ }
-      marbleStartBtn.disabled = false;
-      loadSummary();
-    });
-  }
   if (marbleStopBtn) {
     marbleStopBtn.addEventListener('click', async () => {
       marbleStopBtn.disabled = true;
@@ -197,6 +186,7 @@
     const limits = g.limits || {};
     const hourPct = Math.min(100, Math.round((g.hourCount / limits.hourly) * 100));
     const dayPct = Math.min(100, Math.round((g.dayCount / limits.daily) * 100));
+    const monthPct = Math.min(100, Math.round((g.monthCount / limits.monthly) * 100));
     el.innerHTML = `
       <div class="guardrail-bar">
         <span>Hourly <small>${formatNumber(g.hourCount)} / ${formatNumber(limits.hourly)}</small></span>
@@ -207,6 +197,11 @@
         <span>Daily <small>${formatNumber(g.dayCount)} / ${formatNumber(limits.daily)}</small></span>
         <div class="bar-track"><div class="bar-fill" style="width:${dayPct}%"></div></div>
         <strong>${dayPct}%</strong>
+      </div>
+      <div class="guardrail-bar">
+        <span>Monthly <small>${formatNumber(g.monthCount)} / ${formatNumber(limits.monthly)}</small></span>
+        <div class="bar-track"><div class="bar-fill" style="width:${monthPct}%"></div></div>
+        <strong>${monthPct}%</strong>
       </div>
     `;
   }

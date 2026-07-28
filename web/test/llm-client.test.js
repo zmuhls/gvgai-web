@@ -233,7 +233,7 @@ test('provider override routes an ad hoc model through local Ollama', () => {
   ]);
 });
 
-test('requestLLMAction falls back from legion vLLM through cloud guardrail to OpenRouter', async () => {
+test('requestLLMAction stops after a remote guardrail block in the fallback chain', async () => {
   const originalFetch = global.fetch;
   const savedRegistryPath = process.env.FINETUNE_REGISTRY_PATH;
   const savedLegionFallback = process.env.LEGION_FALLBACK_MODEL;
@@ -268,7 +268,7 @@ test('requestLLMAction falls back from legion vLLM through cloud guardrail to Op
   client.gameId = 0;
   client.levelCount = 0;
   client.promptConfig = { gameName: 'aliens' };
-  client.ollamaCloudCallCount = 1;
+  client.remoteProviderCallCount = 1;
 
   global.fetch = async (url, options) => {
     calls.push({ url, options, body: JSON.parse(options.body) });
@@ -284,20 +284,16 @@ test('requestLLMAction falls back from legion vLLM through cloud guardrail to Op
   };
 
   try {
-    const result = await client.requestLLMAction(JSON.stringify({
-      gameTick: 1,
-      gameScore: 0,
-      availableActions: ['ACTION_LEFT', 'ACTION_RIGHT']
-    }));
-
-    assert.equal(result.action, 'ACTION_RIGHT');
-    assert.equal(result.provider, 'openrouter');
-    assert.equal(result.modelUsed, 'google/gemma-3-27b-it');
-    assert.equal(calls.length, 2);
+    await assert.rejects(
+      client.requestLLMAction(JSON.stringify({
+        gameTick: 1,
+        gameScore: 0,
+        availableActions: ['ACTION_LEFT', 'ACTION_RIGHT']
+      })),
+      /usage guardrail/
+    );
+    assert.equal(calls.length, 1);
     assert.equal(calls[0].body.model, 'legion-test');
-    assert.equal(calls[1].body.model, 'google/gemma-3-27b-it');
-    assert.match(calls[1].url, /openrouter\.ai/);
-    assert.equal(calls[1].options.headers.Authorization, 'Bearer fallback-key');
   } finally {
     global.fetch = originalFetch;
     if (savedRegistryPath === undefined) delete process.env.FINETUNE_REGISTRY_PATH;

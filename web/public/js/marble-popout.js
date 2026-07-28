@@ -10,7 +10,6 @@
   var status = document.getElementById('marble-popout-status');
   var iframe = popout.querySelector('iframe');
   var iframeSrc = iframe ? iframe.getAttribute('src') : null;
-  var startRequested = false;
   var pointerStartY = null;
 
   function iframeUrl(expanded) {
@@ -44,7 +43,6 @@
         iframe.setAttribute('src', nextSrc);
       }
     }
-    if (expanded) startUniversalMarbleRun('expand');
     track(expanded ? 'marble_popout_expanded' : 'marble_popout_shrunk');
   }
 
@@ -86,25 +84,6 @@
 
     if (lamp) lamp.setAttribute('data-state', state);
     if (status) status.textContent = label;
-  }
-
-  function startUniversalMarbleRun(source) {
-    if (startRequested) return;
-    startRequested = true;
-    updateStatus('MARBLE_STARTING');
-    fetch('/api/marble/start', {
-      method: 'POST',
-      credentials: 'same-origin',
-      keepalive: true
-    })
-      .then(function (response) { return response.ok ? response.json() : null; })
-      .then(function (snapshot) {
-        if (snapshot) updateStatus(snapshot.mode);
-        track('marble_stream_requested', { source: source || 'dwell' });
-      })
-      .catch(function () {
-        updateStatus('IDLE');
-      });
   }
 
   function isMobileDrawer() {
@@ -191,7 +170,4 @@
       if (status) status.textContent = 'offline';
     });
 
-  window.setTimeout(function () {
-    startUniversalMarbleRun('dwell');
-  }, 5000);
 })();

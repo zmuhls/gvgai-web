@@ -243,8 +243,10 @@ The browser receives route ids and calls this server:
 
 - `GET /api/cadavre/models` returns the available `legion:<model>` and
   `ollama:<model>` choices.
-- `POST /api/cadavre/ready` runs a real, cached generation check and returns
-  the verified route that is warm enough to begin a game.
+- `POST /api/cadavre/ready` returns catalog route metadata with
+  `checked: false` and `ready: null`. A real readiness generation requires both
+  `CADAVRE_READY_GENERATION_ENABLED=true` and
+  `Authorization: Bearer $MODEL_CONTROL_TOKEN`.
 - `GET /api/cadavre/usage` reports the active request limits, chat volume,
   latency, provider-call ratio, token counts, guardrail use, and cache
   efficiency for the model catalog and HTML mirror.
@@ -271,9 +273,13 @@ names and completion responses while provider credentials remain in Railway.
 `CADAVRE_OLLAMA_MODEL` can change the default Cloud choice from
 `gemma3:4b`. `CADAVRE_STANDBY_MODELS` accepts a comma-separated route order;
 the default pool is `gemma3:4b`, `gemini-3-flash-preview`, and `gpt-oss:20b`.
-The server performs a real warm-up on startup and every three minutes; adjust
-that interval with `CADAVRE_MODEL_WARM_INTERVAL_MS`. A mapped Cloud route can
-run through OpenRouter even when no Ollama credential is configured.
+The model warmer stays idle unless `CADAVRE_MODEL_WARMER_ENABLED=true`. When
+enabled, it performs a real warm-up on startup and at the interval set by
+`CADAVRE_MODEL_WARM_INTERVAL_MS`. A mapped Cloud route can run through
+OpenRouter even when no Ollama credential is configured. The shared
+remote-provider guardrail persists hourly, daily, and monthly budgets and
+blocks remote calls when the counter file cannot be updated. Provider key
+spending limits remain the billing ceiling because model prices vary.
 
 ## Model-Native Arcade Path
 

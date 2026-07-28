@@ -381,14 +381,16 @@ test('cadavre adopts the live catalog default when a client requests a retired m
 
 test('cadavre Ollama calls use native chat with thinking disabled and the shared guardrail', async () => {
   const originalFetch = global.fetch;
-  const originalAdmit = usageGuardrail.admitOllamaCall;
+  const originalAdmit = usageGuardrail.admitRemoteCall;
   let guardrailCalls = 0;
+  let guardrailProvider = null;
   let guardrailSessionCount = null;
   let guardrailOptions = null;
   let request;
   try {
-    usageGuardrail.admitOllamaCall = (sessionCount, now, options) => {
+    usageGuardrail.admitRemoteCall = (provider, sessionCount, now, options) => {
       guardrailCalls += 1;
+      guardrailProvider = provider;
       guardrailSessionCount = sessionCount;
       guardrailOptions = options;
       return { allowed: true };
@@ -410,6 +412,7 @@ test('cadavre Ollama calls use native chat with thinking disabled and the shared
     }, [{ role: 'user', content: 'blue' }], { maxTokens: 40, temperature: 0.6 });
 
     assert.equal(guardrailCalls, 1);
+    assert.equal(guardrailProvider, 'ollama-cloud');
     assert.equal(guardrailSessionCount, 0);
     assert.deepEqual(guardrailOptions, {
       consumer: 'cadavre',
@@ -424,22 +427,22 @@ test('cadavre Ollama calls use native chat with thinking disabled and the shared
     assert.equal(result.content, 'blue window');
   } finally {
     global.fetch = originalFetch;
-    usageGuardrail.admitOllamaCall = originalAdmit;
+    usageGuardrail.admitRemoteCall = originalAdmit;
   }
 });
 
 test('cadavre uses the OpenRouter equivalent before spending an Ollama call', async () => {
   const originalFetch = global.fetch;
-  const originalAdmit = usageGuardrail.admitOllamaCall;
+  const originalAdmit = usageGuardrail.admitRemoteCall;
   const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
   const previousFallbackModel = process.env.CADAVRE_FALLBACK_MODEL;
   const calls = [];
-  let guardrailCalls = 0;
+  const guardrailProviders = [];
   try {
     process.env.OPENROUTER_API_KEY = 'fallback-test-token';
     delete process.env.CADAVRE_FALLBACK_MODEL;
-    usageGuardrail.admitOllamaCall = () => {
-      guardrailCalls += 1;
+    usageGuardrail.admitRemoteCall = (provider) => {
+      guardrailProviders.push(provider);
       return { allowed: true };
     };
     global.fetch = async (url, options) => {
@@ -459,7 +462,7 @@ test('cadavre uses the OpenRouter equivalent before spending an Ollama call', as
       sleepImpl: async () => {}
     });
 
-    assert.equal(guardrailCalls, 0);
+    assert.deepEqual(guardrailProviders, ['openrouter']);
     assert.equal(calls.length, 1);
     assert.equal(calls[0].url, 'https://openrouter.ai/api/v1/chat/completions');
     assert.equal(calls[0].options.headers.Authorization, 'Bearer fallback-test-token');
@@ -470,9 +473,129 @@ test('cadavre uses the OpenRouter equivalent before spending an Ollama call', as
     assert.equal(result.content, 'silver tide');
   } finally {
     global.fetch = originalFetch;
-    usageGuardrail.admitOllamaCall = originalAdmit;
+    usageGuardrail.admitRemoteCall = originalAdmit;
     restoreEnv('OPENROUTER_API_KEY', previousOpenRouterKey);
     restoreEnv('CADAVRE_FALLBACK_MODEL', previousFallbackModel);
+  }
+});
+
+test('cadavre background warmups cannot spend the reserve through OpenRouter', async () => {
+  const originalFetch = global.fetch;
+  const originalAdmit = usageGuardrail.admitRemoteCall;
+  const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
+  let fetchCalls = 0;
+  let guardrailOptions = null;
+  try {
+    process.env.OPENROUTER_API_KEY = 'fallback-test-token';
+    usageGuardrail.admitRemoteCall = (provider, sessionCount, now, options) => {
+      assert.equal(provider, 'openrouter');
+      guardrailOptions = options;
+      return {
+        allowed: false,
+        reason: 'remote hourly usage limit reached',
+        scope: 'hourly'
+      };
+    };
+    global.fetch = async () => {
+      fetchCalls += 1;
+      throw new Error('provider fetch should stay blocked');
+    };
+
+    await assert.rejects(
+      _private.callCandidateReliably({
+        id: 'ollama:deepseek-v4-flash',
+        provider: 'ollama-cloud',
+        apiUrl: 'https://ollama.example/v1/chat/completions',
+        model: 'deepseek-v4-flash',
+        apiKey: 'ollama-test-token'
+      }, [{ role: 'user', content: 'silver' }], { maxTokens: 40, temperature: 0.6 }, {
+        allowCadavreReserve: false
+      }),
+      (error) => error.guardrail === true && error.scope === 'hourly'
+    );
+    assert.deepEqual(guardrailOptions, {
+      consumer: 'cadavre',
+      allowReserve: false
+    });
+    assert.equal(fetchCalls, 0);
+  } finally {
+    global.fetch = originalFetch;
+    usageGuardrail.admitRemoteCall = originalAdmit;
+    restoreEnv('OPENROUTER_API_KEY', previousOpenRouterKey);
+  }
+});
+
+test('cadavre cancellation stops provider retries and standby failover', async () => {
+  const controller = new AbortController();
+  let attempts = 0;
+  const candidate = {
+    id: 'ollama:gemma3:4b',
+    provider: 'ollama-cloud',
+    apiUrl: 'https://ollama.example/v1/chat/completions',
+    model: 'gemma3:4b',
+    apiKey: 'ollama-test-token'
+  };
+
+  await assert.rejects(
+    _private.callListedRoutePoolReliably({
+      requested: candidate,
+      candidates: [
+        candidate,
+        { ...candidate, id: 'ollama:minimax-m3', model: 'minimax-m3' }
+      ]
+    }, [{ role: 'user', content: 'silver' }], { maxTokens: 40, temperature: 0.6 }, {
+      signal: controller.signal,
+      callCandidateImpl: async () => {
+        attempts += 1;
+        controller.abort();
+        const error = new Error('Cadavre request cancelled');
+        error.cancelled = true;
+        throw error;
+      }
+    }),
+    (error) => error.cancelled === true
+  );
+  assert.equal(attempts, 1);
+});
+
+test('cadavre cancellation aborts a provider request already in flight', async () => {
+  const originalFetch = global.fetch;
+  const controller = new AbortController();
+  let capturedSignal;
+  let markFetchStarted;
+  const fetchStarted = new Promise((resolve) => {
+    markFetchStarted = resolve;
+  });
+
+  global.fetch = (_url, options) => new Promise((_resolve, reject) => {
+    capturedSignal = options.signal;
+    capturedSignal.addEventListener('abort', () => {
+      const error = new Error('aborted');
+      error.name = 'AbortError';
+      reject(error);
+    }, { once: true });
+    markFetchStarted();
+  });
+
+  try {
+    const request = _private.callCandidate({
+      id: 'legion:test-model',
+      provider: 'legion-vllm',
+      apiUrl: 'https://legion.example/v1/chat/completions',
+      model: 'test-model',
+      apiKey: ''
+    }, [{ role: 'user', content: 'silver' }], { maxTokens: 40, temperature: 0.6 }, {
+      signal: controller.signal,
+      timeoutMs: 1000
+    });
+
+    await fetchStarted;
+    assert.equal(capturedSignal.aborted, false);
+    controller.abort();
+    await assert.rejects(request, (error) => error.cancelled === true);
+    assert.equal(capturedSignal.aborted, true);
+  } finally {
+    global.fetch = originalFetch;
   }
 });
 
@@ -545,16 +668,18 @@ test('cadavre falls back to Ollama inside the browser deadline when OpenRouter f
 
 test('cadavre reaches the Ollama usage cap only after OpenRouter fails', async () => {
   const originalFetch = global.fetch;
-  const originalAdmit = usageGuardrail.admitOllamaCall;
+  const originalAdmit = usageGuardrail.admitRemoteCall;
   const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
   let fetchCalls = 0;
   try {
     process.env.OPENROUTER_API_KEY = 'fallback-test-token';
-    usageGuardrail.admitOllamaCall = () => ({
-      allowed: false,
-      reason: 'Ollama hourly usage limit reached',
-      scope: 'hourly'
-    });
+    usageGuardrail.admitRemoteCall = (provider) => provider === 'openrouter'
+      ? { allowed: true }
+      : {
+          allowed: false,
+          reason: 'remote hourly usage limit reached',
+          scope: 'hourly'
+        };
     global.fetch = async () => {
       fetchCalls += 1;
       return new Response('busy', { status: 503 });
@@ -575,12 +700,12 @@ test('cadavre reaches the Ollama usage cap only after OpenRouter fails', async (
     assert.equal(fetchCalls, 1);
   } finally {
     global.fetch = originalFetch;
-    usageGuardrail.admitOllamaCall = originalAdmit;
+    usageGuardrail.admitRemoteCall = originalAdmit;
     restoreEnv('OPENROUTER_API_KEY', previousOpenRouterKey);
   }
 });
 
-test('cadavre moves from an exhausted selected route to a healthy standby model', async () => {
+test('cadavre stops the route pool when the shared guardrail is exhausted', async () => {
   let now = 1000;
   const attempts = [];
   const selected = {
@@ -598,41 +723,31 @@ test('cadavre moves from an exhausted selected route to a healthy standby model'
     apiKey: ''
   };
 
-  const result = await _private.callListedRoutePoolReliably({
-    requested: selected,
-    candidates: [selected, standby]
-  }, [{ role: 'user', content: 'copper' }], { maxTokens: 16, temperature: 0.8 }, {
-    nowImpl: () => now,
-    deadlineAt: 31000,
-    onAttempt: (attempt) => attempts.push(attempt),
-    callCandidateImpl: async (candidate) => {
-      now += 25;
-      if (candidate.id === selected.id) {
+  await assert.rejects(
+    _private.callListedRoutePoolReliably({
+      requested: selected,
+      candidates: [selected, standby]
+    }, [{ role: 'user', content: 'copper' }], { maxTokens: 16, temperature: 0.8 }, {
+      nowImpl: () => now,
+      deadlineAt: 31000,
+      onAttempt: (attempt) => attempts.push(attempt),
+      callCandidateImpl: async () => {
+        now += 25;
         const error = new Error('daily provider cap reached');
         error.guardrail = true;
         throw error;
       }
-      return {
-        content: 'verdigris',
-        provider: 'openrouter',
-        model: standby.id
-      };
-    }
-  });
-
-  assert.equal(result.content, 'verdigris');
-  assert.equal(result.model, standby.id);
-  assert.equal(result.requestedModel, selected.id);
-  assert.equal(result.failover, true);
+    }),
+    (error) => error.guardrail === true
+  );
   assert.deepEqual(attempts.map(({ routeModel, standby: isStandby, fallback }) => ({
     routeModel,
     standby: isStandby,
     fallback
   })), [
-    { routeModel: selected.id, standby: false, fallback: false },
-    { routeModel: standby.id, standby: true, fallback: true }
+    { routeModel: selected.id, standby: false, fallback: false }
   ]);
-  assert.equal(_private.getModelReadyStatus(selected.id, now).model, standby.id);
+  assert.equal(_private.getModelReadyStatus(selected.id, now), null);
 });
 
 test('cadavre readiness cache expires and the ready endpoint is rate limited', () => {
@@ -653,6 +768,35 @@ test('cadavre readiness cache expires and the ready endpoint is rate limited', (
   assert.ok(layer);
   assert.equal(layer.route.methods.post, true);
   assert.equal(layer.route.stack[0].handle, _private.rateLimitChat);
+});
+
+test('cadavre model warmer is default-off and excludes the foreground reserve when enabled', async () => {
+  let calls = 0;
+  let readyOptions = null;
+
+  await _private.startModelWarmer({
+    env: {},
+    ensureModelReadyImpl: async () => {
+      calls += 1;
+      return { model: 'unused', provider: 'unused' };
+    }
+  });
+  assert.equal(calls, 0);
+
+  await _private.startModelWarmer({
+    env: { CADAVRE_MODEL_WARMER_ENABLED: 'true' },
+    intervalMs: 60 * 60 * 1000,
+    ensureModelReadyImpl: async (model, options) => {
+      calls += 1;
+      readyOptions = { model, options };
+      return { model, provider: 'ollama-cloud' };
+    }
+  });
+  _private.stopModelWarmer();
+
+  assert.equal(calls, 1);
+  assert.equal(readyOptions.options.force, true);
+  assert.equal(readyOptions.options.allowCadavreReserve, false);
 });
 
 test('cadavre uses low thinking for gpt-oss and disables thinking for other Ollama models', () => {
@@ -773,7 +917,7 @@ test('cadavre wall vote handler returns 404 for a missing post and keeps validat
   assert.deepEqual(invalidResponse.body, { error: 'value must be -1, 0, or 1.' });
 });
 
-test('cadavre chat rate limit is enforced per IP', () => {
+test('cadavre chat rate limit uses the transport peer and ignores spoofed proxy headers', () => {
   const previousLimit = process.env.CADAVRE_CHAT_RATE_LIMIT;
   const response = {
     statusCode: 200,
@@ -786,8 +930,14 @@ test('cadavre chat rate limit is enforced per IP', () => {
   let passed = 0;
   try {
     process.env.CADAVRE_CHAT_RATE_LIMIT = '1';
-    _private.rateLimitChat({ ip: '203.0.113.9' }, response, () => { passed += 1; }, 1000);
-    _private.rateLimitChat({ ip: '203.0.113.9' }, response, () => { passed += 1; }, 1001);
+    _private.rateLimitChat({
+      socket: { remoteAddress: '10.0.0.9' },
+      headers: { 'cf-connecting-ip': '203.0.113.9' }
+    }, response, () => { passed += 1; }, 1000);
+    _private.rateLimitChat({
+      socket: { remoteAddress: '10.0.0.9' },
+      headers: { 'cf-connecting-ip': '203.0.113.10' }
+    }, response, () => { passed += 1; }, 1001);
     assert.equal(passed, 1);
     assert.equal(response.statusCode, 429);
     assert.ok(Number(response.headers['Retry-After']) > 0);
@@ -849,6 +999,8 @@ test('cadavre rate limit prefers Cloudflare and forwarded client addresses', () 
   assert.equal(_private.clientIp(request), '203.0.113.21');
   delete request.headers['x-forwarded-for'];
   assert.equal(_private.clientIp(request), '10.0.0.2');
+  request.socket = { remoteAddress: '10.0.0.3' };
+  assert.equal(_private.transportPeer(request), '10.0.0.3');
 });
 
 test('cadavre route clamps numeric settings', () => {

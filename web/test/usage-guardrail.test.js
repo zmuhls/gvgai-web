@@ -1,18 +1,33 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
 const guardrail = require('../lib/usage-guardrail');
 const LLMClient = require('../lib/llm-client');
+let stateFileSequence = 0;
 
 const GUARDRAIL_ENV = [
+  'MODEL_GUARDRAIL_HOURLY',
+  'MODEL_GUARDRAIL_DAILY',
+  'MODEL_GUARDRAIL_MONTHLY',
+  'MODEL_GUARDRAIL_SESSION',
+  'MODEL_GUARDRAIL_CADAVRE_HOURLY',
+  'MODEL_GUARDRAIL_CADAVRE_DAILY',
+  'MODEL_GUARDRAIL_CADAVRE_MONTHLY',
+  'MODEL_GUARDRAIL_DISABLED',
+  'MODEL_GUARDRAIL_STATE',
   'OLLAMA_GUARDRAIL_HOURLY',
   'OLLAMA_GUARDRAIL_DAILY',
+  'OLLAMA_GUARDRAIL_MONTHLY',
   'OLLAMA_GUARDRAIL_SESSION',
   'OLLAMA_GUARDRAIL_CADAVRE_HOURLY',
   'OLLAMA_GUARDRAIL_CADAVRE_DAILY',
+  'OLLAMA_GUARDRAIL_CADAVRE_MONTHLY',
   'OLLAMA_GUARDRAIL_DISABLED',
+  'OLLAMA_GUARDRAIL_STATE',
+  'RAILWAY_VOLUME_MOUNT_PATH',
   'OPENROUTER_API_KEY'
 ];
 
@@ -22,17 +37,30 @@ function withCleanEnv(fn) {
     saved[key] = process.env[key];
     delete process.env[key];
   }
-  process.env.OLLAMA_GUARDRAIL_STATE = path.join(os.tmpdir(), `guardrail-test-${process.pid}.json`);
+  const stateFile = path.join(
+    os.tmpdir(),
+    `guardrail-test-${process.pid}-${stateFileSequence++}.json`
+  );
+  process.env.MODEL_GUARDRAIL_STATE = stateFile;
   guardrail.resetForTest();
-  try {
-    return fn();
-  } finally {
+  const restore = () => {
     for (const key of GUARDRAIL_ENV) {
       if (saved[key] === undefined) delete process.env[key];
       else process.env[key] = saved[key];
     }
-    delete process.env.OLLAMA_GUARDRAIL_STATE;
     guardrail.resetForTest();
+    fs.rmSync(stateFile, { force: true });
+  };
+  try {
+    const result = fn();
+    if (result && typeof result.finally === 'function') {
+      return result.finally(restore);
+    }
+    restore();
+    return result;
+  } catch (error) {
+    restore();
+    throw error;
   }
 }
 
@@ -41,6 +69,22 @@ test('admits calls under all caps and counts them', () => {
     for (let i = 0; i < 5; i++) {
       assert.deepEqual(guardrail.admitOllamaCall(i), { allowed: true });
     }
+  });
+});
+
+test('safe defaults include a persistent monthly ceiling', () => {
+  withCleanEnv(() => {
+    assert.deepEqual(guardrail.getLimits(), {
+      hourly: 20,
+      daily: 30,
+      monthly: 100,
+      session: 20
+    });
+    assert.deepEqual(guardrail.getStatus().cadavreReserve.limits, {
+      hourly: 5,
+      daily: 10,
+      monthly: 25
+    });
   });
 });
 
@@ -84,6 +128,24 @@ test('hour and day buckets rotate with the clock', () => {
     assert.equal(daily.allowed, false, 'daily cap hit even in a fresh hour');
     assert.equal(daily.scope, 'daily');
     assert.equal(guardrail.admitOllamaCall(0, nextDay).allowed, true, 'new day resets daily bucket');
+  });
+});
+
+test('monthly cap survives day rotation and resets with the month', () => {
+  withCleanEnv(() => {
+    process.env.MODEL_GUARDRAIL_HOURLY = '10';
+    process.env.MODEL_GUARDRAIL_DAILY = '10';
+    process.env.MODEL_GUARDRAIL_MONTHLY = '2';
+    const july1 = new Date('2026-07-05T10:30:00Z');
+    const july2 = new Date('2026-07-06T10:30:00Z');
+    const august = new Date('2026-08-01T00:10:00Z');
+
+    assert.equal(guardrail.admitRemoteCall('ollama-cloud', 0, july1).allowed, true);
+    assert.equal(guardrail.admitRemoteCall('openrouter', 0, july2).allowed, true);
+    const monthly = guardrail.admitRemoteCall('openrouter', 0, july2);
+    assert.equal(monthly.allowed, false);
+    assert.equal(monthly.scope, 'monthly');
+    assert.equal(guardrail.admitRemoteCall('openrouter', 0, august).allowed, true);
   });
 });
 
@@ -135,9 +197,49 @@ test('kill switch admits everything', () => {
   });
 });
 
-test('a guardrail block uses the OpenRouter fallback key when a fallback slug exists', async () => {
+test('Ollama Cloud and OpenRouter share one remote-provider budget', () => {
+  withCleanEnv(() => {
+    process.env.MODEL_GUARDRAIL_HOURLY = '2';
+    const now = new Date();
+
+    assert.equal(guardrail.admitRemoteCall('ollama-cloud', 0, now).allowed, true);
+    assert.equal(guardrail.admitRemoteCall('openrouter', 0, now).allowed, true);
+    const blocked = guardrail.admitRemoteCall('openrouter', 0, now);
+    assert.equal(blocked.allowed, false);
+    assert.equal(blocked.scope, 'hourly');
+    assert.deepEqual(guardrail.getStatus().providers.hour, {
+      'ollama-cloud': 1,
+      openrouter: 1
+    });
+  });
+});
+
+test('Railway deployments persist counters on the mounted volume', () => {
+  withCleanEnv(() => {
+    delete process.env.MODEL_GUARDRAIL_STATE;
+    process.env.RAILWAY_VOLUME_MOUNT_PATH = '/data';
+    assert.equal(
+      guardrail._private.statePath(),
+      '/data/model-usage-guardrail.json'
+    );
+  });
+});
+
+test('remote calls fail closed when the counter state cannot be persisted', () => {
+  withCleanEnv(() => {
+    process.env.MODEL_GUARDRAIL_STATE = os.tmpdir();
+    guardrail.resetForTest();
+
+    const verdict = guardrail.admitRemoteCall('openrouter');
+    assert.equal(verdict.allowed, false);
+    assert.equal(verdict.scope, 'persistence');
+    assert.equal(guardrail.getStatus().persistence.healthy, false);
+  });
+});
+
+test('a guardrail block ends the request before a paid fallback', async () => {
   await withCleanEnv(async () => {
-    process.env.OLLAMA_GUARDRAIL_SESSION = '3';
+    process.env.MODEL_GUARDRAIL_SESSION = '3';
     process.env.OPENROUTER_API_KEY = 'fallback-key';
     const originalFetch = global.fetch;
     const calls = [];
@@ -146,7 +248,7 @@ test('a guardrail block uses the OpenRouter fallback key when a fallback slug ex
     client.gameId = 0;
     client.levelCount = 0;
     client.promptConfig = { gameName: 'aliens' };
-    client.ollamaCloudCallCount = 3; // session cap already spent
+    client.remoteProviderCallCount = 3; // session cap already spent
 
     global.fetch = async (url, options) => {
       calls.push({ url, options, body: JSON.parse(options.body) });
@@ -159,19 +261,15 @@ test('a guardrail block uses the OpenRouter fallback key when a fallback slug ex
     };
 
     try {
-      const result = await client.requestLLMAction(JSON.stringify({
-        gameTick: 1,
-        gameScore: 0,
-        availableActions: ['ACTION_LEFT', 'ACTION_RIGHT']
-      }));
-
-      assert.equal(result.action, 'ACTION_RIGHT');
-      assert.equal(result.provider, 'openrouter');
-      assert.equal(result.modelUsed, 'google/gemma-3-27b-it');
-      assert.equal(calls.length, 1);
-      assert.match(calls[0].url, /openrouter\.ai/);
-      assert.equal(calls[0].options.headers.Authorization, 'Bearer fallback-key');
-      assert.equal(calls[0].body.model, 'google/gemma-3-27b-it');
+      await assert.rejects(
+        client.requestLLMAction(JSON.stringify({
+          gameTick: 1,
+          gameScore: 0,
+          availableActions: ['ACTION_LEFT', 'ACTION_RIGHT']
+        })),
+        /usage guardrail/
+      );
+      assert.equal(calls.length, 0);
     } finally {
       global.fetch = originalFetch;
     }

@@ -9,6 +9,7 @@ const { getConfig, getConfigLoadStatus } = require('./lib/runtime-config');
 const { resolveScreenshotPath } = require('./lib/screenshot-path');
 const { sanitizeStrategy } = require('./lib/state-converter');
 const { createCadavreMirror } = require('./lib/cadavre-mirror');
+const { getAllModels, isModelAvailable } = require('./lib/models');
 const coordinator = require('./lib/attract-coordinator');
 const finetunePipeline = require('./lib/finetune-pipeline');
 const config = getConfig();
@@ -29,6 +30,11 @@ function loadRuntimeModules() {
   if (!LLMClient) LLMClient = require('./lib/llm-client');
   if (!HumanPlayClient) HumanPlayClient = require('./lib/human-play-client');
   return { gameManager, LLMClient, HumanPlayClient };
+}
+
+function positiveEnv(name, fallback) {
+  const parsed = Number.parseInt(process.env[name], 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 const app = express();
@@ -264,13 +270,105 @@ app.get('/langgames', (req, res) => res.sendFile(path.join(__dirname, 'public', 
 
 // Active game instances
 const activeGames = new Map();
+const modelStartWindows = new Map();
+let gameStartInProgress = false;
+
+function acquireGameStartLock() {
+  if (gameStartInProgress) return false;
+  gameStartInProgress = true;
+  return true;
+}
+
+function releaseGameStartLock() {
+  gameStartInProgress = false;
+}
+
+function backgroundInferenceSettings(env = process.env) {
+  return {
+    cadavreWarmer: env.CADAVRE_MODEL_WARMER_ENABLED === 'true',
+    marbleAutostart:
+      env.MARBLE_RUN_ENABLED === 'true' &&
+      env.MARBLE_RUN_AUTOSTART === 'true'
+  };
+}
+
+function admitModelStart(req, now = Date.now()) {
+  const windowMs = 60 * 1000;
+  const maxStarts = positiveEnv('MODEL_GAME_STARTS_PER_MINUTE', 3);
+  // Use the transport peer rather than caller-controlled forwarding headers.
+  // On Railway this is intentionally conservative: one proxy-wide start budget
+  // still protects spend when individual client addresses are unavailable.
+  const clientKey = req.socket?.remoteAddress || req.ip || 'unknown';
+  for (const [key, timestamps] of modelStartWindows) {
+    const active = timestamps.filter(timestamp => now - timestamp < windowMs);
+    if (active.length) modelStartWindows.set(key, active);
+    else modelStartWindows.delete(key);
+  }
+  const recent = (modelStartWindows.get(clientKey) || [])
+    .filter(timestamp => now - timestamp < windowMs);
+  if (recent.length >= maxStarts) {
+    modelStartWindows.set(clientKey, recent);
+    return false;
+  }
+  recent.push(now);
+  modelStartWindows.set(clientKey, recent);
+  return true;
+}
+
+function finishActiveGame(processId, {
+  disconnectClient = false,
+  resumeMarble = true,
+  stopProcess = true
+} = {}) {
+  const game = activeGames.get(processId);
+  if (!game) return null;
+  activeGames.delete(processId);
+  if (game.deadlineTimer) clearTimeout(game.deadlineTimer);
+  if (disconnectClient) game.client.disconnect();
+  if (stopProcess) game.manager?.stopGame(processId);
+  stopScreenshotStreaming();
+  if (resumeMarble) coordinator.endWalkup();
+  return game;
+}
 
 // Start game endpoint (API key loaded from environment)
 app.post('/api/game/start', async (req, res) => {
-  const { gameId, levelId, model, strategy, playerType } = req.body;
+  const {
+    gameId: requestedGameId,
+    levelId,
+    model,
+    strategy,
+    playerType,
+    socketId
+  } = req.body;
+  const gameId = Number.parseInt(requestedGameId, 10);
   const isHumanPlay = playerType === 'human';
+  const ownerSocketId = typeof socketId === 'string' && socketId.length <= 128
+    ? socketId
+    : null;
   // Neutralize the walk-up player's free-text tactic before it enters any prompt.
   const { text: cleanStrategy, warnings: strategyWarnings } = sanitizeStrategy(strategy);
+
+  if (!Number.isInteger(gameId) || gameId < 0 || resolveGameName(gameId) === 'unknown') {
+    return res.status(400).json({ error: 'Unknown game' });
+  }
+  if (!ownerSocketId || !io.sockets.sockets.has(ownerSocketId)) {
+    return res.status(409).json({ error: 'A connected browser session is required' });
+  }
+  if (!isHumanPlay) {
+    const selectedModel = getAllModels().find(entry => entry.id === model);
+    if (!selectedModel || !isModelAvailable(selectedModel, process.env)) {
+      return res.status(400).json({ error: 'Unknown or unavailable model' });
+    }
+  }
+  if (!acquireGameStartLock()) {
+    return res.status(409).json({ error: 'Another game is starting; try again shortly' });
+  }
+  if (!isHumanPlay && !admitModelStart(req)) {
+    releaseGameStartLock();
+    return res.status(429).json({ error: 'Model run start limit reached; wait one minute' });
+  }
+  let startingProcessId = null;
 
   try {
     // A walk-up player takes priority: pause the marble run and free port 8080.
@@ -293,22 +391,36 @@ app.post('/api/game/start', async (req, res) => {
     });
 
     // Kill any existing games first to free port 8080
+    const previousGameStops = [];
     for (const [pid, game] of activeGames) {
       console.log(`[Server] Cleaning up previous game ${pid}`);
-      game.client.disconnect();
-      runtime.gameManager.stopGame(pid);
-      activeGames.delete(pid);
+      finishActiveGame(pid, {
+        disconnectClient: true,
+        resumeMarble: false,
+        stopProcess: false
+      });
+      previousGameStops.push(game.manager.stopGameAndWait(pid, 3000));
     }
+    await Promise.all(previousGameStops);
     stopScreenshotStreaming();
 
     // Start Java game process (no visuals - headless)
     const gameProcess = await runtime.gameManager.startGame(gameId, levelId || 0, false);
+    startingProcessId = gameProcess.processId;
 
     // Wait for Java to report socket is listening (via stdout)
     const socketReady = await runtime.gameManager.waitForReady(gameProcess.processId, 10000);
     if (!socketReady) {
       runtime.gameManager.stopGame(gameProcess.processId);
+      startingProcessId = null;
+      coordinator.endWalkup();
       return res.status(500).json({ error: 'Java game process failed to start' });
+    }
+    if (ownerSocketId && !io.sockets.sockets.has(ownerSocketId)) {
+      await runtime.gameManager.stopGameAndWait(gameProcess.processId, 3000);
+      startingProcessId = null;
+      coordinator.endWalkup();
+      return res.status(409).json({ error: 'Browser session ended before game start' });
     }
 
     // Start screenshot streaming BEFORE the client connects (screenshots begin on first ACT tick)
@@ -321,15 +433,28 @@ app.post('/api/game/start', async (req, res) => {
     const initialLevelId = levelId || 0;
     const client = isHumanPlay
       ? new runtime.HumanPlayClient({ runId, initialLevelId })
-      : new runtime.LLMClient({ runId, initialLevelId, promptConfigOptions: { strategyMemory: 'accepted' } });
+      : new runtime.LLMClient({
+        runId,
+        initialLevelId,
+        maxActions: positiveEnv('MODEL_RUN_MAX_ACTIONS', 20),
+        maxProviderCalls: positiveEnv('MODEL_RUN_MAX_PROVIDER_CALLS', 20),
+        promptConfigOptions: { strategyMemory: 'accepted' }
+      });
+
+    const gameRecord = {
+      gameProcess,
+      client,
+      manager: runtime.gameManager,
+      ownerSocketId,
+      deadlineTimer: null,
+      llmClient: isHumanPlay ? null : client  // backward compat for code that reads game.llmClient
+    };
+    activeGames.set(gameProcess.processId, gameRecord);
 
     // Wire session-end cleanup (same for both client types)
     client.onSessionEnd = () => {
       console.log(`[Server] Session ended for ${gameProcess.processId}, cleaning up`);
-      activeGames.delete(gameProcess.processId);
-      stopScreenshotStreaming();
-      runtime.gameManager.stopGame(gameProcess.processId);
-      coordinator.endWalkup(); // resume the marble run after the walk-up finishes
+      finishActiveGame(gameProcess.processId);
     };
 
     // Connect client to GVGAI socket
@@ -343,6 +468,9 @@ app.post('/api/game/start', async (req, res) => {
         await client.connect(config.gvgai.socketPort, 'human', io, gameId, gameName);
       } else {
         await client.connect(config.gvgai.socketPort, model, io, gameId, gameName, cleanStrategy);
+      }
+      if (activeGames.get(gameProcess.processId) !== gameRecord) {
+        throw new Error('Game session ended during startup');
       }
       console.log(`[Server] ${isHumanPlay ? 'Human play' : 'LLM'} client connected successfully`);
       telemetry.track({
@@ -378,16 +506,30 @@ app.post('/api/game/start', async (req, res) => {
           message: error.message
         }
       });
-      runtime.gameManager.stopGame(gameProcess.processId);
-      stopScreenshotStreaming();
+      finishActiveGame(gameProcess.processId, { disconnectClient: true });
+      startingProcessId = null;
       return res.status(500).json({ error: 'Failed to connect to game socket' });
     }
 
-    activeGames.set(gameProcess.processId, {
-      gameProcess,
-      client,
-      llmClient: isHumanPlay ? null : client  // backward compat for code that reads game.llmClient
-    });
+    if (!isHumanPlay) {
+      const maxRunMs = positiveEnv('MODEL_RUN_MAX_MS', 2 * 60 * 1000);
+      gameRecord.deadlineTimer = setTimeout(() => {
+        const expired = finishActiveGame(gameProcess.processId, { disconnectClient: true });
+        if (!expired) return;
+        console.warn(`[Server] Model run ${gameProcess.processId} reached its ${maxRunMs}ms limit`);
+        telemetry.track({
+          eventFamily: 'evaluation',
+          eventType: 'run_budget_reached',
+          source: 'server',
+          runId,
+          gameId,
+          levelId: levelId || 0,
+          modelId: model,
+          payload: { processId: gameProcess.processId, maxRunMs }
+        });
+      }, maxRunMs);
+      gameRecord.deadlineTimer.unref?.();
+    }
 
     res.json({
       status: 'started',
@@ -411,8 +553,17 @@ app.post('/api/game/start', async (req, res) => {
         message: error.message
       }
     });
-    stopScreenshotStreaming();
+    const cleaned = startingProcessId
+      ? finishActiveGame(startingProcessId, { disconnectClient: true })
+      : null;
+    if (!cleaned) {
+      if (startingProcessId && gameManager) gameManager.stopGame(startingProcessId);
+      stopScreenshotStreaming();
+      coordinator.endWalkup();
+    }
     res.status(500).json({ error: error.message });
+  } finally {
+    releaseGameStartLock();
   }
 });
 
@@ -453,11 +604,7 @@ app.post('/api/game/stop', (req, res) => {
 
   const game = activeGames.get(processId);
   if (game) {
-    game.client.disconnect();
-    if (gameManager) gameManager.stopGame(processId);
-    activeGames.delete(processId);
-    stopScreenshotStreaming();
-    coordinator.endWalkup(); // resume the marble run after the walk-up stops
+    finishActiveGame(processId, { disconnectClient: true });
     telemetry.track({
       eventFamily: 'evaluation',
       eventType: 'run_stopped',
@@ -503,6 +650,21 @@ io.on('connection', (socket) => {
         clients: io.engine.clientsCount
       }
     });
+    for (const [processId, game] of activeGames) {
+      if (game.ownerSocketId !== socket.id) continue;
+      const stopped = finishActiveGame(processId, { disconnectClient: true });
+      if (!stopped) continue;
+      console.log(`[Server] Stopped game ${processId} after its browser disconnected`);
+      telemetry.track({
+        eventFamily: 'evaluation',
+        eventType: 'run_owner_disconnected',
+        source: 'server',
+        runId: stopped.client.runId,
+        gameId: stopped.client.gameId,
+        modelId: stopped.client.model || (stopped.client.playerType === 'human' ? 'human' : null),
+        payload: { processId, socketId: socket.id, reason }
+      });
+    }
   });
 
   socket.on('error', (error) => {
@@ -561,6 +723,7 @@ async function shutdown(signal) {
 
   // Stop all games
   for (const [processId, game] of activeGames) {
+    if (game.deadlineTimer) clearTimeout(game.deadlineTimer);
     game.client.disconnect();
     if (gameManager) gameManager.stopGame(processId);
   }
@@ -640,7 +803,13 @@ async function startServer() {
       console.log(`[Server] Running on http://localhost:${PORT}`);
       console.log(`[Server] GVGAI project root: ${config.gvgai.projectRoot}`);
       console.log(`[Server] OpenRouter API key loaded from environment`);
-      cadavreRoutes.startModelWarmer();
+      const backgroundInference = backgroundInferenceSettings(process.env);
+      if (backgroundInference.cadavreWarmer) {
+        cadavreRoutes.startModelWarmer();
+        console.log('[Server] Cadavre model warmer started');
+      } else {
+        console.log('[Server] Cadavre model warmer disabled');
+      }
 
       // Wire the attract-mode marble run onto the single Java process. It shares the
       // one screenshot streamer and yields to any walk-up player (activeGames > 0).
@@ -651,7 +820,13 @@ async function startServer() {
         isWalkupActive: () => activeGames.size > 0,
         gameManager: runtime.gameManager,
         telemetry,
-        caseOptions: { maxActions: 40, synchronousActions: false }
+        caseOptions: {
+          maxActions: positiveEnv('MODEL_RUN_MAX_ACTIONS', 20),
+          maxProviderCalls: positiveEnv('MODEL_RUN_MAX_PROVIDER_CALLS', 20),
+          synchronousActions: false
+        },
+        maxCasesPerActivation: positiveEnv('MARBLE_RUN_MAX_CASES', 3),
+        maxActivationMs: positiveEnv('MARBLE_RUN_MAX_MS', 5 * 60 * 1000)
       });
       // Fine-tune pipeline: route is always mounted; the auto-trigger is opt-in
       // (FINETUNE_AUTO_ENABLED=1) so the deployed instance stays inert. Completed
@@ -665,8 +840,8 @@ async function startServer() {
       if (process.env.FINETUNE_AUTO_ENABLED === '1') {
         finetunePipeline.startAutoTrigger();
       }
-      // Always-on by default (attract mode); set MARBLE_RUN_AUTOSTART=false to disable.
-      if (process.env.MARBLE_RUN_AUTOSTART !== 'false') {
+      // Paid background play is fail-closed. Both switches must be exact opt-ins.
+      if (backgroundInference.marbleAutostart) {
         coordinator.start();
         console.log('[Server] Attract-mode marble run started');
       } else {
@@ -690,5 +865,14 @@ module.exports = {
   server,
   startServer,
   isCompletePng,
-  screenshotDigest
+  screenshotDigest,
+  _private: {
+    activeGames,
+    modelStartWindows,
+    admitModelStart,
+    finishActiveGame,
+    acquireGameStartLock,
+    releaseGameStartLock,
+    backgroundInferenceSettings
+  }
 };

@@ -16,10 +16,12 @@ test('eval route exposes the arcade plan builder', () => {
   const routeSource = fs.readFileSync(path.join(WEB_ROOT, 'routes', 'evals.js'), 'utf-8');
 
   assert.match(routeSource, /router\.get\('\/arcade'/);
-  assert.match(routeSource, /router\.post\('\/arcade\/run'/);
+  assert.match(routeSource, /router\.post\(\s*'\/arcade\/run'/);
   assert.match(routeSource, /buildArcadeEvalPlan/);
   assert.match(routeSource, /runArcadeBatchEvaluation/);
   assert.match(routeSource, /gameCount/);
+  assert.match(routeSource, /MODEL_EVALS_ENABLED/);
+  assert.match(routeSource, /maxProviderCalls/);
 });
 
 test('telemetry route exposes summary, event write, and flush endpoints', () => {

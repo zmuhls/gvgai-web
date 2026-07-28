@@ -56,7 +56,9 @@ The featured marquee rotation uses five open-weight Ollama Cloud models across G
 | Ministral 3 3B | Ollama Cloud | `mistralai/ministral-3b-2512` |
 | Devstral Small 2 24B (featured) | Ollama Cloud | none |
 
-The server calls the selected primary provider first. Legion vLLM routes fall back to `LEGION_FALLBACK_MODEL` on Ollama Cloud, then to the matching OpenRouter slug when one exists. Ollama Cloud routes fall back to OpenRouter directly when the selected model has a slug. The provider that answered is reported on the `llm-reasoning` socket event and on the telemetry dashboard. A usage guardrail caps Ollama Cloud calls at 3000 per hour and 15000 per day with counters persisted across restarts; a tripped guardrail now moves to OpenRouter when the model has a fallback slug.
+The server calls the selected primary provider first. Legion vLLM routes fall back to `LEGION_FALLBACK_MODEL` on Ollama Cloud, then to the matching OpenRouter slug when one exists. Ollama Cloud routes fall back to OpenRouter directly when the selected model has a slug. The provider that answered is reported on the `llm-reasoning` socket event and on the telemetry dashboard. A shared usage guardrail counts Ollama Cloud and OpenRouter calls against hourly, daily, monthly, and per-session limits. Railway persists these counters on its mounted volume and blocks remote calls when it cannot persist them. Reaching a limit ends the request without shifting spend to another remote provider.
+
+The guardrail measures calls because provider pricing varies by model and runtime. Keep a hard spending limit on each provider key and leave automatic credit reloads disabled; the application limits add a separate ceiling for unattended or abusive traffic.
 
 Fine-tuned models appear in the catalog automatically once registered, routing through the local Ollama daemon at `localhost:11434`, separate from the cloud API.
 
@@ -153,7 +155,7 @@ npm install
 npm start          # http://localhost:3000
 ```
 
-The arcade auto-starts the marble run on local boot. Set `MARBLE_RUN_AUTOSTART=false` to disable it. The server starts and stops the Java process for you.
+The marble run stays idle by default. Starting it requires `MARBLE_RUN_ENABLED=true`, an operator token, and an authenticated request; boot-time play also requires `MARBLE_RUN_AUTOSTART=true`. Each activation has case and wall-clock limits. The server starts and stops the Java process for you.
 
 ## Evaluation
 
@@ -196,7 +198,7 @@ web/
     vgdl-digest.js       Structural digest from VGDL covering controls, scoring, hazards, win/loss
     game-classifier.js   Archetype and pace classification from digest
     strategy-memory-store.js  Per-game memory records, eval-gated injection
-    usage-guardrail.js   Ollama Cloud call caps across hour, day, session
+    usage-guardrail.js   Remote-provider call caps across hour, day, session
     trace-summary-builder.js  Human trace to prompt-layer summary for in-context learning
   routes/                Express routers for games, models, prompts, evals, telemetry, marble, finetune
   public/                Vanilla JS frontend with app.js, dashboard.js, telemetry-dashboard.js, marquee.js

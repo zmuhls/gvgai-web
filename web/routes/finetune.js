@@ -6,10 +6,11 @@
 const express = require('express');
 const pipeline = require('../lib/finetune-pipeline');
 const { TriggerError } = require('../lib/finetune-pipeline');
+const { requireOperator } = require('../lib/operator-auth');
 
 const router = express.Router();
 
-router.post('/trigger', (req, res) => {
+router.post('/trigger', requireOperator({ enabledKey: 'MODEL_FINETUNE_ENABLED' }), (req, res) => {
   const { gameId, dryRun } = req.body || {};
   try {
     const result = pipeline.trigger({ gameId, dryRun: Boolean(dryRun) });
@@ -30,7 +31,7 @@ router.get('/status', (req, res) => {
   res.json(pipeline.getStatus());
 });
 
-router.post('/cancel', (req, res) => {
+router.post('/cancel', requireOperator(), (req, res) => {
   try {
     res.json(pipeline.cancel());
   } catch (err) {

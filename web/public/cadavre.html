@@ -934,10 +934,13 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     let gameId = 0;           // stale in-flight replies must not join a new game
     let poemText = "", readingText = "";
     let gameActive = false;
+    let turnPaused = false;
+    const MAX_GAME_TURNS = 20;
     let timerInterval = null, timerDeadline = 0, turnTimerId = "", timerGeneration = 0;
     let timerSyncInFlight = false, lastTimerSyncAt = 0;
     let authUser = null, activePoem = null, authMode = "login";
     let readingRequestId = 0;
+    let activeChatController = null;
     let poemTokens = [];      // { norm, el } per revealed poem word — the reading links to these
     const WALL_TOKENS_KEY = "cadavreWallDeleteTokens";
     let wallTokens = readWallTokens();
@@ -980,14 +983,37 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       }
     }
 
-    function expireHumanTurn(generation) {
-      if (generation !== timerGeneration || !gameActive || isModelTurn()) return;
-      clearTurnTimer({ cancel: false });
+    function abortActiveChat() {
+      if (!activeChatController) return;
+      activeChatController.abort();
+      activeChatController = null;
+    }
+
+    function pauseTurn(message, { canResume = true } = {}) {
+      if (!gameActive) return;
+      clearTurnTimer();
+      abortActiveChat();
+      turnPaused = true;
+      gameId++;
       el("wordInput").disabled = true;
       el("submitBtn").disabled = true;
-      actorIndex++;
-      setStatus("time expired — the fold passes on");
-      setTimeout(promptTurn, 650);
+      el("undoBtn").disabled = !contributions.length;
+      const action = canResume
+        ? ' <button class="linklike" id="resumeTurn">continue</button>'
+        : "";
+      setStatus(`${esc(message)}${action}`);
+      if (canResume) {
+        el("resumeTurn").addEventListener("click", () => {
+          if (!gameActive) return;
+          turnPaused = false;
+          promptTurn();
+        });
+      }
+    }
+
+    function expireHumanTurn(generation) {
+      if (generation !== timerGeneration || !gameActive || isModelTurn()) return;
+      pauseTurn("time expired — the table is paused");
     }
 
     async function syncTurnTimer(generation) {
@@ -1222,7 +1248,11 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     }
 
     function promptTurn() {
-      if (!gameActive) return;
+      if (!gameActive || turnPaused) return;
+      if (actorIndex >= MAX_GAME_TURNS) {
+        pauseTurn("twenty turns reached — reveal the poem or reset", { canResume: false });
+        return;
+      }
       renderSeats();
       if (isModelTurn()) { clearTurnTimer(); modelTurn(); return; }
       const cap = NUMBER_WORDS[maxWords];
@@ -1316,7 +1346,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       el("connModel").textContent = data.model + (data.provider ? ` via ${data.provider}` : "");
     }
 
-    async function chat(messages, maxTokens) {
+    async function chat(messages, maxTokens, shouldContinue = () => true) {
       const body = JSON.stringify({
         model: CFG.model, messages,
         max_tokens: maxTokens, temperature: 0.8, stream: false,
@@ -1324,7 +1354,9 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       const retryDelays = [1000, 2000, 3000];
       let lastError;
       for (let attempt = 0; attempt <= retryDelays.length; attempt++) {
+        if (!shouldContinue()) throw new DOMException("request cancelled", "AbortError");
         const ctrl = new AbortController();
+        activeChatController = ctrl;
         const timer = setTimeout(() => ctrl.abort(), 60000);
         try {
           const res = await fetch(CFG.endpoint, {
@@ -1348,11 +1380,13 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
           };
         } catch (error) {
           lastError = error;
+          if (!shouldContinue()) throw error;
           const transient = error.retryable || (error.name !== "AbortError" && error instanceof TypeError);
           if (!transient || attempt === retryDelays.length) throw error;
           await new Promise((resolve) => setTimeout(resolve, retryDelays[attempt]));
         } finally {
           clearTimeout(timer);
+          if (activeChatController === ctrl) activeChatController = null;
         }
       }
       throw lastError;
@@ -1367,6 +1401,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     }
 
     async function modelTurn() {
+      if (!gameActive || turnPaused) return;
       clearTurnTimer();
       const id = gameId;
       renderSeats();
@@ -1375,31 +1410,33 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       el("submitBtn").disabled = true;
       el("undoBtn").disabled = true;
       const userMsg = turnPrompt();
+      const isCurrentTurn = () => id === gameId && gameActive && !turnPaused;
       let reply;
       try {
         const messages = [
           { role: "system", content: playPrompt() },
           { role: "user", content: userMsg },
         ];
-        let result = await chat(messages, 80);
+        let result = await chat(messages, 80, isCurrentTurn);
+        if (!isCurrentTurn()) return;
         reply = validContribution(result.content);
         if (!reply.valid) {
           result = await chat([
             ...messages,
             { role: "assistant", content: result.content },
             { role: "user", content: `Rewrite the contribution so its complete advance fits inside ${capPhrase()}. Return plain contribution words only.` },
-          ], 80);
+          ], 80, isCurrentTurn);
           reply = validContribution(result.content);
         }
       } catch (e) {
-        if (id !== gameId || !gameActive) return;
+        if (id !== gameId || !gameActive || turnPaused) return;
         setStatus(`the model isn’t answering at ${esc(endpointHost())} — is it running?
           <button class="linklike" id="retryTurn">try again</button>`, true);
         el("retryTurn").addEventListener("click", modelTurn);
         el("undoBtn").disabled = !contributions.length;   // unfolding back is the other way out
         return;
       }
-      if (id !== gameId || !gameActive) return;
+      if (id !== gameId || !gameActive || turnPaused) return;
       if (!reply.valid) {
         // Two unusable answers let the table move on.
         actorIndex++;
@@ -1414,7 +1451,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     /* ── human turn ─────────────────────────────────────────────────────── */
     el("entryForm").addEventListener("submit", (e) => {
       e.preventDefault();
-      if (!gameActive || isModelTurn()) return;
+      if (!gameActive || turnPaused || isModelTurn()) return;
       const raw = el("wordInput").value.trim();
       if (!raw) return;
       if (raw.split(/\s+/).length > maxWords) {
@@ -1463,6 +1500,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       if (!contributions.length) return;
       clearTurnTimer();
       gameActive = false;
+      turnPaused = false;
       poemText = contributions.map((c) => c.text).join("\n");
       activePoem = null;
       el("sheetSec").hidden = true;
@@ -1516,13 +1554,13 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
         const result = await chat([
           { role: "system", content: readingPrompt() },
           { role: "user", content: `Read this finished poem:\n\n${poemText}\n\nProvide the close reading paragraph.` },
-        ], 400);
+        ], 400, () => requestId === readingRequestId && !document.hidden);
         if (requestId !== readingRequestId) return;
         readingText = result.content;
         renderReadingLinked(readingEl, readingText, poemTokens);
         readingEl.classList.add("show");
       } catch (e) {
-        if (requestId !== readingRequestId) return;
+        if (requestId !== readingRequestId || document.hidden) return;
         readingText = "";
         readingEl.innerHTML = `<span class="err">the reading didn’t arrive from ${esc(endpointHost())}
           — <button class="linklike" id="retryReading">try again</button></span>`;
@@ -1547,6 +1585,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     el("playerCount").addEventListener("change", syncSeats);
 
     function begin() {
+      abortActiveChat();
       players = Number(el("playerCount").value);
       modelSeat = Number(el("modelSlot").value);
       maxWords = Number(el("maxWords").value);
@@ -1559,6 +1598,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       poemText = readingText = "";
       activePoem = null;
       gameActive = true;
+      turnPaused = false;
       el("folds").innerHTML = "";
       updateFoldCount();
       renderSeats();
@@ -1574,8 +1614,10 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
 
     function clearTable() {
       clearTurnTimer();
+      abortActiveChat();
       readingRequestId++;
       gameActive = false;
+      turnPaused = false;
       contributions = [];
       el("sheetSec").hidden = true;
       el("revealSec").hidden = true;
@@ -1603,6 +1645,19 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     el("revealDialog").addEventListener("close", () => {
       // declined (cancel or Esc): hand the pen back
       if (gameActive && !isModelTurn()) el("wordInput").focus();
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) return;
+      if (gameActive && !turnPaused) pauseTurn("game paused while this tab is away");
+      else abortActiveChat();
+    });
+    window.addEventListener("pagehide", () => {
+      abortActiveChat();
+      if (!gameActive) return;
+      clearTurnTimer();
+      turnPaused = true;
+      gameId++;
     });
 
     /* ── accounts, saved poems, keep, print, pin ───────────────────────── */

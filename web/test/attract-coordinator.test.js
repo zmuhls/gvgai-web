@@ -102,6 +102,35 @@ test('start(): plays the playlist, advances the cursor, records telemetry', asyn
   assert.equal(coord.mode, 'IDLE');
 });
 
+test('an activation stops at its case and wall-clock budgets', async () => {
+  const io = makeIo();
+  const runner = autoRunner(
+    { finalScore: 1, winner: 'NO_WINNER', won: false, ticks: 2, decisions: 2 },
+    2
+  );
+  const coord = new AttractCoordinator();
+  coord.configure({
+    io,
+    streamer: { start() {}, stop() {} },
+    isWalkupActive: () => false,
+    gameManager: { stopGameAndWait: () => Promise.resolve(true) },
+    buildArcadeEvalPlan: () => ({ cases: [makeCase(0), makeCase(1), makeCase(2)] }),
+    runEvalCase: runner.fn,
+    maxCasesPerActivation: 2,
+    maxActivationMs: 1234
+  });
+
+  coord.start();
+  await wait(40);
+
+  assert.equal(runner.calls.length, 2);
+  assert.ok(runner.calls.every(call => call.options.timeoutMs <= 1234));
+  assert.equal(coord.enabled, false);
+  assert.equal(coord.mode, 'IDLE');
+  assert.equal(io.typesOf('marble-run-budget-reached').length, 1);
+  assert.equal(coord.getSnapshot().activationBudget.casesUsed, 2);
+});
+
 test('beginWalkup(): interrupts the current case, yields, and does not advance', async () => {
   const io = makeIo();
   const telemetry = makeTelemetry();

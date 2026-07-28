@@ -848,7 +848,8 @@ async function startGame() {
         levelId: level,
         model,
         strategy,
-        playerType
+        playerType,
+        socketId: socket?.id || null
       })
     });
 
@@ -958,6 +959,19 @@ async function stopGame() {
     trackUx('game_stop_failed', { message: error.message });
   }
 }
+
+window.addEventListener('pagehide', () => {
+  if (!state.processId) return;
+  const processId = state.processId;
+  state.processId = null;
+  state.runId = null;
+  fetch('/api/game/stop', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ processId }),
+    keepalive: true
+  }).catch(() => {});
+});
 
 // Show/hide steps
 function showStep(step) {

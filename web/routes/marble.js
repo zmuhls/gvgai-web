@@ -1,11 +1,13 @@
 const express = require('express');
 const coordinator = require('../lib/attract-coordinator');
+const { requireOperator } = require('../lib/operator-auth');
 
 const router = express.Router();
 
 // Fire-and-forget: start() kicks the attract loop in the background and returns
-// immediately (202). Progress reaches clients over Socket.IO, like /api/game/start.
-router.post('/start', (req, res) => {
+// immediately (202). Starting a paid background playlist is an operator action,
+// never a side effect of public page traffic.
+router.post('/start', requireOperator({ enabledKey: 'MARBLE_RUN_ENABLED' }), (req, res) => {
   try {
     const snapshot = coordinator.start();
     res.status(202).json(snapshot);

@@ -53,6 +53,10 @@ class AttractCoordinator {
     this._consecutiveErrors = 0;
     this.maxConsecutiveErrors = 3;  // stop churning if the engine is unavailable
     this.errorBackoffMs = 2000;     // brief pause after a failed case
+    this.maxCasesPerActivation = 3;
+    this.maxActivationMs = 5 * 60 * 1000;
+    this._activationCases = 0;
+    this._activationStartedAt = null;
   }
 
   configure(deps = {}) {
@@ -68,6 +72,12 @@ class AttractCoordinator {
     if (deps.resumeDebounceMs != null) this.resumeDebounceMs = deps.resumeDebounceMs;
     if (deps.maxConsecutiveErrors != null) this.maxConsecutiveErrors = deps.maxConsecutiveErrors;
     if (deps.errorBackoffMs != null) this.errorBackoffMs = deps.errorBackoffMs;
+    if (Number.isInteger(deps.maxCasesPerActivation) && deps.maxCasesPerActivation > 0) {
+      this.maxCasesPerActivation = deps.maxCasesPerActivation;
+    }
+    if (Number.isInteger(deps.maxActivationMs) && deps.maxActivationMs > 0) {
+      this.maxActivationMs = deps.maxActivationMs;
+    }
     this.configured = true;
     return this;
   }
@@ -79,6 +89,8 @@ class AttractCoordinator {
     if (this.enabled) return this.getSnapshot();
     if (!this.cases.length) this.cases = this._buildCases();
     this.enabled = true;
+    this._activationCases = 0;
+    this._activationStartedAt = Date.now();
     // Fire-and-forget: the loop runs in the background; progress reaches clients
     // only via Socket.IO, mirroring the /api/game/start pattern.
     this._runLoop().catch(err => {
@@ -137,9 +149,13 @@ class AttractCoordinator {
     if (!this.walkupActive) return;
     clearTimeout(this._resumeTimer);
     this._resumeTimer = setTimeout(() => {
-      if (!this.enabled) return;
       if (this.isWalkupActive && this.isWalkupActive()) return; // a walk-up is still live
       this.walkupActive = false;
+      if (!this.enabled) {
+        this.mode = 'IDLE';
+        this._emitState();
+        return;
+      }
       this.mode = 'RESUMING';
       this._emitState();
       this._signalResume();
@@ -157,7 +173,12 @@ class AttractCoordinator {
       current: this.currentCase ? this._caseSummary(this.currentCase) : null,
       upNext: this._upNext(3),
       startedAt: this.currentStartedAt,
-      generatedAt: nowIso()
+      generatedAt: nowIso(),
+      activationBudget: {
+        casesUsed: this._activationCases,
+        maxCases: this.maxCasesPerActivation,
+        maxMs: this.maxActivationMs
+      }
     };
   }
 
@@ -233,8 +254,13 @@ class AttractCoordinator {
           continue;
         }
         if (!this.cases.length) break;
+        if (this._activationBudgetReached()) {
+          this._stopForBudget();
+          break;
+        }
 
         const evalCase = this.cases[this.cursor];
+        this._activationCases += 1;
         this._abortReason = null;
         this.currentCase = evalCase;
         this.currentStartedAt = nowIso();
@@ -247,10 +273,19 @@ class AttractCoordinator {
 
         let caseErrored = false;
         try {
+          const activationRemainingMs = Math.max(
+            1,
+            this.maxActivationMs - (Date.now() - this._activationStartedAt)
+          );
+          const caseTimeoutMs = Number.isInteger(this.caseOptions.timeoutMs) &&
+            this.caseOptions.timeoutMs > 0
+            ? Math.min(this.caseOptions.timeoutMs, activationRemainingMs)
+            : activationRemainingMs;
           this._currentPromise = this.runEvalCase(evalCase, {
             io: this.io,
-            timeoutMs: this.caseOptions.timeoutMs,
+            timeoutMs: caseTimeoutMs,
             maxActions: this.caseOptions.maxActions,
+            maxProviderCalls: this.caseOptions.maxProviderCalls,
             // Marble run defaults async: the engine ticks at full speed off the
             // plan queue instead of blocking on a provider round-trip per move.
             synchronousActions: this.caseOptions.synchronousActions === true,
@@ -344,6 +379,26 @@ class AttractCoordinator {
       this.cursor = 0;
       this.loopCount += 1;
     }
+  }
+
+  _activationBudgetReached() {
+    const elapsed = this._activationStartedAt == null
+      ? 0
+      : Date.now() - this._activationStartedAt;
+    return this._activationCases >= this.maxCasesPerActivation ||
+      elapsed >= this.maxActivationMs;
+  }
+
+  _stopForBudget() {
+    this.enabled = false;
+    this.mode = 'IDLE';
+    this.currentCase = null;
+    this._emit('marble-run-budget-reached', {
+      casesUsed: this._activationCases,
+      maxCases: this.maxCasesPerActivation,
+      maxMs: this.maxActivationMs
+    });
+    this._emitState();
   }
 
   _buildCases() {

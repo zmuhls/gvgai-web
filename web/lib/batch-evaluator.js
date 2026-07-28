@@ -214,6 +214,7 @@ async function runEvalCase(evalCase, options = {}) {
         synchronousActions: options.synchronousActions !== false,
         actionTimeoutMs: options.actionTimeoutMs,
         maxActions: resolveCaseMaxActions(evalCase, options),
+        maxProviderCalls: options.maxProviderCalls,
         initResponseType: options.initResponseType,
         actResponseType: options.actResponseType,
         providerOverride: evalCase.provider,

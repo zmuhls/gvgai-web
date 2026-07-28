@@ -26,6 +26,12 @@ const MAX_ASYNC_CODE_PLAN_AGE_TICKS = 120;
 const DEFAULT_TICKS_PER_STEP = 1;  // grid actions are discrete; one step is one engine tick
 const DEFAULT_DIRECTION_PULSE_TICKS = 1;
 const DEFAULT_ASYNC_CODE_PLAN_STEPS = 4;
+const DEFAULT_MAX_PROVIDER_CALLS = 20;
+
+function positiveInteger(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 // Loop-breaker tuning. Between LLM calls the executor repeats the last action
 // blindly — in wandering games this means the avatar marches in one direction
@@ -88,6 +94,11 @@ class LLMClient {
     this.synchronousActions = !!options.synchronousActions;
     this.actionTimeoutMs = options.actionTimeoutMs || 12000;
     this.maxActions = options.maxActions || null;
+    this.maxProviderCalls = positiveInteger(
+      options.maxProviderCalls ?? process.env.MODEL_RUN_MAX_PROVIDER_CALLS,
+      DEFAULT_MAX_PROVIDER_CALLS
+    );
+    this.remoteProviderCallCount = 0;
     this.initResponseType = options.initResponseType || (this.synchronousActions ? 'JSON' : 'BOTH');
     this.actResponseType = options.actResponseType || (this.synchronousActions ? 'JSON' : 'BOTH');
     this.runId = options.runId || null;
@@ -1176,10 +1187,14 @@ class LLMClient {
       temperature: settings.temperature !== undefined ? settings.temperature : 0.7
     };
 
-    if (provider === 'ollama-cloud') {
-      // Light usage guardrail on the Ollama Cloud key. A blocked call throws a
-      // flagged error; the route loop can still use a configured fallback.
-      const verdict = guardrail.admitOllamaCall(this.ollamaCloudCallCount || 0);
+    if (provider === 'ollama-cloud' || provider === 'openrouter') {
+      const verdict = this.remoteProviderCallCount >= this.maxProviderCalls
+        ? {
+            allowed: false,
+            scope: 'session',
+            reason: `session cap of ${this.maxProviderCalls} remote model calls reached`
+          }
+        : guardrail.admitRemoteCall(provider, this.remoteProviderCallCount);
       if (!verdict.allowed) {
         telemetry.track({
           eventFamily: 'system',
@@ -1189,14 +1204,20 @@ class LLMClient {
           gameId: this.gameId,
           levelId: this.levelCount,
           modelId,
-          provider: 'ollama-cloud',
+          provider,
           payload: { scope: verdict.scope, message: verdict.reason }
         });
-        const guardErr = new Error(`ollama-cloud usage guardrail: ${verdict.reason}`);
+        const guardErr = new Error(`${provider} usage guardrail: ${verdict.reason}`);
         guardErr.guardrail = true;
+        guardErr.scope = verdict.scope;
         throw guardErr;
       }
-      this.ollamaCloudCallCount = (this.ollamaCloudCallCount || 0) + 1;
+      // Count the attempt before the request. Timeouts and provider errors still
+      // consume the per-run allowance and cannot create an unbounded retry loop.
+      this.remoteProviderCallCount += 1;
+    }
+
+    if (provider === 'ollama-cloud') {
       apiUrl = config.ollamaCloud.apiUrl;
       if (this.ollamaApiKey) headers['Authorization'] = `Bearer ${this.ollamaApiKey}`;
       // Frontier reasoning models (catalog reasoning:true) think by default and
@@ -1397,6 +1418,20 @@ class LLMClient {
             fallback: nextRoute ? `${nextRoute.provider}/${nextRoute.modelId}` : null
           }
         });
+
+        // A cost guardrail is a terminal boundary. Falling through to another
+        // paid provider would preserve the loop while moving the charge.
+        if (err.guardrail) {
+          if (this.io) {
+            this.io.emit('llm-error', {
+              runId: this.runId,
+              status: 429,
+              message: err.message,
+              guardrail: true
+            });
+          }
+          throw err;
+        }
 
         if (!nextRoute) {
           const message = routes.length > 1
