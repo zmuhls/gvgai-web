@@ -39,11 +39,13 @@
       --faint: #6E6A61;      /* the epigraph: large, quiet, decorative */
       --crease: rgba(231, 224, 208, 0.14);
       --crease-soft: rgba(231, 224, 208, 0.08);
+      --edge: rgba(231, 224, 208, 0.38);   /* control borders, visible at a glance */
       --fold-hi: #191B22;    /* folded strip face, lit edge */
       --fold-lo: #111318;    /* folded strip face, shadow edge */
       --wine: #A44856;       /* the model's hand; le vin nouveau */
       --wine-bright: #C57080;
       --wine-wash: rgba(197, 112, 128, 0.14);
+      --sans: system-ui, -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
       --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L", "P052", "Liberation Serif", "Noto Serif", Georgia, serif;
       --mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
       /* type scale, ratio ≈ 1.2 from a 17px body */
@@ -114,7 +116,7 @@
       white-space: nowrap;   /* the line never breaks while it sits beside the title */
     }
 
-    .epigraph .attr {
+    .epigraph .attr { /*KEEP*/
       display: block;
       margin-top: 0.3em;
       font-style: normal;
@@ -133,6 +135,8 @@
 
     .intro strong { font-weight: 600; color: var(--bone); }
     .stage.is-playing .intro, .stage.is-revealed .intro { display: none; }
+    /* while the sheet is folding, the page holds nothing else */
+    .stage.is-playing + .wall { display: none; }
 
     /* ── the table ──────────────────────────────────────────────────────── */
     .table { max-width: var(--measure); margin-top: 1.8rem; }
@@ -145,11 +149,11 @@
 
     .setting-field { display: flex; min-width: 0; flex-direction: column; gap: 0.15rem; }
     .setting-field.model-route { grid-column: 1 / -1; }
-    .setting-label { font-size: var(--t-small); color: var(--dim); }
+    .setting-label { font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); }
 
     .table-setting select {
-      font: inherit;
-      font-size: 1rem;
+      font-family: var(--sans);
+      font-size: 0.95rem;
       color: var(--bone);
       background: transparent;
       border: 0;
@@ -164,29 +168,33 @@
     .table-setting select:hover { border-bottom-color: var(--wine-bright); }
     .table-setting select:disabled { cursor: default; color: var(--bone-soft); }
 
-    .model-readiness { min-height: 1.4em; margin-top: 0.3rem; font-size: var(--t-small); color: var(--dim); }
+    .model-readiness { min-height: 1.4em; margin-top: 0.3rem; font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); }
 
     .table-actions { display: flex; align-items: center; gap: 1rem; margin-top: 1.4rem; }
     .table-actions .primary { min-width: 8rem; }
 
     /* ── buttons: printed-programme chrome ──────────────────────────────── */
     button {
-      font: inherit;
-      font-size: 0.95rem;
-      line-height: 1.3;
+      font-family: var(--sans);
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      line-height: 1.2;
       color: var(--bone);
       background: transparent;
-      border: 1px solid var(--crease);
-      border-radius: 0;
-      padding: 0.5em 1.05em;
+      border: 1px solid var(--edge);
+      border-radius: 2px;
+      padding: 0.6em 1.1em;
       cursor: pointer;
       transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
     }
 
-    button:hover:not(:disabled) { border-color: var(--bone-soft); }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
-    button.primary { border-color: var(--wine); color: var(--wine-bright); }
-    button.primary:hover:not(:disabled) { border-color: var(--wine-bright); background: var(--wine-wash); }
+    button:hover:not(:disabled) { border-color: var(--bone); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    button.primary { background: var(--wine); border-color: var(--wine); color: #fff; }
+    button.primary:hover:not(:disabled) { background: var(--wine-bright); border-color: var(--wine-bright); }
+    button.accent { border-color: var(--wine-bright); color: var(--wine-bright); }
+    button.accent:hover:not(:disabled) { background: var(--wine-wash); }
 
     button.linklike {
       border: 0;
@@ -266,10 +274,10 @@
     .seat.model { background: var(--wine); }
     .seat.model.active { background: var(--wine-bright); box-shadow: 0 0 0 1px rgba(197, 112, 128, 0.4); }
 
-    .fold-count { min-height: 1.4em; font-size: var(--t-small); color: var(--dim); }
+    .fold-count { min-height: 1.4em; font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); }
 
     .cue { margin: 1.4rem 0 1.1rem; }
-    .cue-label { font-size: var(--t-small); font-style: italic; color: var(--dim); margin-bottom: 0.3rem; }
+    .cue-label { font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); margin-bottom: 0.3rem; }
     .cue-words { font-size: var(--t-cue); line-height: 1.2; overflow-wrap: break-word; text-wrap: balance; }
     .cue-words.blank { font-style: italic; color: var(--faint); font-size: var(--t-lead); }
     .cue-words.rise { animation: rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
@@ -313,7 +321,7 @@
     .entry input:focus { border-bottom-color: var(--wine); outline: none; }
     .entry input::placeholder { color: var(--faint); font-style: italic; }
 
-    .status { min-height: 1.5em; font-size: var(--t-small); color: var(--dim); }
+    .status { min-height: 1.5em; font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); }
     .status.err { color: var(--wine-bright); }
     .sheet .status { margin-bottom: 1.1rem; }
 
@@ -340,7 +348,7 @@
 
     .reading.show { animation: fade 0.9s ease 0.15s both; }
     @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-    .reading .pending, .reading .err { font-size: var(--t-small); color: var(--dim); }
+    .reading .pending, .reading .err { font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); }
     .reading .err { color: var(--wine-bright); }
 
     /* the reading's quotes reach back and light the poem words they name */
@@ -369,17 +377,17 @@
 
     /* ── the wall: the newest pins, five lines each, the rest on their own page ── */
     .wall {
-      margin-top: clamp(3rem, 7vh, 5rem);
-      padding-top: 1.4rem;
+      margin-top: clamp(5rem, 12vh, 8rem);
+      padding-top: 2.2rem;
       border-top: 1px solid var(--crease);
     }
 
     .wall-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 0.6rem 1.5rem; }
-    .wall-head a { font-size: var(--t-small); color: var(--dim); padding-bottom: 0.3rem; }
+    .wall-head a { font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); padding-bottom: 0.15rem; }
     /* "The Wall" set in the same cut-out print as the title, at the title's scale */
-    .wall-title { width: min(100%, 15.6rem); font-size: 0; line-height: 1; }
+    .wall-title { width: min(100%, 9.5rem); font-size: 0; line-height: 1; }
     .wall-title img { display: block; width: 100%; height: auto; aspect-ratio: 678 / 168; }
-    .wall-note { margin-top: 0.6rem; font-size: var(--t-small); color: var(--dim); }
+    .wall-note { margin-top: 0.6rem; font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); }
 
     .wall-grid {
       display: grid;
@@ -391,16 +399,17 @@
     .pin { display: flex; flex-direction: column; gap: 0.6rem; padding-top: 0.9rem; border-top: 1px solid var(--crease-soft); }
     .pin-poem { font-size: 1rem; line-height: 1.5; overflow-wrap: break-word; }
     .pin-poem .line:empty::before { content: "\00a0"; }
-    .pin-more { font-size: var(--t-small); }
+    .pin-more { font-family: var(--sans); font-size: 0.8125rem; }
     .pin-more a { color: var(--dim); }
-    .pin-meta { margin-top: auto; font-size: var(--t-small); color: var(--dim); }
+    .pin-meta { margin-top: auto; font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); }
 
     /* ── footer ─────────────────────────────────────────────────────────── */
     footer {
       margin-top: clamp(2.5rem, 6vh, 4rem);
       padding-top: 1rem;
       border-top: 1px solid var(--crease);
-      font-size: var(--t-small);
+      font-family: var(--sans);
+      font-size: 0.8125rem;
       line-height: 1.7;
       color: var(--dim);
     }
@@ -480,7 +489,8 @@
       align-items: center;
       gap: 0.5rem 1.2rem;
       margin-bottom: 0.9rem;
-      font-size: var(--t-small);
+      font-family: var(--sans);
+      font-size: 0.8125rem;
       color: var(--dim);
     }
 
@@ -492,11 +502,11 @@
 
     .table-setting { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
-    .turn-timer { margin-top: -0.4rem; margin-bottom: 0.8rem; font-size: var(--t-small); color: var(--dim); font-variant-numeric: tabular-nums; }
+    .turn-timer { margin-top: -0.4rem; margin-bottom: 0.8rem; font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); font-variant-numeric: tabular-nums; }
 
     .poem-col { display: grid; gap: 1.2rem; align-content: start; }
     .edit-panel { display: grid; gap: 0.9rem; max-width: 36rem; }
-    .edit-panel label { display: grid; gap: 0.25rem; font-size: var(--t-small); color: var(--dim); }
+    .edit-panel label { display: grid; gap: 0.25rem; font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); }
 
     .edit-panel input, .edit-panel textarea {
       font: inherit;
@@ -519,10 +529,10 @@
     .auth-head button { font-size: var(--t-small); padding: 0.35em 0.8em; }
     .auth-tabs { display: flex; gap: 0.5rem; margin: 0.9rem 0 1rem; }
     .auth-form { display: grid; gap: 0.9rem; }
-    .auth-form label { display: grid; gap: 0.25rem; font-size: var(--t-small); color: var(--dim); }
+    .auth-form label { display: grid; gap: 0.25rem; font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); }
     .auth-form input { margin: 0; font-size: 1rem; }
     .auth-form .linklike { justify-self: start; font-size: var(--t-small); }
-    .auth-message { min-height: 1.4em; margin: 0; font-size: var(--t-small); color: var(--dim); }
+    .auth-message { min-height: 1.4em; margin: 0; font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); }
     .auth-message.err { color: var(--wine-bright); }
 
     @media (min-width: 60rem) {
@@ -621,14 +631,14 @@
         <form class="entry" id="entryForm">
           <input id="wordInput" type="text" autocomplete="off" autocapitalize="off"
                  autocorrect="off" spellcheck="false" aria-label="your contribution" />
-          <button id="submitBtn" class="primary" type="submit">fold in</button>
+          <button id="submitBtn" class="primary" type="submit">submit</button>
         </form>
         <div class="turn-timer" id="turnTimer" role="timer" hidden></div>
         <p class="status" id="status" role="status" aria-live="polite"></p>
         <div class="sheet-actions">
-          <button id="undoBtn" disabled>unfold last</button>
-          <button id="endBtn" disabled>reveal the poem</button>
-          <button id="resetBtn">clear the table</button>
+          <button id="undoBtn" disabled>redo turn</button>
+          <button id="resetBtn">clear lines</button>
+          <button id="endBtn" class="accent" disabled>reveal poem</button>
         </div>
       </section>
 
@@ -673,7 +683,6 @@
 
     <footer>
       <p>Solo play on <a href="/cadavre/open-sheet">the open sheet</a>. <a href="https://github.com/milwrite/cadavre-exquis">Source</a> on GitHub.</p>
-      <p id="connLine">model <code id="connModel"></code> at <code id="connHost"></code>. Point elsewhere with <code>?endpoint=…&amp;model=…</code> for this visit only.</p>
     </footer>
   </div>
 
@@ -681,7 +690,7 @@
     <p id="revealNote">the reveal unfolds the sheet and ends the game</p>
     <div class="row">
       <button id="revealCancel" type="button">keep writing</button>
-      <button id="revealConfirm" class="primary" type="button">reveal the poem</button>
+      <button id="revealConfirm" class="primary" type="button">reveal poem</button>
     </div>
   </dialog>
 
@@ -787,6 +796,10 @@ REPETITION
 
 Repetition earns its place through refrain, parallel structure, escalation, reversal, or a changed grammatical role. An exact repeat should alter rhythm or pressure. Otherwise advance the phrase.
 
+SHAPE
+
+${shapeNote()}
+
 POETRY EXAMPLES
 
 Study the movement in these public-domain lines, rather than borrowing their vocabulary:
@@ -798,6 +811,15 @@ Study the movement in these public-domain lines, rather than borrowing their voc
 OUTPUT
 
 Return only ${capPhrase()}. Use plain text without a label, explanation, alternative, quotation marks, or terminal punctuation.`;
+
+    // Any hand may end the poem after any line, so the model's line should know
+    // where the sheet stands: opening early on, and offering a close once it is long.
+    function shapeNote() {
+      const folds = contributions.length;
+      if (folds < 4) return "The sheet is just opening. Extend the syntax and leave a thread for the next hand.";
+      if (folds < 8) return "The poem is finding its shape. Develop what is already present; open onward or settle, whichever the visible fold invites.";
+      return "The poem has grown long, and any hand may end it after any line. When the visible fold invites a close, a completed clause, a resolved image, a returning sound, write the line the poem could end on. Continue only when the fold clearly asks for more.";
+    }
 
     const readingPrompt = () => `You are a close reader of a finished poem.
 
@@ -817,6 +839,10 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     let readingRequestId = 0;
     let activeChatController = null;
     let poemTokens = [];      // { norm, el } per revealed poem word — the reading links to these
+    // The model's line never lands inside three seconds, so the hand that just
+    // folded can still reveal and end the poem on its own turn.
+    const MODEL_MIN_WAIT_MS = 3000;
+    const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const WALL_TOKENS_KEY = "cadavreWallDeleteTokens";
     let wallTokens = readWallTokens();   // proof of authorship; the wall page uses it to unpin
     const LEGACY_WALL_KEY = "cadavreWall";
@@ -1164,7 +1190,6 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       option.textContent = label;
       select.appendChild(option);
       select.disabled = true;
-      el("connModel").textContent = label;
     }
 
     function renderModelOptions(catalog) {
@@ -1202,7 +1227,6 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       CFG.model = chosen.id;
       select.value = CFG.model;
       select.disabled = available.length < 2;
-      el("connModel").textContent = chosen?.label || chosen?.name || chosen?.model || CFG.model;
     }
 
     async function loadModelOptions() {
@@ -1222,7 +1246,6 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       CFG.model = event.target.value;
       activeModel = CFG.model;
       const option = event.target.options[event.target.selectedIndex];
-      el("connModel").textContent = option?.textContent || CFG.model;
       savedSettings.model = CFG.model;
       try { localStorage.setItem("cadavreSettings", JSON.stringify(savedSettings)); } catch {}
     });
@@ -1230,7 +1253,6 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     function showRoute(data) {
       if (!data.model) return;
       activeModel = data.model;
-      el("connModel").textContent = data.model + (data.provider ? ` via ${data.provider}` : "");
     }
 
     async function chat(messages, maxTokens, shouldContinue = () => true) {
@@ -1304,7 +1326,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
           { role: "system", content: playPrompt() },
           { role: "user", content: userMsg },
         ];
-        let result = await chat(messages, 80, isCurrentTurn);
+        let [result] = await Promise.all([chat(messages, 80, isCurrentTurn), pause(MODEL_MIN_WAIT_MS)]);
         if (!isCurrentTurn()) return;
         reply = validContribution(result.content);
         if (!reply.valid) {
@@ -1899,8 +1921,6 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     }
 
     /* ── footer connection line ─────────────────────────────────────────── */
-    el("connModel").textContent = CFG.model;
-    el("connHost").textContent = endpointHost();
 
     if ([2, 3, 4].includes(Number(savedSettings.players))) el("playerCount").value = savedSettings.players;
     syncSeats();
