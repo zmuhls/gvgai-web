@@ -54,7 +54,7 @@
       --t-lead: 1.2rem;
       --t-h2: 1.45rem;
       --t-verse: clamp(1.15rem, 1.05rem + 0.4vw, 1.3rem);
-      --t-cue: clamp(1.6rem, 1.2rem + 1.5vw, 2.3rem);
+      --t-cue: clamp(1.45rem, 1.15rem + 1vw, 1.9rem);
       --measure: 42rem;      /* prose, controls, the sheet */
       --wide: 66rem;         /* the reveal's two columns and the wall */
     }
@@ -207,13 +207,15 @@
     }
 
     /* ── the sheet: a folded object, centred in the column ─────────────── */
-    .sheet { max-width: var(--measure); margin: 0.4rem auto 0; text-align: center; }
+    /* the sheet sits flush left at the poem's measure: the visible line and the
+       line being written stand where they will stand in the finished poem */
+    .sheet { max-width: 36rem; margin: 0.4rem 0 0; text-align: left; }
 
     .folds {
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      align-items: center;
+      align-items: flex-start;
       gap: 6px;
       min-height: 0;
       max-height: 6.5rem;
@@ -261,7 +263,7 @@
     }
 
     /* who is at the table, and whose turn it is */
-    .seats { display: flex; justify-content: center; gap: 0.5rem; margin: 0.9rem 0 0.5rem; min-height: 2px; }
+    .seats { display: flex; justify-content: flex-start; gap: 0.5rem; margin: 0.9rem 0 0.5rem; min-height: 2px; }
 
     .seat {
       width: 1.4rem;
@@ -278,7 +280,7 @@
 
     .cue { margin: 1.4rem 0 1.1rem; }
     .cue-label { font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); margin-bottom: 0.3rem; }
-    .cue-words { font-size: var(--t-cue); line-height: 1.2; overflow-wrap: break-word; text-wrap: balance; }
+    .cue-words { font-size: var(--t-cue); line-height: 1.25; overflow-wrap: break-word; }
     .cue-words.blank { font-style: italic; color: var(--faint); font-size: var(--t-lead); }
     .cue-words.rise { animation: rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 
@@ -298,7 +300,7 @@
     .entry {
       display: flex;
       flex-wrap: wrap;
-      justify-content: center;
+      justify-content: flex-start;
       align-items: baseline;
       gap: 0.8rem;
       margin-bottom: 0.9rem;
@@ -306,8 +308,8 @@
 
     .entry input {
       font: inherit;
-      font-size: var(--t-lead);
-      text-align: center;
+      font-size: 1.3rem;
+      text-align: left;
       color: var(--bone);
       caret-color: var(--wine-bright);
       background: transparent;
@@ -315,7 +317,7 @@
       border-bottom: 1px solid var(--crease);
       border-radius: 0;
       padding: 0.3em 0.2em;
-      width: min(22ch, 100%);
+      width: min(26ch, 100%);
     }
 
     .entry input:focus { border-bottom-color: var(--wine); outline: none; }
@@ -328,7 +330,7 @@
     .breathe { color: var(--wine-bright); animation: breathe 1.5s ease-in-out infinite; }
     @keyframes breathe { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.9; } }
 
-    .sheet-actions { display: flex; justify-content: center; gap: 0.6rem; flex-wrap: wrap; }
+    .sheet-actions { display: flex; justify-content: flex-start; gap: 0.6rem; flex-wrap: wrap; }
 
     /* ── the reveal: verse flush left, the reading beside it once there is room ── */
     .revealed { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 1.6rem; margin-top: 0.4rem; }
@@ -399,8 +401,10 @@
     .pin { display: flex; flex-direction: column; gap: 0.6rem; padding-top: 0.9rem; border-top: 1px solid var(--crease-soft); }
     .pin-poem { font-size: 1rem; line-height: 1.5; overflow-wrap: break-word; }
     .pin-poem .line:empty::before { content: "\00a0"; }
-    .pin-more { font-family: var(--sans); font-size: 0.8125rem; }
-    .pin-more a { color: var(--dim); }
+    /* a cut poem fades away instead of stopping, and the rest is one click off */
+    .pin-poem.cut { -webkit-mask-image: linear-gradient(to bottom, #000 40%, rgba(0, 0, 0, 0.1) 100%); mask-image: linear-gradient(to bottom, #000 40%, rgba(0, 0, 0, 0.1) 100%); }
+    .pin-more { font-family: var(--sans); font-size: 0.8125rem; margin-top: -0.2rem; }
+    .pin-more a { color: var(--wine-bright); text-decoration-color: var(--wine); }
     .pin-meta { margin-top: auto; font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); }
 
     /* ── footer ─────────────────────────────────────────────────────────── */
@@ -674,7 +678,7 @@
 
     <section class="wall" id="wallSec" hidden aria-label="the wall">
       <div class="wall-head">
-        <h2 class="wall-title"><img src="/assets/cadavre-wall-title.png" alt="The wall" width="678" height="168"></h2>
+        <h2 class="wall-title"><img src="/assets/cadavre-wall-title.png" alt="The Wall" width="678" height="168"></h2>
         <a href="/cadavre/wall">every pinned corpse</a>
       </div>
       <p class="wall-note" id="wallNote">the newest corpses pinned from any table</p>
@@ -1868,19 +1872,20 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
 
     function renderWallItem(item) {
       const lines = String(item.poem || "").split(/\r?\n/);
-      const hidden = Math.max(0, lines.length - WALL_PREVIEW_LINES);
+      // a poem one line over the preview is shown whole; longer ones fade out
+      const hidden = lines.length > WALL_PREVIEW_LINES + 1 ? lines.length - WALL_PREVIEW_LINES : 0;
       const pin = document.createElement("article");
       pin.className = "pin";
       const poem = document.createElement("div");
-      poem.className = "pin-poem";
-      renderPoemWords(poem, lines.slice(0, WALL_PREVIEW_LINES), false);
+      poem.className = "pin-poem" + (hidden ? " cut" : "");
+      renderPoemWords(poem, hidden ? lines.slice(0, WALL_PREVIEW_LINES) : lines, false);
       pin.append(poem);
       if (hidden) {
         const more = document.createElement("p");
         more.className = "pin-more";
         const link = document.createElement("a");
         link.href = wallLink(item);
-        link.textContent = `${hidden} more line${hidden === 1 ? "" : "s"} on the wall`;
+        link.textContent = `continue reading on the wall, ${hidden} more line${hidden === 1 ? "" : "s"}`;
         more.append(link);
         pin.append(more);
       }
