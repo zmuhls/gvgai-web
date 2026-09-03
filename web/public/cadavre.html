@@ -804,6 +804,10 @@ SHAPE
 
 ${shapeNote()}
 
+VARIETY
+
+Avoid stock poetic vocabulary: whisper, shadow, silence, echo, soul, dream, heart, darkness, eternity, ethereal. Prefer particular things: named places, tools, foods, work, animals by species, weather as felt on the skin. Vary the opening word from turn to turn.
+
 POETRY EXAMPLES
 
 Study the movement in these public-domain lines, rather than borrowing their vocabulary:
@@ -847,6 +851,49 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     // folded can still reveal and end the poem on its own turn.
     const MODEL_MIN_WAIT_MS = 3000;
     const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    /* ── variety ─────────────────────────────────────────────────────────
+       Openings and second lines lean on the same few images, and a redo hands
+       back the line just set aside. A fresh frame for the early turns, the
+       set-aside lines named in the prompt, and a warmer temperature steer
+       each attempt somewhere new. */
+    const OPENING_FRAMES = [
+      "Open on a concrete thing and a verb of motion.",
+      "Open mid-sentence, as if continuing something unheard.",
+      "Open with a place: a street, a room, a body of water.",
+      "Open by addressing a you.",
+      "Open with a time of day or a month, and no weather.",
+      "Open with something small held in a hand.",
+      "Open with a number or a measurement.",
+      "Open with an imperative.",
+      "Open with an animal named by species.",
+      "Open with a piece of work: a tool, a trade, a chore.",
+    ];
+    const REPLY_FRAMES = [
+      "Answer with a different part of speech from the fold's last word.",
+      "Turn the fold toward a body, a machine, or a meal.",
+      "Add a proper noun: a name, a street, a town.",
+      "Change the scale sharply, larger or smaller.",
+      "Bring in a sound or a texture rather than a sight.",
+      "Let the syntax turn: a but, an until, an unless.",
+      "Answer in plain speech, the way someone talks.",
+      "Put a second person in the scene.",
+    ];
+    const pick = (list) => list[Math.floor(Math.random() * list.length)];
+    // Lines the table set aside with "redo turn", keyed by the turn they were
+    // written for; the model must not hand the same line back.
+    const setAside = new Map();
+
+    function varietyNote(tried, early) {
+      const notes = [];
+      if (early) notes.push(contributions.length ? pick(REPLY_FRAMES) : pick(OPENING_FRAMES));
+      if (tried.length) {
+        notes.push("SET ASIDE\nThe table set these lines aside for this fold. Do not repeat or paraphrase them; take a different move, image, and register:\n"
+          + tried.map((line) => `- ${line}`).join("\n"));
+        if (!early) notes.push(pick(REPLY_FRAMES));
+      }
+      return notes.length ? "\n\n" + notes.join("\n\n") : "";
+    }
     const WALL_TOKENS_KEY = "cadavreWallDeleteTokens";
     let wallTokens = readWallTokens();   // proof of authorship; the wall page uses it to unpin
     const LEGACY_WALL_KEY = "cadavreWall";
@@ -1158,6 +1205,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       const prev = contributions[contributions.length - 1];
       const entry = { text, isModel, seat: currentSeat(), turn: actorIndex };
       contributions.push(entry);
+      if (!isModel) for (const turn of [...setAside.keys()]) if (turn > entry.turn) setAside.delete(turn);
       el("endBtn").disabled = false;
       actorIndex++;
       if (prev) foldPrevThenCue(prev, entry);
@@ -1259,10 +1307,10 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       activeModel = data.model;
     }
 
-    async function chat(messages, maxTokens, shouldContinue = () => true) {
+    async function chat(messages, maxTokens, shouldContinue = () => true, options = {}) {
       const body = JSON.stringify({
         model: CFG.model, messages,
-        max_tokens: maxTokens, temperature: 0.8, stream: false,
+        max_tokens: maxTokens, temperature: options.temperature ?? 0.8, stream: false,
       });
       const retryDelays = [1000, 2000, 3000];
       let lastError;
@@ -1322,7 +1370,10 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       el("wordInput").disabled = true;
       el("submitBtn").disabled = true;
       el("undoBtn").disabled = true;
-      const userMsg = turnPrompt();
+      const tried = setAside.get(actorIndex) || [];
+      const early = contributions.length < 2;   // the opening, or the reply to the first line
+      const userMsg = turnPrompt() + varietyNote(tried, early);
+      const warmth = tried.length || early ? 1.05 : 0.8;
       const isCurrentTurn = () => id === gameId && gameActive && !turnPaused;
       let reply;
       try {
@@ -1330,7 +1381,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
           { role: "system", content: playPrompt() },
           { role: "user", content: userMsg },
         ];
-        let [result] = await Promise.all([chat(messages, 80, isCurrentTurn), pause(MODEL_MIN_WAIT_MS)]);
+        let [result] = await Promise.all([chat(messages, 80, isCurrentTurn, { temperature: warmth }), pause(MODEL_MIN_WAIT_MS)]);
         if (!isCurrentTurn()) return;
         reply = validContribution(result.content);
         if (!reply.valid) {
@@ -1338,7 +1389,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
             ...messages,
             { role: "assistant", content: result.content },
             { role: "user", content: `Rewrite the contribution so its complete advance fits inside ${capPhrase()}. Return plain contribution words only.` },
-          ], 80, isCurrentTurn);
+          ], 80, isCurrentTurn, { temperature: warmth });
           reply = validContribution(result.content);
         }
       } catch (e) {
@@ -1389,6 +1440,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       el("wordInput").disabled = true;
       el("submitBtn").disabled = true;
       const popped = contributions.pop();
+      if (popped.isModel) setAside.set(popped.turn, [...(setAside.get(popped.turn) || []), popped.text]);
       actorIndex = popped.turn;   // exact, even across a passed model turn
       const latest = contributions[contributions.length - 1] || null;
       el("endBtn").disabled = !contributions.length;
@@ -1509,6 +1561,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       try { localStorage.setItem("cadavreSettings", JSON.stringify(savedSettings)); } catch {}
       contributions = [];
       actorIndex = 0;
+      setAside.clear();
       gameId++;
       poemText = readingText = "";
       activePoem = null;
@@ -1536,6 +1589,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       gameActive = false;
       turnPaused = false;
       contributions = [];
+      setAside.clear();
       el("sheetSec").hidden = true;
       el("revealSec").hidden = true;
       el("tableSec").hidden = false;
