@@ -47,7 +47,7 @@ test('Cadavre ships the model catalog UI with additive account and poem features
   assert.match(html, /OpenRouter;\\s\*Ollama fallback\|Ollama Cloud/);
   assert.doesNotMatch(html, /id="librarySec"|id="libraryList"|function loadLibrary/);
   // the table previews the wall, five lines a pin; whole poems and votes stay on /cadavre/wall
-  assert.match(html, /href="\/cadavre\/wall">see the whole wall<\/a>/);
+  assert.match(html, /class="nav-link" href="\/cadavre\/wall">see the whole wall<\/a>/);
   assert.match(html, /class="solo-link" href="\/cadavre\/open-sheet">open the sheet<\/a>/);
   assert.match(html, /const WALL_PREVIEW_LINES = 5;/);
   assert.match(html, /\/cadavre\/wall#pin-\$\{encodeURIComponent\(item\.id\)\}/);

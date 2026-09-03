@@ -45,6 +45,7 @@
       --wine: #A44856;       /* the model's hand; le vin nouveau */
       --wine-bright: #C57080;
       --wine-wash: rgba(197, 112, 128, 0.14);
+      --sheet-wash: rgba(231, 224, 208, 0.05);   /* the finished poem, on a faintly lit sheet */
       --sans: system-ui, -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
       --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L", "P052", "Liberation Serif", "Noto Serif", Georgia, serif;
       --mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
@@ -335,11 +336,11 @@
     /* ── the reveal: verse flush left, the reading beside it once there is room ── */
     .revealed { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 1.6rem; margin-top: 0.4rem; }
 
-    .poem { font-size: var(--t-verse); line-height: 1.55; max-width: 36rem; }
+    .poem { font-size: var(--t-verse); line-height: 1.55; max-width: 36rem; padding: 1rem 1.2rem; background: var(--sheet-wash); border-radius: 2px; }
     .poem .line { overflow-wrap: break-word; animation: rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 
     .reading-col { max-width: 40rem; }
-    .reading-head { font-size: var(--t-small); font-style: italic; font-weight: 400; color: var(--dim); margin-bottom: 0.45rem; }
+    .reading-head { font-size: var(--t-lead); font-style: italic; font-weight: 400; color: var(--bone-soft); margin-bottom: 0.5rem; }
 
     .reading {
       font-size: 1rem;
@@ -373,7 +374,7 @@
       }
 
       .poem { grid-area: poem; }
-      .reading-col { grid-area: reading; max-width: none; padding-top: 0.15rem; }
+      .reading-col { grid-area: reading; max-width: none; padding-top: 0.55rem; }
       .reveal-foot { grid-area: foot; padding-top: 0.4rem; border-top: 1px solid var(--crease-soft); }
     }
 
@@ -415,7 +416,22 @@
     }
 
     .wall-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 0.6rem 1.5rem; }
-    .wall-head a { font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); padding-bottom: 0.15rem; }
+    .wall-head a { padding-bottom: 0.15rem; }
+    /* a way back, styled as a control rather than a footnote */
+    .nav-link {
+      display: inline-block;
+      font-family: var(--sans);
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--bone);
+      text-decoration: none;
+      border: 1px solid var(--edge);
+      border-radius: 2px;
+      padding: 0.6em 1.1em;
+      white-space: nowrap;
+    }
+
+    .nav-link:hover { border-color: var(--bone); color: var(--bone); }
     /* "The Wall" set in the same cut-out print as the title, at the title's scale */
     .wall-title { width: min(100%, 9.5rem); font-size: 0; line-height: 1; }
     .wall-title img { display: block; width: 100%; height: auto; aspect-ratio: 678 / 168; }
@@ -508,7 +524,7 @@
       .epigraph, .intro, .table, .sheet, .wall, footer, .reveal-foot, .reading .pending, .reading .err { display: none; }
       .masthead { border-color: #ccc; }
       .revealed { display: block; }
-      .poem { color: #111; font-size: 1.2rem; margin-bottom: 1.5rem; }
+      .poem { color: #111; font-size: 1.2rem; margin-bottom: 1.5rem; background: none; padding: 0; }
       .poem .w.lit { background: none; box-shadow: none; color: #111; }
       .reading-head { color: #888; }
       .reading { color: #444; }
@@ -717,7 +733,7 @@
     <section class="wall" id="wallSec" hidden aria-label="the wall">
       <div class="wall-head">
         <h2 class="wall-title"><img src="/assets/cadavre-wall-title.png" alt="The Wall" width="678" height="168"></h2>
-        <a href="/cadavre/wall">see the whole wall</a>
+        <a class="nav-link" href="/cadavre/wall">see the whole wall</a>
       </div>
       <p class="wall-note" id="wallNote">the newest corpses pinned from any table</p>
       <div class="wall-grid" id="wallList"></div>

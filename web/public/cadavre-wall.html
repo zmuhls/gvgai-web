@@ -25,6 +25,7 @@
       --wine: #A44856;
       --wine-bright: #C57080;
       --wine-wash: rgba(197, 112, 128, 0.14);
+      --sheet-wash: rgba(231, 224, 208, 0.05);   /* each poem on a faintly lit sheet */
       --sans: system-ui, -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
       --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L", "P052", "Liberation Serif", "Noto Serif", Georgia, serif;
       --t-small: 0.875rem;
@@ -127,7 +128,22 @@
     /* ── the wall ───────────────────────────────────────────────────────── */
     .wall { padding-top: clamp(1.6rem, 4vh, 2.6rem); }
     .wall-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 0.6rem 1.5rem; }
-    .wall-head a { font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); padding-bottom: 0.3rem; }
+    .wall-head a { padding-bottom: 0.15rem; }
+    /* a way back, styled as a control rather than a footnote */
+    .nav-link {
+      display: inline-block;
+      font-family: var(--sans);
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--bone);
+      text-decoration: none;
+      border: 1px solid var(--edge);
+      border-radius: 2px;
+      padding: 0.6em 1.1em;
+      white-space: nowrap;
+    }
+
+    .nav-link:hover { border-color: var(--bone); color: var(--bone); }
     /* "The Wall" set in the same cut-out print as the title, at the title's scale */
     .wall-title { width: min(100%, 11rem); font-size: 0; line-height: 1; }
     .wall-title img { display: block; width: 100%; height: auto; aspect-ratio: 678 / 168; }
@@ -149,11 +165,11 @@
 
     .pin:target { border-color: var(--wine); }
     .pin-poem-pane { display: flex; justify-content: center; }
-    .pin-poem { width: fit-content; max-width: 100%; font-size: 1.1rem; line-height: 1.55; overflow-wrap: break-word; }
+    .pin-poem { font-size: 1.1rem; line-height: 1.55; overflow-wrap: break-word; padding: 1rem 1.2rem; background: var(--sheet-wash); border-radius: 2px; }
     .pin-poem .line:empty::before { content: "\00a0"; }
 
     .pin-reading-pane { min-width: 0; }
-    .pin-reading-head { font-size: var(--t-small); font-style: italic; font-weight: 400; color: var(--dim); margin-bottom: 0.45rem; }
+    .pin-reading-head { font-size: 1.2rem; font-style: italic; font-weight: 400; color: var(--bone-soft); margin-bottom: 0.5rem; }
     .pin-reading { font-size: 1rem; line-height: 1.65; color: var(--reading); text-wrap: pretty; }
     .pin-reading.none { color: var(--faint); font-style: italic; }
 
@@ -219,13 +235,15 @@
 
     footer {
       margin-top: clamp(2.5rem, 6vh, 4rem);
-      padding-top: 1rem;
+      padding-top: 1.4rem;
       border-top: 1px solid var(--crease);
       font-family: var(--sans);
       font-size: 0.8125rem;
       line-height: 1.7;
       color: var(--dim);
     }
+
+    footer p + p { margin-top: 0.9rem; }
 
     @media (max-width: 47.99rem) {
       .masthead { flex-direction: column; align-items: flex-start; gap: 0.9rem; }
@@ -264,7 +282,7 @@
     <main class="wall" aria-label="The Wall">
       <div class="wall-head">
         <h2 class="wall-title"><img src="/assets/cadavre-wall-title.png" alt="The Wall" width="678" height="168"></h2>
-        <a href="/cadavre">back to the table</a>
+        <a class="nav-link" href="/cadavre">back to the table</a>
       </div>
       <p class="wall-note" id="wallNote">pinned from any table, newest first</p>
       <p class="wall-status" id="wallStatus" role="status" aria-live="polite">loading the wall…</p>
@@ -274,7 +292,10 @@
       </div>
     </main>
 
-    <footer><p>Pins are shared across browsers. A vote is remembered in this browser; the hand that pinned a corpse can unpin it from the same browser.</p></footer>
+    <footer>
+      <p><a class="nav-link" href="/cadavre">back to the table</a></p>
+      <p>The hand that pinned a corpse can unpin it from the same browser.</p>
+    </footer>
   </div>
 
   <dialog id="renameDialog">

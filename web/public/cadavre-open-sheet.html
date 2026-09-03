@@ -73,14 +73,15 @@
   /* the reveal: the poem settles, and its reading opens beside it once there is room */
   main.revealed{ width:min(var(--wide), 100%); display:grid; grid-template-columns:minmax(0,1fr); gap:1.6rem; }
   main.revealed #edge{ display:none; }   /* the growing edge has closed */
+  main.revealed #poem{ padding:1rem 1.2rem; background:rgba(231,224,208,.05); border-radius:2px; }
   #reading-col{ display:none; max-width:40rem; }
   #reading-col.show{ display:block; animation:fade 1s ease .15s both; }
-  .reading-head{ font-size:.875rem; font-style:italic; font-weight:400; color:var(--dim); margin-bottom:.45rem; }
+  .reading-head{ font-size:1.2rem; font-style:italic; font-weight:400; color:var(--bone-soft); margin-bottom:.5rem; }
   #reading{ font-size:1rem; line-height:1.65; color:var(--reading); text-wrap:pretty; }
   @keyframes fade{ from{opacity:0} to{opacity:1} }
   @media (min-width:60rem){
     main.revealed{ grid-template-columns:minmax(0,1fr) minmax(0,1.25fr); column-gap:clamp(2.5rem,5vw,4.5rem); align-items:start; }
-    #reading-col{ max-width:none; padding-top:.35rem; }
+    #reading-col{ max-width:none; padding-top:.6rem; }
   }
 
   /* the reading's quotes reach back and light the poem words they name */
