@@ -374,9 +374,12 @@
       border-top: 1px solid var(--crease);
     }
 
-    .wall-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.4rem 1.5rem; }
-    .wall-head a { font-size: var(--t-small); color: var(--dim); }
-    .wall-note { margin-top: 0.2rem; font-size: var(--t-small); color: var(--dim); }
+    .wall-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 0.6rem 1.5rem; }
+    .wall-head a { font-size: var(--t-small); color: var(--dim); padding-bottom: 0.3rem; }
+    /* "The Wall" set in the same cut-out print as the title, at the title's scale */
+    .wall-title { width: min(100%, 15.6rem); font-size: 0; line-height: 1; }
+    .wall-title img { display: block; width: 100%; height: auto; aspect-ratio: 678 / 168; }
+    .wall-note { margin-top: 0.6rem; font-size: var(--t-small); color: var(--dim); }
 
     .wall-grid {
       display: grid;
@@ -661,7 +664,7 @@
 
     <section class="wall" id="wallSec" hidden aria-label="the wall">
       <div class="wall-head">
-        <h2>The wall</h2>
+        <h2 class="wall-title"><img src="/assets/cadavre-wall-title.png" alt="The wall" width="678" height="168"></h2>
         <a href="/cadavre/wall">every pinned corpse</a>
       </div>
       <p class="wall-note" id="wallNote">the newest corpses pinned from any table</p>
