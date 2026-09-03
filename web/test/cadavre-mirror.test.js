@@ -23,7 +23,7 @@ test('Cadavre mirror injects only same-origin runtime routes and rewrites the op
   assert.match(html, /"endpoint":"\/api\/cadavre\/chat"/);
   assert.match(html, /"readyEndpoint":"\/api\/cadavre\/ready"/);
   assert.match(html, /"modelsEndpoint":"\/api\/cadavre\/models"/);
-  assert.match(html, /"model":"ollama:gemma3:4b"/);
+  assert.match(html, /"model":"ollama:deepseek-v4-flash"/);
   assert.match(html, /href="\/cadavre\/open-sheet"/);
   assert.match(html, /href="https:\/\/milwrite\.github\.io\/cadavre-exquis\/assets\/favicon-32\.png"/);
   assert.match(html, /href="https:\/\/milwrite\.github\.io\/cadavre-exquis\/assets\/favicon\.png"/);

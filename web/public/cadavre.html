@@ -136,7 +136,7 @@
     .intro strong { font-weight: 600; color: var(--bone); }
     .stage.is-playing .intro, .stage.is-revealed .intro { display: none; }
     /* while the sheet is folding, the page holds nothing else */
-    .stage.is-playing + .wall { display: none; }
+    .stage.is-playing ~ .solo, .stage.is-playing ~ .wall { display: none; }
 
     /* ── the table ──────────────────────────────────────────────────────── */
     .table { max-width: var(--measure); margin-top: 1.8rem; }
@@ -377,10 +377,40 @@
       .reveal-foot { grid-area: foot; padding-top: 0.4rem; border-top: 1px solid var(--crease-soft); }
     }
 
+    /* ── the open sheet: solo play, one step from the table ─────────────── */
+    .solo {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem 2rem;
+      margin-top: clamp(3.5rem, 8vh, 6rem);
+      padding-top: 1.6rem;
+      border-top: 1px solid var(--crease);
+    }
+
+    .solo-text { max-width: 34rem; }
+    .solo-text h2 { font-size: var(--t-lead); margin-bottom: 0.3rem; }
+    .solo-text p { color: var(--bone-soft); font-size: 1rem; text-wrap: pretty; }
+
+    .solo-link {
+      font-family: var(--sans);
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--bone);
+      text-decoration: none;
+      border: 1px solid var(--edge);
+      border-radius: 2px;
+      padding: 0.6em 1.1em;
+      white-space: nowrap;
+    }
+
+    .solo-link:hover { border-color: var(--bone); color: var(--bone); }
+
     /* ── the wall: the newest pins, five lines each, the rest on their own page ── */
     .wall {
-      margin-top: clamp(5rem, 12vh, 8rem);
-      padding-top: 2.2rem;
+      margin-top: clamp(3.5rem, 8vh, 6rem);
+      padding-top: 2rem;
       border-top: 1px solid var(--crease);
     }
 
@@ -676,17 +706,25 @@
       </section>
     </main>
 
+    <section class="solo" id="soloSec" aria-label="the open sheet">
+      <div class="solo-text">
+        <h2>The open sheet</h2>
+        <p>A barer surface for one hand and the model: one or two words a turn, nothing to set, and a single period closes the poem and brings its reading.</p>
+      </div>
+      <a class="solo-link" href="/cadavre/open-sheet">open the sheet</a>
+    </section>
+
     <section class="wall" id="wallSec" hidden aria-label="the wall">
       <div class="wall-head">
         <h2 class="wall-title"><img src="/assets/cadavre-wall-title.png" alt="The Wall" width="678" height="168"></h2>
-        <a href="/cadavre/wall">every pinned corpse</a>
+        <a href="/cadavre/wall">see the whole wall</a>
       </div>
       <p class="wall-note" id="wallNote">the newest corpses pinned from any table</p>
       <div class="wall-grid" id="wallList"></div>
     </section>
 
     <footer>
-      <p>Solo play on <a href="/cadavre/open-sheet">the open sheet</a>. <a href="https://github.com/milwrite/cadavre-exquis">Source</a> on GitHub.</p>
+      <p><a href="https://github.com/milwrite/cadavre-exquis">Source</a> on GitHub.</p>
     </footer>
   </div>
 

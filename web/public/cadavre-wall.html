@@ -266,7 +266,7 @@
         <h2 class="wall-title"><img src="/assets/cadavre-wall-title.png" alt="The Wall" width="678" height="168"></h2>
         <a href="/cadavre">back to the table</a>
       </div>
-      <p class="wall-note" id="wallNote">every corpse pinned from any table, newest first</p>
+      <p class="wall-note" id="wallNote">pinned from any table, newest first</p>
       <p class="wall-status" id="wallStatus" role="status" aria-live="polite">loading the wall…</p>
       <div class="wall-list" id="wallList"></div>
       <div class="wall-more" id="wallMore" hidden>
@@ -750,8 +750,8 @@
       const list = el("wallList");
       list.innerHTML = "";
       el("wallNote").textContent = legacyWall.length
-        ? "every corpse pinned from any table, newest first, plus earlier pins kept in this browser"
-        : "every corpse pinned from any table, newest first";
+        ? "pinned from any table, newest first, plus earlier pins kept in this browser"
+        : "pinned from any table, newest first";
       el("wallMore").hidden = !wallCursor;
       if (!wall.length && !wallLoading) el("wallStatus").textContent = "Nothing is pinned yet. Play a round and pin the poem.";
       wall.forEach((item) => list.appendChild(renderWallItem(item)));
