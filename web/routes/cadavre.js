@@ -17,7 +17,7 @@ const MAX_CONTENT_CHARS = 9000;
 const MAX_TOTAL_CONTENT_CHARS = 24000;
 const MAX_MODEL_ID_CHARS = 120;
 const DEFAULT_ADAPTER_MODEL = 'exquisite-corpse';
-const DEFAULT_OLLAMA_MODEL = 'kimi-k2.5';
+const DEFAULT_OLLAMA_MODEL = 'deepseek-v4-flash';
 const DEFAULT_ROUTE_MODEL = `legion:${DEFAULT_ADAPTER_MODEL}`;
 const DEFAULT_STANDBY_MODELS = Object.freeze([
   'ollama:minimax-m3',

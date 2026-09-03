@@ -25,277 +25,195 @@
   <link rel="icon" type="image/png" sizes="512x512" href="https://milwrite.github.io/cadavre-exquis/assets/favicon.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="https://milwrite.github.io/cadavre-exquis/assets/apple-touch-icon.png" />
   <style>
+    /* One sheet, top to bottom: masthead, a few lines on the game, the table,
+       then the sheet or the finished poem in the same column, and the wall's
+       newest pins below. The cut-out title is the one loud thing; everything
+       else is set in a single serif at a short scale. */
     :root {
       color-scheme: dark;
-      --ink: #0C0D10;       /* the field */
-      --bone: #E7E0D0;      /* the poem */
-      --ash: #6E6A61;       /* large quiet text */
-      --label: #8A8375;     /* small mono chrome (AA on ink) */
-      --reading: #B8B2A4;   /* the close reading */
-      --fold-hi: #191B22;   /* folded strip face, lit edge */
-      --fold-lo: #111318;   /* folded strip face, shadow edge */
-      --crease: rgba(231, 224, 208, 0.13);
-      --wine: #A44856;      /* the model's hand; le vin nouveau */
+      --ink: #0C0D10;        /* the field */
+      --bone: #E7E0D0;       /* the poem */
+      --bone-soft: rgba(231, 224, 208, 0.84);
+      --reading: #B8B2A4;    /* the close reading */
+      --dim: #9A9385;        /* small secondary text, AA on ink */
+      --faint: #6E6A61;      /* the epigraph: large, quiet, decorative */
+      --crease: rgba(231, 224, 208, 0.14);
+      --crease-soft: rgba(231, 224, 208, 0.08);
+      --fold-hi: #191B22;    /* folded strip face, lit edge */
+      --fold-lo: #111318;    /* folded strip face, shadow edge */
+      --wine: #A44856;       /* the model's hand; le vin nouveau */
       --wine-bright: #C57080;
-      --wine-wash: rgba(197, 112, 128, 0.14);  /* the reading's hand on a poem word */
+      --wine-wash: rgba(197, 112, 128, 0.14);
       --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L", "P052", "Liberation Serif", "Noto Serif", Georgia, serif;
-      --mono: ui-monospace, "DejaVu Sans Mono", "SF Mono", Menlo, Consolas, monospace;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+      /* type scale, ratio ≈ 1.2 from a 17px body */
+      --t-small: 0.875rem;
+      --t-body: 1.0625rem;
+      --t-lead: 1.2rem;
+      --t-h2: 1.45rem;
+      --t-verse: clamp(1.15rem, 1.05rem + 0.4vw, 1.3rem);
+      --t-cue: clamp(1.6rem, 1.2rem + 1.5vw, 2.3rem);
+      --measure: 42rem;      /* prose, controls, the sheet */
+      --wide: 66rem;         /* the reveal's two columns and the wall */
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
+    [hidden] { display: none !important; }
     html, body { min-height: 100%; }
 
     body {
       background: var(--ink);
       color: var(--bone);
       font-family: var(--serif);
-      line-height: 1.5;
+      font-size: var(--t-body);
+      line-height: 1.55;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
     }
 
     .page {
-      max-width: 76rem;
+      width: min(100%, var(--wide));
       margin: 0 auto;
-      padding: clamp(1rem, 3vw, 2.5rem) clamp(0.85rem, 2.5vw, 2rem) 4rem;
+      padding: clamp(1.1rem, 3vh, 2rem) clamp(1rem, 3vw, 2rem) clamp(1.5rem, 4vh, 3rem);
     }
 
-    [hidden] { display: none !important; }
-
-    .account-bar {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 0.5rem;
-      min-height: 2.2rem;
-      margin-bottom: 0.8rem;
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      color: var(--label);
-    }
-
-    .account-area { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0.5rem; min-width: 0; }
-    .account-user { display: flex; align-items: center; gap: 0.5rem; min-width: 0; white-space: nowrap; }
-    .account-bar a,
-    .account-bar button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 2.75rem;
-      padding: 0.65rem 0.9rem;
-      border: 1px solid var(--crease);
-      color: var(--label);
-      font: inherit;
-      line-height: 1.1;
-      letter-spacing: 0.08em;
-      text-decoration: none;
-      white-space: nowrap;
-    }
-    .account-bar a:hover,
-    .account-bar button:hover { border-color: var(--wine-bright); color: var(--wine-bright); }
-    .account-name {
-      max-width: 12rem;
-      overflow: hidden;
-      padding-inline: 0.25rem;
-      color: var(--bone);
-      text-overflow: ellipsis;
-    }
-
-    a { color: inherit; text-decoration: underline; text-underline-offset: 0.18em; text-decoration-color: var(--ash); }
+    a { color: inherit; text-decoration: underline; text-decoration-color: var(--faint); text-underline-offset: 0.18em; }
     a:hover { color: var(--wine-bright); text-decoration-color: var(--wine-bright); }
-
     :focus-visible { outline: 2px solid var(--wine-bright); outline-offset: 2px; }
+    code { font-family: var(--mono); font-size: 0.86em; }
 
-    /* ── header ─────────────────────────────────────────────────────────── */
-    header { text-align: left; margin-bottom: 1.6rem; }
+    h2 { font-weight: 400; font-size: var(--t-h2); line-height: 1.25; }
 
-    h1 {
-      font-weight: 400;
-      font-size: clamp(2.6rem, 1.9rem + 3.2vw, 4.4rem);
-      letter-spacing: 0.01em;
-      line-height: 1.08;
+    /* ── masthead: the cut-out title and, on its right, the first sentence ── */
+    .masthead {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem 2.5rem;
+      padding-bottom: 1.1rem;
+      border-bottom: 1px solid var(--crease);
     }
 
-    .cutup-title {
-      display: block;
-      width: 100%;
+    .brand {
+      flex: 0 1 30rem;
+      min-width: 15rem;
+      font-size: 0;
       line-height: 1;
     }
 
-    .cutup-title img {
-      display: block;
-      width: 100%;
-      max-width: 760px;
-      height: auto;
-      aspect-ratio: 1300 / 155;
-      object-fit: contain;
-      object-position: left center;
-    }
+    .brand a { display: block; text-decoration: none; }
+    .brand img { display: block; width: 100%; height: auto; aspect-ratio: 1300 / 155; transform: translateX(-3.8%); }
 
     .epigraph {
-      margin-top: 0.4rem;
+      flex: 0 0 auto;
+      text-align: right;
       font-style: italic;
-      font-size: clamp(0.72rem, 3.75vw, 1.25rem);
-      color: var(--ash);
-      max-width: 100%;
-      overflow-wrap: anywhere;
+      font-size: clamp(0.95rem, 0.72rem + 0.6vw, 1.15rem);
+      line-height: 1.35;
+      color: var(--faint);
+      white-space: nowrap;   /* the line never breaks while it sits beside the title */
     }
 
     .epigraph .attr {
       display: block;
-      margin-top: 0.45rem;
-      font-family: var(--mono);
+      margin-top: 0.3em;
       font-style: normal;
-      font-size: clamp(0.5rem, 2.35vw, 0.7rem);
-      letter-spacing: clamp(0.06em, 0.35vw, 0.14em);
-      color: var(--label);
-      overflow-wrap: anywhere;
+      font-size: var(--t-small);
+      color: var(--dim);
     }
 
-    /* ── one compact game surface ──────────────────────────────────────── */
-    .game-shell {
-      display: grid;
-      grid-template-columns: minmax(17rem, 0.65fr) minmax(36rem, 1.35fr);
-      grid-template-areas: "intro stage";
-      align-items: start;
-      border: 1px solid var(--crease);
-      min-width: 0;
+    /* ── the stage: one column, whatever state the game is in ─────────── */
+    .stage { padding-top: clamp(1.6rem, 4vh, 2.6rem); }
+
+    .intro {
+      max-width: 36rem;
+      color: var(--bone-soft);
+      text-wrap: pretty;
     }
 
-    .game-intro {
-      grid-area: intro;
-      padding: clamp(1.5rem, 4vw, 3.2rem) clamp(1.35rem, 4vw, 3rem);
-      min-width: 0;
-    }
-
-    .game-stage {
-      grid-area: stage;
-      align-self: stretch;
-      min-width: 0;
-      padding: clamp(1.4rem, 2.5vw, 2.4rem);
-      border-left: 1px solid var(--crease);
-    }
-
-    /* ── prose ──────────────────────────────────────────────────────────── */
-    .prose {
-      max-width: 34rem;
-      margin: 0;
-      font-size: clamp(0.9rem, 0.86rem + 0.18vw, 1rem);
-      line-height: 1.65;
-      color: rgba(231, 224, 208, 0.88);
-    }
-
-    .prose p + p { margin-top: 0.9em; }
-    .prose strong { font-weight: 600; color: var(--bone); }
-
-    /* ── section labels: museum wall tags ───────────────────────────────── */
-    .eyebrow {
-      font-family: var(--mono);
-      font-weight: 400;
-      font-size: 0.7rem;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: var(--label);
-      text-align: center;
-      margin-bottom: 1.3rem;
-    }
+    .intro strong { font-weight: 600; color: var(--bone); }
+    .stage.is-playing .intro, .stage.is-revealed .intro { display: none; }
 
     /* ── the table ──────────────────────────────────────────────────────── */
+    .table { max-width: var(--measure); margin-top: 1.8rem; }
+
     .table-setting {
       display: grid;
-      grid-template-columns:
-        minmax(10.75rem, 2fr)
-        minmax(6rem, 1.1fr)
-        minmax(4rem, 0.75fr)
-        minmax(5rem, 0.9fr)
-        minmax(6.5rem, 1.1fr);
-      gap: 0.7rem;
-      font-family: var(--mono);
-      font-size: 0.78rem;
-      color: var(--label);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.1rem 1.5rem;
     }
 
-    .setting-field {
-      display: flex;
-      min-width: 0;
-      flex-direction: column;
-      gap: 0.35rem;
-    }
-
-    .setting-label {
-      font-size: 0.66rem;
-      line-height: 1.25;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
+    .setting-field { display: flex; min-width: 0; flex-direction: column; gap: 0.15rem; }
+    .setting-field.model-route { grid-column: 1 / -1; }
+    .setting-label { font-size: var(--t-small); color: var(--dim); }
 
     .table-setting select {
-      font-family: var(--mono);
-      font-size: 0.76rem;
+      font: inherit;
+      font-size: 1rem;
       color: var(--bone);
       background: transparent;
       border: 0;
       border-bottom: 1px solid var(--crease);
       border-radius: 0;
-      padding: 0.45em 0.1em;
+      padding: 0.35em 0;
       width: 100%;
       min-width: 0;
       cursor: pointer;
     }
 
     .table-setting select:hover { border-bottom-color: var(--wine-bright); }
+    .table-setting select:disabled { cursor: default; color: var(--bone-soft); }
 
-    .table-actions { margin-top: 1rem; }
-    .table-actions .primary { width: 100%; padding-block: 0.9em; }
+    .model-readiness { min-height: 1.4em; margin-top: 0.3rem; font-size: var(--t-small); color: var(--dim); }
 
-    /* ── buttons: quiet catalog chrome ──────────────────────────────────── */
+    .table-actions { display: flex; align-items: center; gap: 1rem; margin-top: 1.4rem; }
+    .table-actions .primary { min-width: 8rem; }
+
+    /* ── buttons: printed-programme chrome ──────────────────────────────── */
     button {
-      font-family: var(--mono);
-      font-size: 0.76rem;
-      letter-spacing: 0.12em;
+      font: inherit;
+      font-size: 0.95rem;
+      line-height: 1.3;
       color: var(--bone);
       background: transparent;
       border: 1px solid var(--crease);
-      padding: 0.7em 1.3em;
+      border-radius: 0;
+      padding: 0.5em 1.05em;
       cursor: pointer;
-      transition: border-color 0.15s ease, color 0.15s ease;
+      transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
     }
 
-    button:hover:not(:disabled) { border-color: var(--wine-bright); }
-    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    button:hover:not(:disabled) { border-color: var(--bone-soft); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
     button.primary { border-color: var(--wine); color: var(--wine-bright); }
-    button.primary:hover:not(:disabled) { border-color: var(--wine-bright); }
+    button.primary:hover:not(:disabled) { border-color: var(--wine-bright); background: var(--wine-wash); }
 
     button.linklike {
       border: 0;
-      padding: 0 0.2em;
+      padding: 0 0.1em;
+      font-size: inherit;
+      line-height: inherit;
       text-decoration: underline;
       text-underline-offset: 0.18em;
       color: var(--wine-bright);
-      font-size: inherit;
-      letter-spacing: inherit;
     }
 
-    /* ── the sheet ──────────────────────────────────────────────────────── */
-    .sheet { margin-top: 0.6rem; }
+    /* ── the sheet: a folded object, centred in the column ─────────────── */
+    .sheet { max-width: var(--measure); margin: 0.4rem auto 0; text-align: center; }
 
     .folds {
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
       align-items: center;
-      gap: 7px;
-      margin-bottom: 1.6rem;
+      gap: 6px;
       min-height: 0;
-      max-height: 7rem;
+      max-height: 6.5rem;
       overflow: hidden;
     }
 
     .fold {
-      height: 2.1rem;
+      height: 1.9rem;
       background: linear-gradient(180deg, var(--fold-hi), var(--fold-lo));
       border-top: 1px solid var(--crease);
       border-bottom: 1px solid rgba(0, 0, 0, 0.55);
@@ -314,8 +232,8 @@
       position: absolute;
       left: 0.7rem;
       top: 50%;
-      width: 0.32rem;
-      height: 0.32rem;
+      width: 0.3rem;
+      height: 0.3rem;
       border-radius: 50%;
       background: var(--wine);
       transform: translateY(-50%);
@@ -334,8 +252,8 @@
       to { transform: scaleY(0.1); opacity: 0; }
     }
 
-    /* who is at the table, and whose turn it is — the duet made spatial */
-    .seats { display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 1.2rem; min-height: 2px; }
+    /* who is at the table, and whose turn it is */
+    .seats { display: flex; justify-content: center; gap: 0.5rem; margin: 0.9rem 0 0.5rem; min-height: 2px; }
 
     .seat {
       width: 1.4rem;
@@ -348,34 +266,12 @@
     .seat.model { background: var(--wine); }
     .seat.model.active { background: var(--wine-bright); box-shadow: 0 0 0 1px rgba(197, 112, 128, 0.4); }
 
-    .fold-count {
-      font-family: var(--mono);
-      font-size: 0.68rem;
-      letter-spacing: 0.14em;
-      color: var(--label);
-      text-align: center;
-      min-height: 1em;
-      margin: -0.8rem 0 1.4rem;
-    }
+    .fold-count { min-height: 1.4em; font-size: var(--t-small); color: var(--dim); }
 
-    .cue { text-align: center; margin-bottom: 1.8rem; }
-
-    .cue-label {
-      font-family: var(--mono);
-      font-size: 0.68rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--label);
-      margin-bottom: 0.5rem;
-    }
-
-    .cue-words {
-      font-size: clamp(1.7rem, 1.15rem + 2.6vw, 3rem);
-      line-height: 1.25;
-      overflow-wrap: break-word;
-    }
-
-    .cue-words.blank { font-style: italic; color: var(--ash); font-size: clamp(1.3rem, 1rem + 1.4vw, 1.8rem); }
+    .cue { margin: 1.4rem 0 1.1rem; }
+    .cue-label { font-size: var(--t-small); font-style: italic; color: var(--dim); margin-bottom: 0.3rem; }
+    .cue-words { font-size: var(--t-cue); line-height: 1.2; overflow-wrap: break-word; text-wrap: balance; }
+    .cue-words.blank { font-style: italic; color: var(--faint); font-size: var(--t-lead); }
     .cue-words.rise { animation: rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 
     @keyframes rise {
@@ -389,396 +285,367 @@
       to { opacity: 0; transform: translateY(0.7em) scaleY(0.12); }
     }
 
-    .cue-words.folding {
-      transform-origin: top center;
-      animation: foldDown 0.26s cubic-bezier(0.4, 0, 0.7, 0.2) both;
-    }
+    .cue-words.folding { transform-origin: top center; animation: foldDown 0.26s cubic-bezier(0.4, 0, 0.7, 0.2) both; }
 
     .entry {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
       align-items: baseline;
-      gap: 0.9rem;
-      margin-bottom: 1.1rem;
+      gap: 0.8rem;
+      margin-bottom: 0.9rem;
     }
 
     .entry input {
-      font-family: var(--serif);
-      font-size: 1.3rem;
+      font: inherit;
+      font-size: var(--t-lead);
       text-align: center;
       color: var(--bone);
       caret-color: var(--wine-bright);
       background: transparent;
       border: 0;
       border-bottom: 1px solid var(--crease);
-      padding: 0.35em 0.2em;
-      width: min(24ch, 100%);
+      border-radius: 0;
+      padding: 0.3em 0.2em;
+      width: min(22ch, 100%);
     }
 
     .entry input:focus { border-bottom-color: var(--wine); outline: none; }
-    .entry input::placeholder { color: var(--ash); font-style: italic; }
+    .entry input::placeholder { color: var(--faint); font-style: italic; }
 
-    .status {
-      font-family: var(--mono);
-      font-size: 0.8rem;
-      color: var(--label);
-      text-align: center;
-      min-height: 1.5em;
-      margin-bottom: 1.4rem;
-    }
-
+    .status { min-height: 1.5em; font-size: var(--t-small); color: var(--dim); }
     .status.err { color: var(--wine-bright); }
-
-    .turn-timer {
-      min-height: 1.6em;
-      margin: -0.55rem 0 0.8rem;
-      color: var(--wine-bright);
-      font-family: var(--mono);
-      font-size: 0.78rem;
-      letter-spacing: 0.12em;
-      text-align: center;
-      text-transform: uppercase;
-    }
+    .sheet .status { margin-bottom: 1.1rem; }
 
     .breathe { color: var(--wine-bright); animation: breathe 1.5s ease-in-out infinite; }
-
     @keyframes breathe { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.9; } }
 
-    .sheet-actions { text-align: center; display: flex; justify-content: center; gap: 0.8rem; flex-wrap: wrap; }
+    .sheet-actions { display: flex; justify-content: center; gap: 0.6rem; flex-wrap: wrap; }
 
-    /* ── the reveal ─────────────────────────────────────────────────────── */
-    .revealed { margin-top: 1rem; }
+    /* ── the reveal: verse flush left, the reading beside it once there is room ── */
+    .revealed { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 1.6rem; margin-top: 0.4rem; }
 
-    .poem {
-      text-align: center;
-      font-size: clamp(1.45rem, 1.05rem + 1.9vw, 2.35rem);
-      line-height: 1.42;
-      margin-bottom: 2rem;
-    }
-
+    .poem { font-size: var(--t-verse); line-height: 1.55; max-width: 36rem; }
     .poem .line { overflow-wrap: break-word; animation: rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 
-    /* the poem folds once more into its gloss — a final crease + wall label */
-    .reading-seam {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.7rem;
-      margin: 0 auto 1.1rem;
-      animation: fade 0.9s ease 0.4s both;
-    }
+    .reading-col { max-width: 40rem; }
+    .reading-head { font-size: var(--t-small); font-style: italic; font-weight: 400; color: var(--dim); margin-bottom: 0.45rem; }
 
-    .reading-seam::before { content: ""; width: 1px; height: 1.6rem; background: var(--crease); }
-
-    .reading-label {
-      font-family: var(--mono);
-      font-size: 0.62rem;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: var(--label);
-    }
-
-    /* the close reading, set as a ruled placard: contained, justified prose
-       against the poem's open centered lyric — one object, two registers */
     .reading {
-      max-width: 40rem;
-      margin: 0 auto 2.2rem;
-      padding: 1.4rem 1.6rem;
-      border: 1px solid var(--crease);
-      text-align: left;
-      font-style: italic;
-      font-size: clamp(1.05rem, 0.95rem + 0.5vw, 1.25rem);
-      line-height: 1.7;
+      font-size: 1rem;
+      line-height: 1.65;
       color: var(--reading);
       text-wrap: pretty;
     }
 
-    .reading.show { animation: fade 1.1s ease 0.2s both; }
-
+    .reading.show { animation: fade 0.9s ease 0.15s both; }
     @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-
-    .reading .pending { font-family: var(--mono); font-style: normal; font-size: 0.8rem; color: var(--label); }
-    .reading .err { font-family: var(--mono); font-style: normal; font-size: 0.8rem; color: var(--wine-bright); }
+    .reading .pending, .reading .err { font-size: var(--t-small); color: var(--dim); }
+    .reading .err { color: var(--wine-bright); }
 
     /* the reading's quotes reach back and light the poem words they name */
     .w { padding: 0 0.04em; transition: background-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease; }
     .w.lit { background: var(--wine-wash); box-shadow: 0 2px 0 var(--wine); color: var(--bone); border-radius: 1px; }
-
     .quote { border-bottom: 1px dotted var(--wine); cursor: default; transition: color 0.18s ease; }
     .quote:hover, .quote:focus-visible { color: var(--wine-bright); }
     .quote:focus-visible { outline: 1px solid var(--wine-bright); outline-offset: 2px; }
 
-    .reveal-actions { display: flex; justify-content: center; gap: 0.8rem; flex-wrap: wrap; }
+    .reveal-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
+    .reveal-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .reveal-foot .status { min-height: 0; }
 
-    .edit-panel {
-      margin: 0 auto 2rem;
-      padding: 1.1rem;
-      border: 1px solid var(--crease);
+    @media (min-width: 60rem) {
+      .revealed {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+        grid-template-areas: "poem reading" "foot foot";
+        column-gap: clamp(2.5rem, 5vw, 4.5rem);
+        align-items: start;
+      }
+
+      .poem { grid-area: poem; }
+      .reading-col { grid-area: reading; max-width: none; padding-top: 0.15rem; }
+      .reveal-foot { grid-area: foot; padding-top: 0.4rem; border-top: 1px solid var(--crease-soft); }
     }
 
-    .edit-panel { width: min(100%, 40rem); }
-    .edit-panel label {
-      display: block;
-      margin-bottom: 0.9rem;
-      color: var(--label);
-      font-family: var(--mono);
-      font-size: 0.68rem;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
+    /* ── the wall: the newest pins, five lines each, the rest on their own page ── */
+    .wall {
+      margin-top: clamp(3rem, 7vh, 5rem);
+      padding-top: 1.4rem;
+      border-top: 1px solid var(--crease);
     }
-    .edit-panel input, .edit-panel textarea {
-      width: 100%;
-      margin-top: 0.35rem;
-      padding: 0.65rem;
-      color: var(--bone);
-      background: rgba(12, 13, 16, 0.7);
-      border: 1px solid var(--crease);
-      font-family: var(--serif);
-      font-size: 1rem;
+
+    .wall-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.4rem 1.5rem; }
+    .wall-head a { font-size: var(--t-small); color: var(--dim); }
+    .wall-note { margin-top: 0.2rem; font-size: var(--t-small); color: var(--dim); }
+
+    .wall-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+      gap: 1.6rem 2.5rem;
+      margin-top: 1.5rem;
     }
-    .edit-panel textarea { min-height: 13rem; resize: vertical; line-height: 1.55; }
+
+    .pin { display: flex; flex-direction: column; gap: 0.6rem; padding-top: 0.9rem; border-top: 1px solid var(--crease-soft); }
+    .pin-poem { font-size: 1rem; line-height: 1.5; overflow-wrap: break-word; }
+    .pin-poem .line:empty::before { content: "\00a0"; }
+    .pin-more { font-size: var(--t-small); }
+    .pin-more a { color: var(--dim); }
+    .pin-meta { margin-top: auto; font-size: var(--t-small); color: var(--dim); }
 
     /* ── footer ─────────────────────────────────────────────────────────── */
     footer {
-      margin-top: 4.5rem;
+      margin-top: clamp(2.5rem, 6vh, 4rem);
+      padding-top: 1rem;
       border-top: 1px solid var(--crease);
-      padding-top: 1.2rem;
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      line-height: 2;
-      color: var(--label);
-      text-align: center;
+      font-size: var(--t-small);
+      line-height: 1.7;
+      color: var(--dim);
     }
 
-    @media (max-width: 58.99rem) {
-      .page { padding-top: 0.85rem; }
+    footer p + p { margin-top: 0.2rem; }
 
-      .game-shell {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-areas:
-          "intro"
-          "stage";
-      }
-
-      .game-intro { padding-bottom: 1.35rem; }
-
-      .game-stage {
-        padding: 1.35rem;
-        border-left: 0;
-        border-top: 1px solid var(--crease);
-        border-bottom: 1px solid var(--crease);
-      }
-
-      .eyebrow { margin-bottom: 1rem; }
-
-      .account-name { max-width: 7rem; }
-    }
-
-    @media (max-width: 35rem) {
-      .table-setting { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .setting-field.model-route { grid-column: 1 / -1; }
-      .account-bar a, .account-bar button { padding-inline: 0.72em; font-size: 0.66rem; }
-    }
-
-    @media (max-width: 24rem) {
-      .page { padding-inline: 0.55rem; }
-      .game-intro, .game-stage { padding-inline: 1rem; }
-      .table-setting { gap: 0.5rem; }
-      .setting-label { font-size: 0.6rem; letter-spacing: 0.06em; }
-      .table-setting select { font-size: 0.75rem; }
-      .entry { align-items: stretch; }
-      .entry input, .entry button { width: 100%; }
-      .sheet-actions, .reveal-actions { flex-direction: column; }
-      .sheet-actions button, .reveal-actions button { width: 100%; }
-    }
-
-    /* ── pin dialog ─────────────────────────────────────────────────────── */
+    /* ── dialogs ────────────────────────────────────────────────────────── */
     dialog {
       background: var(--ink);
       color: var(--bone);
       border: 1px solid var(--crease);
-      padding: 1.8rem;
+      padding: 1.6rem 1.7rem;
       width: min(24rem, 92vw);
       margin: auto;
     }
 
     dialog::backdrop { background: rgba(0, 0, 0, 0.72); }
-
-    dialog p { font-family: var(--mono); font-size: 0.8rem; color: var(--label); margin-bottom: 1rem; }
+    dialog p { color: var(--bone-soft); margin-bottom: 1rem; }
+    dialog p.status { color: var(--dim); margin-bottom: 0.8rem; }
 
     dialog input {
-      font-family: var(--serif);
-      font-size: 1.1rem;
+      font: inherit;
+      font-size: var(--t-lead);
       color: var(--bone);
       background: transparent;
       border: 0;
       border-bottom: 1px solid var(--crease);
+      border-radius: 0;
       padding: 0.3em 0.1em;
       width: 100%;
-      margin-bottom: 1.4rem;
+      margin-bottom: 1.2rem;
     }
 
     dialog input:focus { border-bottom-color: var(--wine); outline: none; }
-    dialog .row { display: flex; justify-content: flex-end; gap: 0.8rem; }
+    dialog .row { display: flex; justify-content: flex-end; gap: 0.6rem; flex-wrap: wrap; }
 
-    .auth-card { padding: 0; }
-    .auth-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-    .auth-head h2 { margin: 0; font-size: 1.65rem; font-weight: 400; }
-    .auth-tabs { display: flex; gap: 0.55rem; margin: 1rem 0; }
-    .auth-form { display: grid; gap: 0.9rem; }
-    .auth-form label { color: var(--label); font-family: var(--mono); font-size: 0.7rem; }
-    .auth-form input {
-      margin: 0.3rem 0 0;
-      padding: 0.65rem;
-      border: 1px solid var(--crease);
-      font-family: var(--mono);
+    /* ── narrower screens ───────────────────────────────────────────────── */
+    @media (max-width: 47.99rem) {
+      .masthead { flex-direction: column; align-items: flex-start; gap: 0.9rem; }
+      .brand { flex: none; width: min(100%, 26rem); min-width: 0; }
+      .epigraph { text-align: left; white-space: normal; }
     }
-    .auth-message { min-height: 1.4em; margin: 0; color: var(--label); font-family: var(--mono); font-size: 0.72rem; }
-    .auth-message.err { color: var(--wine-bright); }
+
+    @media (max-width: 30rem) {
+      .table-setting { grid-template-columns: minmax(0, 1fr); }
+      .entry { align-items: stretch; }
+      .entry input, .entry button { width: 100%; }
+      .sheet-actions button, .reveal-actions button, .table-actions button { flex: 1 1 auto; }
+      .reveal-actions { width: 100%; }
+    }
 
     /* ── motion, print ──────────────────────────────────────────────────── */
     @media (prefers-reduced-motion: reduce) {
-      .fold, .fold.lifting, .cue-words.rise, .cue-words.folding, .poem .line,
-      .reading.show, .reading-seam, .breathe { animation: none; }
-      .reading.show, .reading-seam { opacity: 1; }
+      .fold, .fold.lifting, .cue-words.rise, .cue-words.folding, .poem .line, .reading.show, .breathe { animation: none; }
+      .reading.show { opacity: 1; }
       .w, .quote { transition: none; }
     }
 
     @media print {
-      @page { size: letter; margin: 0.72in; }
       :root { color-scheme: light; }
-      html, body { min-height: 0; background: #fff; color: #111; }
-      .page { max-width: none; margin: 0; padding: 0; }
-      header .epigraph, .prose, .table, .sheet, footer,
-      .account-bar, .reveal-actions, .edit-panel, dialog,
-      .eyebrow, .reading .pending, .reading .err { display: none !important; }
-      h1 { font-size: 1.6rem; margin-bottom: 1.5rem; }
-      .game-shell, .game-stage { display: block; border: 0; padding: 0; }
-      .game-intro { display: none; }
-      .revealed { width: auto; max-width: 100%; margin: 0; padding: 0; }
-      .poem { max-width: 100%; color: #111; font-size: 18pt; line-height: 1.42; }
-      .poem .line { max-width: 100%; overflow-wrap: anywhere; animation: none; break-inside: avoid; }
+      body { background: #fff; color: #111; }
+      .epigraph, .intro, .table, .sheet, .wall, footer, .reveal-foot, .reading .pending, .reading .err { display: none; }
+      .masthead { border-color: #ccc; }
+      .revealed { display: block; }
+      .poem { color: #111; font-size: 1.2rem; margin-bottom: 1.5rem; }
       .poem .w.lit { background: none; box-shadow: none; color: #111; }
-      .reading-seam::before { background: #ccc; }
-      .reading-label { color: #888; }
-      .reading { max-width: 100%; color: #444; border-color: #ccc; font-size: 10.5pt; line-height: 1.5; }
+      .reading-head { color: #888; }
+      .reading { color: #444; }
       .reading .quote { border-bottom: 0; color: #444; }
     }
+
+    /* ── inference-arcade extras: account bar, countdown, editing, sign-in ── */
+    .account-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 0.5rem 1.2rem;
+      margin-bottom: 0.9rem;
+      font-size: var(--t-small);
+      color: var(--dim);
+    }
+
+    .account-area { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0.5rem 1.2rem; min-width: 0; }
+    .account-bar a { color: var(--dim); }
+    .account-bar button { font-size: var(--t-small); padding: 0.35em 0.8em; }
+    .account-user { display: flex; align-items: center; gap: 0.6rem; white-space: nowrap; }
+    .account-name { max-width: 12rem; overflow: hidden; text-overflow: ellipsis; color: var(--bone); }
+
+    .table-setting { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .turn-timer { margin-top: -0.4rem; margin-bottom: 0.8rem; font-size: var(--t-small); color: var(--dim); font-variant-numeric: tabular-nums; }
+
+    .poem-col { display: grid; gap: 1.2rem; align-content: start; }
+    .edit-panel { display: grid; gap: 0.9rem; max-width: 36rem; }
+    .edit-panel label { display: grid; gap: 0.25rem; font-size: var(--t-small); color: var(--dim); }
+
+    .edit-panel input, .edit-panel textarea {
+      font: inherit;
+      font-size: 1rem;
+      color: var(--bone);
+      background: transparent;
+      border: 1px solid var(--crease);
+      border-radius: 0;
+      padding: 0.5em 0.6em;
+      width: 100%;
+    }
+
+    .edit-panel textarea { min-height: 13rem; resize: vertical; line-height: 1.55; font-size: var(--t-body); }
+    .edit-panel input:focus, .edit-panel textarea:focus { border-color: var(--wine); outline: none; }
+    .edit-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+    dialog.auth { width: min(26rem, 92vw); }
+    .auth-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .auth-head h2 { font-size: var(--t-lead); }
+    .auth-head button { font-size: var(--t-small); padding: 0.35em 0.8em; }
+    .auth-tabs { display: flex; gap: 0.5rem; margin: 0.9rem 0 1rem; }
+    .auth-form { display: grid; gap: 0.9rem; }
+    .auth-form label { display: grid; gap: 0.25rem; font-size: var(--t-small); color: var(--dim); }
+    .auth-form input { margin: 0; font-size: 1rem; }
+    .auth-form .linklike { justify-self: start; font-size: var(--t-small); }
+    .auth-message { min-height: 1.4em; margin: 0; font-size: var(--t-small); color: var(--dim); }
+    .auth-message.err { color: var(--wine-bright); }
+
+    @media (min-width: 60rem) {
+      .poem-col { grid-area: poem; }
+      .poem-col .poem { grid-area: auto; }   /* the column, not the poem, takes the area */
+    }
+
+    @media (max-width: 40rem) {
+      .table-setting { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 30rem) {
+      .account-name { max-width: 6rem; }
+    }
   </style>
-  <script id="cadavre-runtime-config">window.CORPSE_CONFIG = Object.freeze({"endpoint":"/api/cadavre/chat","model":"legion:exquisite-corpse","modelsEndpoint":"/api/cadavre/models"});</script>
 </head>
 <body>
   <div class="page">
-    <div class="account-bar" aria-label="account">
+    <nav class="account-bar" aria-label="account">
       <span class="account-area" id="accountArea">
         <button id="authOpenBtn" type="button">sign in</button>
       </span>
-    </div>
-    <main class="game-shell">
-      <div class="game-intro">
-        <header>
-          <h1 class="cutup-title" aria-label="Exquisite Corpse">
-            <img src="/assets/cadavre-title.png" alt="" aria-hidden="true" width="1300" height="155">
-          </h1>
-          <p class="epigraph">“The exquisite corpse will drink the new wine.”
-            <span class="attr">the game’s first sentence — Paris, 1925</span>
-          </p>
-        </header>
+    </nav>
 
-        <section class="prose" aria-label="about the game">
-          <p><strong>Exquisite Corpse</strong> is a parlor game in which participants take turns writing or drawing on a sheet of paper, then fold it to hide past contributions before passing it to the next player. This version seats a language model at the table. Each player crafts a one- to five-word line from the previous entry. The sheet folds as it passes, so the next player sees only the newest contribution. The complete poem appears when someone ends the game.</p>
-        </section>
-      </div>
+    <header class="masthead">
+      <h1 class="brand">
+        <a href="/cadavre" aria-label="Exquisite Corpse"><img src="/assets/cadavre-title.png" alt="Exquisite Corpse" width="1300" height="155"></a>
+      </h1>
+      <p class="epigraph">“The exquisite corpse will drink the new wine.”
+        <span class="attr">the game’s first sentence, Paris, 1925</span>
+      </p>
+    </header>
 
-      <div class="game-stage">
-        <section class="table" id="tableSec" aria-label="table setting">
-          <h2 class="eyebrow">The Table</h2>
-          <div class="table-setting">
-            <label class="setting-field model-route">
-              <span class="setting-label">the other hand</span>
-              <select id="modelRoute" aria-label="model provider and model">
-                <option value="">loading available models…</option>
-              </select>
-            </label>
-            <label class="setting-field">
-              <span class="setting-label">countdown</span>
-              <select id="countdown" aria-label="turn countdown">
-                <option value="0">off</option>
-                <option value="15">15 seconds</option>
-                <option value="30" selected>30 seconds</option>
-                <option value="60">one minute</option>
-              </select>
-            </label>
-            <label class="setting-field">
-              <span class="setting-label">players</span>
-              <select id="playerCount" aria-label="number of players">
-                <option value="2" selected>two</option>
-                <option value="3">three</option>
-                <option value="4">four</option>
-              </select>
-            </label>
-            <label class="setting-field">
-              <span class="setting-label">model seat</span>
-              <select id="modelSlot" aria-label="the model's seat">
-                <option value="1">one</option>
-                <option value="2" selected>two</option>
-                <option value="3">three</option>
-              </select>
-            </label>
-            <label class="setting-field">
-              <span class="setting-label">per turn</span>
-              <select id="maxWords" aria-label="per turn">
-                <option value="1">one word</option>
-                <option value="2">two words</option>
-                <option value="3" selected>three words</option>
-                <option value="4">four words</option>
-                <option value="5">five words</option>
-              </select>
-            </label>
-          </div>
-          <div class="table-actions">
-            <button id="startBtn" class="primary">begin</button>
-          </div>
-        </section>
+    <main class="stage" id="stage">
+      <section class="intro" id="introSec" aria-label="about the game">
+        <p><strong>Exquisite Corpse</strong> is a parlor game: each player writes a few words on a sheet, folds it to hide what came before, and passes it on. This table seats a language model. Every turn adds one to five words to the newest line, and only that line stays visible. Reveal the sheet whenever you like, and the whole poem unfolds with a close reading beside it.</p>
+      </section>
 
-        <section class="sheet" id="sheetSec" hidden aria-label="the sheet">
-          <h2 class="eyebrow">The Sheet</h2>
-          <div class="seats" id="seats" aria-hidden="true"></div>
-          <div class="folds" id="folds" aria-hidden="true"></div>
-          <div class="fold-count" id="foldCount" aria-hidden="true"></div>
-          <div class="cue" id="cue">
-            <div class="cue-label" id="cueLabel"></div>
-            <div class="cue-words blank" id="cueWords" aria-live="polite"></div>
-          </div>
-          <form class="entry" id="entryForm">
-            <input id="wordInput" type="text" autocomplete="off" autocapitalize="off"
-                   autocorrect="off" spellcheck="false" aria-label="your contribution" />
-            <button id="submitBtn" class="primary" type="submit">fold in</button>
-          </form>
-          <div class="turn-timer" id="turnTimer" role="timer" hidden></div>
-          <p class="status" id="status" role="status" aria-live="polite"></p>
-          <div class="sheet-actions">
-            <button id="undoBtn" disabled>unfold last</button>
-            <button id="endBtn" disabled>reveal the poem</button>
-            <button id="resetBtn">clear the table</button>
-          </div>
-        </section>
+      <section class="table" id="tableSec" aria-label="setting the table">
+        <div class="table-setting">
+          <label class="setting-field model-route">
+            <span class="setting-label">the other hand</span>
+            <select id="modelRoute" aria-label="model provider and model">
+              <option value="">loading available models…</option>
+            </select>
+          </label>
+          <label class="setting-field">
+            <span class="setting-label">players</span>
+            <select id="playerCount" aria-label="number of players">
+              <option value="2" selected>two</option>
+              <option value="3">three</option>
+              <option value="4">four</option>
+            </select>
+          </label>
+          <label class="setting-field">
+            <span class="setting-label">the model sits at seat</span>
+            <select id="modelSlot" aria-label="the model's seat">
+              <option value="1">one</option>
+              <option value="2" selected>two</option>
+              <option value="3">three</option>
+            </select>
+          </label>
+          <label class="setting-field">
+            <span class="setting-label">words per turn</span>
+            <select id="maxWords" aria-label="words per turn">
+              <option value="1">one</option>
+              <option value="2">two</option>
+              <option value="3" selected>up to three</option>
+              <option value="4">up to four</option>
+              <option value="5">up to five</option>
+            </select>
+          </label>
+          <label class="setting-field">
+            <span class="setting-label">countdown per turn</span>
+            <select id="countdown" aria-label="turn countdown">
+              <option value="0">off</option>
+              <option value="15">15 seconds</option>
+              <option value="30" selected>30 seconds</option>
+              <option value="60">one minute</option>
+            </select>
+          </label>
+        </div>
+        <div class="table-actions">
+          <button id="startBtn" class="primary">begin</button>
+        </div>
+      </section>
 
-        <section class="revealed" id="revealSec" hidden aria-label="the poem">
-          <h2 class="eyebrow">The Poem</h2>
+      <section class="sheet" id="sheetSec" hidden aria-label="the sheet">
+        <div class="folds" id="folds" aria-hidden="true"></div>
+        <div class="seats" id="seats" aria-hidden="true"></div>
+        <div class="fold-count" id="foldCount" aria-hidden="true"></div>
+        <div class="cue" id="cue">
+          <div class="cue-label" id="cueLabel"></div>
+          <div class="cue-words blank" id="cueWords" aria-live="polite"></div>
+        </div>
+        <form class="entry" id="entryForm">
+          <input id="wordInput" type="text" autocomplete="off" autocapitalize="off"
+                 autocorrect="off" spellcheck="false" aria-label="your contribution" />
+          <button id="submitBtn" class="primary" type="submit">fold in</button>
+        </form>
+        <div class="turn-timer" id="turnTimer" role="timer" hidden></div>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+        <div class="sheet-actions">
+          <button id="undoBtn" disabled>unfold last</button>
+          <button id="endBtn" disabled>reveal the poem</button>
+          <button id="resetBtn">clear the table</button>
+        </div>
+      </section>
+
+      <section class="revealed" id="revealSec" hidden aria-label="the poem">
+        <div class="poem-col">
           <div class="poem" id="poem"></div>
           <div class="edit-panel" id="editPanel" hidden>
-            <label>Title <input id="poemTitle" type="text" maxlength="120"></label>
-            <label>Poem <textarea id="poemEditor" maxlength="20000"></textarea></label>
-            <div class="reveal-actions">
+            <label>title <input id="poemTitle" type="text" maxlength="120"></label>
+            <label>poem, one line per fold <textarea id="poemEditor" maxlength="20000"></textarea></label>
+            <div class="edit-actions">
               <button id="applyEditBtn" class="primary" type="button">apply edits</button>
               <button id="cancelEditBtn" type="button">cancel</button>
             </div>
           </div>
-          <div class="reading-seam" aria-hidden="true"><span class="reading-label">close reading</span></div>
+        </div>
+        <aside class="reading-col">
+          <h2 class="reading-head">Close reading</h2>
           <div class="reading" id="reading" aria-live="polite"></div>
-          <p class="status" id="revealStatus" role="status" aria-live="polite"></p>
+        </aside>
+        <div class="reveal-foot">
           <div class="reveal-actions">
             <button id="againBtn" class="primary">play again</button>
             <button id="editBtn" type="button">edit poem</button>
@@ -787,16 +654,23 @@
             <button id="printBtn">print</button>
             <button id="pinBtn">pin to the wall</button>
           </div>
-        </section>
-      </div>
-
+          <p class="status" id="revealStatus" role="status" aria-live="polite"></p>
+        </div>
+      </section>
     </main>
 
-    <footer>
-      <div>a barer surface for solo play: <a href="/cadavre/open-sheet">the open sheet</a> · <a href="https://github.com/milwrite/cadavre-exquis">source</a></div>
-      <div id="connLine">model <span id="connModel"></span> at <span id="connHost"></span>
-        — point elsewhere with <span style="white-space:nowrap">?endpoint=…&amp;model=…</span> (this visit only)
+    <section class="wall" id="wallSec" hidden aria-label="the wall">
+      <div class="wall-head">
+        <h2>The wall</h2>
+        <a href="/cadavre/wall">every pinned corpse</a>
       </div>
+      <p class="wall-note" id="wallNote">the newest corpses pinned from any table</p>
+      <div class="wall-grid" id="wallList"></div>
+    </section>
+
+    <footer>
+      <p>Solo play on <a href="/cadavre/open-sheet">the open sheet</a>. <a href="https://github.com/milwrite/cadavre-exquis">Source</a> on GitHub.</p>
+      <p id="connLine">model <code id="connModel"></code> at <code id="connHost"></code>. Point elsewhere with <code>?endpoint=…&amp;model=…</code> for this visit only.</p>
     </footer>
   </div>
 
@@ -811,34 +685,32 @@
   <dialog id="pinDialog">
     <p>pin this corpse to the wall</p>
     <input id="pinName" type="text" placeholder="your name, or an alias" aria-label="your name" />
-    <p id="pinStatus" hidden></p>
+    <p id="pinStatus" class="status" hidden></p>
     <div class="row">
       <button id="pinCancel" type="button">cancel</button>
       <button id="pinConfirm" class="primary" type="button">pin it</button>
     </div>
   </dialog>
 
-  <dialog id="authDialog" aria-labelledby="authTitle">
-    <div class="auth-card">
-      <div class="auth-head">
-        <h2 id="authTitle">Sign in</h2>
-        <button id="authCloseBtn" type="button" aria-label="Close">close</button>
-      </div>
-      <div class="auth-tabs" id="authTabs">
-        <button id="loginTab" class="primary" type="button">sign in</button>
-        <button id="registerTab" type="button">register</button>
-      </div>
-      <form class="auth-form" id="authForm">
-        <label id="usernameRow">Username <input id="authUsername" autocomplete="username" maxlength="32"></label>
-        <label id="loginRow">Username or email <input id="authLogin" autocomplete="username" maxlength="254"></label>
-        <label id="emailRow">Email <input id="authEmail" type="email" autocomplete="email" maxlength="254"></label>
-        <label id="passwordRow">Password <input id="authPassword" type="password" autocomplete="current-password" maxlength="128"></label>
-        <label id="confirmRow">Confirm password <input id="authConfirm" type="password" autocomplete="new-password" maxlength="128"></label>
-        <p class="auth-message" id="authMessage" role="status"></p>
-        <button id="authSubmitBtn" class="primary" type="submit">sign in</button>
-        <button id="forgotBtn" class="linklike" type="button">forgot password?</button>
-      </form>
+  <dialog id="authDialog" class="auth" aria-labelledby="authTitle">
+    <div class="auth-head">
+      <h2 id="authTitle">Sign in</h2>
+      <button id="authCloseBtn" type="button" aria-label="Close">close</button>
     </div>
+    <div class="auth-tabs" id="authTabs">
+      <button id="loginTab" class="primary" type="button">sign in</button>
+      <button id="registerTab" type="button">register</button>
+    </div>
+    <form class="auth-form" id="authForm">
+      <label id="usernameRow">username <input id="authUsername" autocomplete="username" maxlength="32"></label>
+      <label id="loginRow">username or email <input id="authLogin" autocomplete="username" maxlength="254"></label>
+      <label id="emailRow">email <input id="authEmail" type="email" autocomplete="email" maxlength="254"></label>
+      <label id="passwordRow">password <input id="authPassword" type="password" autocomplete="current-password" maxlength="128"></label>
+      <label id="confirmRow">confirm password <input id="authConfirm" type="password" autocomplete="new-password" maxlength="128"></label>
+      <p class="auth-message" id="authMessage" role="status"></p>
+      <button id="authSubmitBtn" class="primary" type="submit">sign in</button>
+      <button id="forgotBtn" class="linklike" type="button">forgot password?</button>
+    </form>
   </dialog>
   <script src="https://milwrite.github.io/cadavre-exquis/assets/cadavre-core.js"></script>
   <script>
@@ -943,7 +815,12 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     let activeChatController = null;
     let poemTokens = [];      // { norm, el } per revealed poem word — the reading links to these
     const WALL_TOKENS_KEY = "cadavreWallDeleteTokens";
-    let wallTokens = readWallTokens();
+    let wallTokens = readWallTokens();   // proof of authorship; the wall page uses it to unpin
+    const LEGACY_WALL_KEY = "cadavreWall";
+    let legacyWall = readLegacyWall();
+    let remoteWall = [];
+    let wall = [];
+    let wallLoading = false;
     const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     const el = (id) => document.getElementById(id);
@@ -959,9 +836,16 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       el("status").classList.toggle("err", !!isErr);
     }
 
-    function setRevealStatus(message, isErr = false) {
-      el("revealStatus").textContent = message;
-      el("revealStatus").classList.toggle("err", isErr);
+    function setRevealStatus(message, isErr = false, link = null) {
+      const status = el("revealStatus");
+      status.textContent = message;
+      status.classList.toggle("err", isErr);
+      if (link) {
+        const anchor = document.createElement("a");
+        anchor.href = link.href;
+        anchor.textContent = link.label;
+        status.append(" ", anchor);
+      }
     }
 
     function clearTurnTimer({ cancel = true } = {}) {
@@ -1013,7 +897,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
 
     function expireHumanTurn(generation) {
       if (generation !== timerGeneration || !gameActive || isModelTurn()) return;
-      pauseTurn("time expired — the table is paused");
+      pauseTurn("time expired, the table is paused");
     }
 
     async function syncTurnTimer(generation) {
@@ -1189,7 +1073,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
 
     function updateFoldCount() {
       const n = el("folds").children.length;
-      el("foldCount").textContent = n ? `· ${n} folded ·` : "";
+      el("foldCount").textContent = n ? `${n} folded` : "";
     }
 
     /* ── the fold: conceal everything but the newest contribution ───────── */
@@ -1206,7 +1090,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       const words = el("cueWords");
       if (!entry) {
         el("cueLabel").textContent = "";
-        words.textContent = "the sheet is blank — begin anywhere";
+        words.textContent = "the sheet is blank. begin anywhere";
         words.className = "cue-words blank";
         return;
       }
@@ -1250,14 +1134,14 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     function promptTurn() {
       if (!gameActive || turnPaused) return;
       if (actorIndex >= MAX_GAME_TURNS) {
-        pauseTurn("twenty turns reached — reveal the poem or reset", { canResume: false });
+        pauseTurn("twenty turns reached. reveal the poem or clear the table", { canResume: false });
         return;
       }
       renderSeats();
       if (isModelTurn()) { clearTurnTimer(); modelTurn(); return; }
       const cap = NUMBER_WORDS[maxWords];
       const limit = maxWords === 1 ? "one word" : `up to ${cap} words`;
-      setStatus(`round ${round()} · player ${currentSeat()} writes — ${limit}`);
+      setStatus(`round ${round()}, player ${currentSeat()} writes ${limit}`);
       el("wordInput").disabled = false;
       el("submitBtn").disabled = false;
       el("undoBtn").disabled = !contributions.length;
@@ -1405,7 +1289,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       clearTurnTimer();
       const id = gameId;
       renderSeats();
-      setStatus(`round ${round()} · the model writes <span class="breathe">·</span>`);
+      setStatus(`round ${round()}, the model writes <span class="breathe">·</span>`);
       el("wordInput").disabled = true;
       el("submitBtn").disabled = true;
       el("undoBtn").disabled = true;
@@ -1430,7 +1314,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
         }
       } catch (e) {
         if (id !== gameId || !gameActive || turnPaused) return;
-        setStatus(`the model isn’t answering at ${esc(endpointHost())} — is it running?
+        setStatus(`the model isn’t answering at ${esc(endpointHost())}. is it running?
           <button class="linklike" id="retryTurn">try again</button>`, true);
         el("retryTurn").addEventListener("click", modelTurn);
         el("undoBtn").disabled = !contributions.length;   // unfolding back is the other way out
@@ -1505,6 +1389,8 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       activePoem = null;
       el("sheetSec").hidden = true;
       el("revealSec").hidden = false;
+      el("stage").classList.remove("is-playing");
+      el("stage").classList.add("is-revealed");
       poemTokens = renderPoemWords(el("poem"), contributions.map((c) => c.text), true);
       el("poemTitle").value = contributions[0]?.text.slice(0, 80) || "Exquisite Corpse";
       el("editPanel").hidden = true;
@@ -1562,8 +1448,8 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       } catch (e) {
         if (requestId !== readingRequestId || document.hidden) return;
         readingText = "";
-        readingEl.innerHTML = `<span class="err">the reading didn’t arrive from ${esc(endpointHost())}
-          — <button class="linklike" id="retryReading">try again</button></span>`;
+        readingEl.innerHTML = `<span class="err">the reading didn’t arrive from ${esc(endpointHost())}.
+          <button class="linklike" id="retryReading">try again</button></span>`;
         el("retryReading").addEventListener("click", fetchReading);
       }
     }
@@ -1607,6 +1493,8 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       el("tableSec").hidden = true;
       el("revealSec").hidden = true;
       el("sheetSec").hidden = false;
+      el("stage").classList.remove("is-revealed");
+      el("stage").classList.add("is-playing");
       showCue(null);
       el("sheetSec").scrollIntoView({ behavior: "smooth", block: "start" });
       promptTurn();
@@ -1622,7 +1510,10 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       el("sheetSec").hidden = true;
       el("revealSec").hidden = true;
       el("tableSec").hidden = false;
+      el("stage").classList.remove("is-revealed");
+      el("stage").classList.remove("is-playing");
       setStatus("");
+      setRevealStatus("");
     }
 
     el("startBtn").addEventListener("click", begin);
@@ -1634,7 +1525,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
       if (!contributions.length) return;
       const n = contributions.length;
       el("revealNote").textContent =
-        `${n} fold${n === 1 ? "" : "s"} on the sheet — the reveal unfolds it and ends the game`;
+        `${n} fold${n === 1 ? "" : "s"} on the sheet. The reveal unfolds it and ends the game.`;
       el("revealDialog").showModal();
     });
     el("revealConfirm").addEventListener("click", () => {
@@ -1823,7 +1714,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
         }
         el("authDialog").close();
         renderAccount();
-        setRevealStatus("signed in — your poems can now be saved");
+        setRevealStatus("signed in. your poems can now be saved");
       } catch (error) {
         el("authMessage").textContent = error.message;
         el("authMessage").classList.add("err");
@@ -1852,7 +1743,7 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
           .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + ".pdf";
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-        setRevealStatus("PDF ready — Letter size with protected print margins");
+        setRevealStatus("PDF ready, Letter size with print margins");
       } catch (error) {
         setRevealStatus(error.message, true);
       }
@@ -1906,12 +1797,101 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
         }
         wallTokens[data.item.id] = data.deleteToken;
         saveWallTokens();
+        remoteWall.unshift(data.item);
+        rebuildWall();
         el("pinDialog").close();
-        location.href = "/cadavre/wall";
+        setRevealStatus("pinned to the wall.", false, { href: wallLink(data.item), label: "see it there" });
       } catch (error) {
         status.textContent = error.message || "the shared wall is unavailable";
       } finally {
         confirm.disabled = false;
+      }
+    }
+
+    /* ── the wall, previewed ────────────────────────────────────────────
+       The table shows the newest pins, five lines each; whole poems, votes,
+       and unpinning live on /cadavre/wall. */
+    const WALL_PREVIEW = 6;
+    const WALL_PREVIEW_LINES = 5;
+
+    function readLegacyWall() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(LEGACY_WALL_KEY) || "[]");
+        if (!Array.isArray(saved)) return [];
+        return saved.filter((item) => item && typeof item.poem === "string").map((item, index) => ({
+          name: String(item.name || "anonymous"),
+          poem: item.poem,
+          analysis: String(item.analysis || ""),
+          ts: item.ts || new Date(0).toISOString(),
+          legacyKey: `${index}:${item.ts || ""}:${item.poem}`,
+          local: true,
+        }));
+      } catch {
+        return [];
+      }
+    }
+
+    function rebuildWall() {
+      const remote = remoteWall.map((item) => ({ ...item, remote: true }));
+      wall = [...remote, ...legacyWall].sort((a, b) => Date.parse(b.ts) - Date.parse(a.ts));
+      renderWall();
+    }
+
+    function wallLink(item) {
+      return item.id ? `/cadavre/wall#pin-${encodeURIComponent(item.id)}` : "/cadavre/wall";
+    }
+
+    function renderWallItem(item) {
+      const lines = String(item.poem || "").split(/\r?\n/);
+      const hidden = Math.max(0, lines.length - WALL_PREVIEW_LINES);
+      const pin = document.createElement("article");
+      pin.className = "pin";
+      const poem = document.createElement("div");
+      poem.className = "pin-poem";
+      renderPoemWords(poem, lines.slice(0, WALL_PREVIEW_LINES), false);
+      pin.append(poem);
+      if (hidden) {
+        const more = document.createElement("p");
+        more.className = "pin-more";
+        const link = document.createElement("a");
+        link.href = wallLink(item);
+        link.textContent = `${hidden} more line${hidden === 1 ? "" : "s"} on the wall`;
+        more.append(link);
+        pin.append(more);
+      }
+      const meta = document.createElement("p");
+      meta.className = "pin-meta";
+      const when = new Date(item.ts);
+      meta.textContent = item.name + (isNaN(when) ? "" : ", " + when.toLocaleDateString());
+      pin.append(meta);
+      return pin;
+    }
+
+    function renderWall() {
+      const list = el("wallList");
+      list.innerHTML = "";
+      el("wallSec").hidden = wall.length === 0;
+      el("wallNote").textContent = legacyWall.length
+        ? "the newest corpses pinned from any table, plus earlier pins kept in this browser"
+        : "the newest corpses pinned from any table";
+      wall.slice(0, WALL_PREVIEW).forEach((item) => list.appendChild(renderWallItem(item)));
+    }
+
+    async function loadWall() {
+      if (wallLoading) return;
+      wallLoading = true;
+      try {
+        const url = new URL(WALL_API, location.href);
+        url.searchParams.set("limit", String(WALL_PREVIEW));
+        const response = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !Array.isArray(data.items)) throw new Error(data.error || "the shared wall is unavailable");
+        remoteWall = data.items;
+      } catch {
+        remoteWall = [];
+      } finally {
+        wallLoading = false;
+        rebuildWall();
       }
     }
 
@@ -1930,6 +1910,8 @@ Write one paragraph of 2–4 concrete sentences. Quote specific words and descri
     }
     loadModelOptions();
     restoreAccount();
+    rebuildWall();
+    loadWall();
     if (new URLSearchParams(location.search).get("reset")) openAuth("reset");
     else if (new URLSearchParams(location.search).get("auth") === "login") openAuth("login");
   </script>

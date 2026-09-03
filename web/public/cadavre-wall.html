@@ -4,27 +4,34 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>The Wall — Cadavre Exquis</title>
-  <meta name="description" content="Read, discuss, and vote on Exquisite Corpse poems shared across browsers." />
+  <meta name="description" content="Every Exquisite Corpse pinned from the table, with its close reading, shared across browsers." />
   <meta name="theme-color" content="#0C0D10" />
-  <link rel="icon" type="image/png" sizes="32x32" href="https://milwrite.github.io/cadavre-exquis/assets/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="https://milwrite.github.io/cadavre-exquis/assets/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="https://milwrite.github.io/cadavre-exquis/assets/favicon.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="https://milwrite.github.io/cadavre-exquis/assets/apple-touch-icon.png" />
   <style>
+    /* The wall shares the parlor's tokens (index.html re-declares them; change both together). */
     :root {
       color-scheme: dark;
       --ink: #0C0D10;
       --bone: #E7E0D0;
-      --ash: #6E6A61;
-      --label: #8A8375;
+      --bone-soft: rgba(231, 224, 208, 0.84);
       --reading: #B8B2A4;
-      --crease: rgba(231, 224, 208, 0.13);
+      --dim: #9A9385;
+      --faint: #6E6A61;
+      --crease: rgba(231, 224, 208, 0.14);
+      --crease-soft: rgba(231, 224, 208, 0.08);
       --wine: #A44856;
       --wine-bright: #C57080;
       --wine-wash: rgba(197, 112, 128, 0.14);
       --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L", "P052", "Liberation Serif", "Noto Serif", Georgia, serif;
-      --mono: ui-monospace, "DejaVu Sans Mono", "SF Mono", Menlo, Consolas, monospace;
+      --t-small: 0.875rem;
+      --t-body: 1.0625rem;
+      --t-h2: 1.45rem;
+      --wide: 66rem;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     [hidden] { display: none !important; }
     html, body { min-height: 100%; }
 
@@ -32,228 +39,169 @@
       background: var(--ink);
       color: var(--bone);
       font-family: var(--serif);
-      line-height: 1.5;
+      font-size: var(--t-body);
+      line-height: 1.55;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
     }
 
-    a {
-      color: inherit;
-      text-decoration: underline;
-      text-decoration-color: var(--ash);
-      text-underline-offset: 0.18em;
+    .page {
+      width: min(100%, var(--wide));
+      margin: 0 auto;
+      padding: clamp(1.1rem, 3vh, 2rem) clamp(1rem, 3vw, 2rem) clamp(1.5rem, 4vh, 3rem);
     }
 
+    a { color: inherit; text-decoration: underline; text-decoration-color: var(--faint); text-underline-offset: 0.18em; }
     a:hover { color: var(--wine-bright); text-decoration-color: var(--wine-bright); }
     :focus-visible { outline: 2px solid var(--wine-bright); outline-offset: 2px; }
+    h2 { font-weight: 400; font-size: var(--t-h2); line-height: 1.25; }
+
+    .masthead {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem 2.5rem;
+      padding-bottom: 1.1rem;
+      border-bottom: 1px solid var(--crease);
+    }
+
+    .brand { flex: 0 1 30rem; min-width: 15rem; font-size: 0; line-height: 1; }
+    .brand a { display: block; text-decoration: none; }
+    .brand img { display: block; width: 100%; height: auto; aspect-ratio: 1300 / 155; transform: translateX(-3.8%); }
+
+    .epigraph {
+      flex: 0 0 auto;
+      text-align: right;
+      font-style: italic;
+      font-size: clamp(0.95rem, 0.72rem + 0.6vw, 1.15rem);
+      line-height: 1.35;
+      color: var(--faint);
+      white-space: nowrap;
+    }
+
+    .epigraph .attr { display: block; margin-top: 0.3em; font-style: normal; font-size: var(--t-small); color: var(--dim); }
 
     button {
+      font: inherit;
+      font-size: 0.95rem;
+      line-height: 1.3;
       color: var(--bone);
       background: transparent;
       border: 1px solid var(--crease);
-      padding: 0.7em 1.3em;
-      font-family: var(--mono);
-      font-size: 0.76rem;
-      letter-spacing: 0.12em;
+      border-radius: 0;
+      padding: 0.5em 1.05em;
       cursor: pointer;
       transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
     }
 
-    button:hover { color: var(--wine-bright); border-color: var(--wine-bright); }
-    button:disabled { cursor: wait; opacity: 0.55; }
-    button.linklike { border: 0; padding: 0; color: var(--label); letter-spacing: 0; text-decoration: underline; }
-
-    .page {
-      width: min(100%, 76rem);
-      margin: 0 auto;
-      padding: clamp(1rem, 3vw, 2.5rem) clamp(0.85rem, 2.5vw, 2rem) 4rem;
-    }
+    button:hover:not(:disabled) { border-color: var(--bone-soft); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.linklike { border: 0; padding: 0 0.1em; font-size: inherit; line-height: inherit; text-decoration: underline; text-underline-offset: 0.18em; color: var(--wine-bright); }
 
     .account-bar {
       display: flex;
       flex-wrap: wrap;
-      justify-content: flex-end;
+      justify-content: space-between;
       align-items: center;
-      gap: 0.5rem;
-      min-height: 2.2rem;
-      margin-bottom: 0.8rem;
-      color: var(--label);
-      font-family: var(--mono);
-      font-size: 0.72rem;
+      gap: 0.5rem 1.2rem;
+      margin-bottom: 0.9rem;
+      font-size: var(--t-small);
+      color: var(--dim);
     }
 
-    .account-area { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0.5rem; min-width: 0; }
-    .account-user { display: flex; align-items: center; gap: 0.5rem; min-width: 0; white-space: nowrap; }
-    .account-bar a,
-    .account-bar button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 2.75rem;
-      padding: 0.65rem 0.9rem;
-      border: 1px solid var(--crease);
-      color: var(--label);
-      font: inherit;
-      line-height: 1.1;
-      letter-spacing: 0.08em;
-      text-decoration: none;
-      white-space: nowrap;
-    }
-    .account-bar a:hover,
-    .account-bar button:hover { border-color: var(--wine-bright); color: var(--wine-bright); }
+    .account-area { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0.5rem 1.2rem; min-width: 0; }
+    .account-bar a { color: var(--dim); }
+    .account-bar button { font-size: var(--t-small); padding: 0.35em 0.8em; }
+    .account-user { display: flex; align-items: center; gap: 0.6rem; white-space: nowrap; }
+    .account-name { max-width: 12rem; overflow: hidden; text-overflow: ellipsis; color: var(--bone); }
 
-    .account-name {
-      max-width: 12rem;
-      overflow: hidden;
-      padding-inline: 0.25rem;
-      color: var(--bone);
-      text-overflow: ellipsis;
+    /* ── the wall ───────────────────────────────────────────────────────── */
+    .wall { padding-top: clamp(1.6rem, 4vh, 2.6rem); }
+    .wall-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.4rem 1.5rem; }
+    .wall-head a { font-size: var(--t-small); color: var(--dim); }
+    .wall-note { margin-top: 0.2rem; font-size: var(--t-small); color: var(--dim); }
+    .wall-status { min-height: 1.5em; margin-top: 1rem; font-size: var(--t-small); color: var(--dim); }
+    .wall-status.err { color: var(--wine-bright); }
+
+    .wall-list { margin-top: 1.2rem; }
+    .wall-more { margin-top: 1.6rem; }
+
+    .pin {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      padding: 1.4rem 0 1.6rem;
+      border-top: 1px solid var(--crease-soft);
+      break-inside: avoid;
     }
 
-    .masthead {
-      padding-bottom: clamp(1.7rem, 4vw, 3.5rem);
-      border-bottom: 1px solid var(--crease);
+    .pin:target { border-top-color: var(--wine); }
+    .pin-poem { font-size: 1.05rem; line-height: 1.55; overflow-wrap: break-word; }
+    .pin-poem .line:empty::before { content: "\00a0"; }
+
+    .pin-pages { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .pin-page { min-width: 2.2rem; padding: 0.3em 0.55em; font-size: var(--t-small); }
+    .pin-page[aria-current="page"] { border-color: var(--wine); color: var(--wine-bright); background: var(--wine-wash); }
+
+    .pin-reading > summary {
+      font-size: var(--t-small);
+      font-style: italic;
+      color: var(--dim);
+      cursor: pointer;
+      list-style: none;
+      width: fit-content;
     }
 
-    .brand {
-      display: block;
-      width: min(100%, 32rem);
-      line-height: 1;
-      text-decoration: none;
-    }
+    .pin-reading > summary::-webkit-details-marker { display: none; }
+    .pin-reading > summary:hover { color: var(--wine-bright); }
+    .pin-reading-body { margin-top: 0.5rem; max-width: 40rem; font-size: 1rem; line-height: 1.65; color: var(--reading); text-wrap: pretty; }
 
-    .brand img {
-      display: block;
-      width: 100%;
-      height: auto;
-      aspect-ratio: 1300 / 155;
-      object-fit: contain;
-      object-position: left center;
-    }
-
-    h1 {
-      margin-top: clamp(1.5rem, 3vw, 2.4rem);
-      font-size: clamp(2.2rem, 1.7rem + 2.5vw, 4rem);
-      font-weight: 400;
-      line-height: 1.08;
-    }
-
-    .intro {
-      max-width: 39rem;
-      margin-top: 0.65rem;
-      color: var(--reading);
-      font-size: clamp(1rem, 0.96rem + 0.25vw, 1.16rem);
-    }
-
-    .wall {
-      width: min(100%, 56rem);
-      margin: clamp(2.4rem, 6vw, 4.5rem) auto 0;
-    }
-
-    .wall-note, .wall-status {
-      color: var(--label);
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      text-align: center;
-    }
-
-    .wall-note { margin-bottom: 1.7rem; }
-    .wall-status { min-height: 1.5em; margin: 1.5rem 0; }
-    .wall-status.error { color: var(--wine-bright); }
-    .wall-more { margin-top: 1.4rem; text-align: center; }
-
-    .pin { border-top: 1px solid var(--crease); padding: 1.7rem 0.2rem; }
-    .pin:last-child { border-bottom: 1px solid var(--crease); }
-
-    .pin-poem {
-      white-space: pre-wrap;
-      font-size: clamp(1.05rem, 0.98rem + 0.35vw, 1.2rem);
-      line-height: 1.58;
-      overflow-wrap: break-word;
-    }
-
-    .pin-pages { display: flex; flex-wrap: wrap; gap: 0.38rem; margin-top: 1rem; }
-    .pin-page { min-width: 2.1rem; padding: 0.38rem 0.55rem; font-size: 0.68rem; }
-
-    .pin-page[aria-current="page"] {
-      border-color: var(--wine);
-      color: var(--wine-bright);
-      background: var(--wine-wash);
-    }
+    .w { padding: 0 0.04em; transition: background-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease; }
+    .w.lit { background: var(--wine-wash); box-shadow: 0 2px 0 var(--wine); color: var(--bone); border-radius: 1px; }
+    .quote { border-bottom: 1px dotted var(--wine); cursor: default; transition: color 0.18s ease; }
+    .quote:hover, .quote:focus-visible { color: var(--wine-bright); }
 
     .pin-meta {
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 1rem;
-      margin-top: 0.9rem;
-      color: var(--label);
-      font-family: var(--mono);
-      font-size: 0.72rem;
+      gap: 0.6rem 1rem;
+      font-size: var(--t-small);
+      color: var(--dim);
     }
 
-    .pin-controls, .pin-votes { display: flex; align-items: center; flex-wrap: wrap; gap: 0.48rem; }
-    .pin-vote { min-width: 3.3rem; padding: 0.38rem 0.58rem; font-size: 0.7rem; font-variant-numeric: tabular-nums; }
+    .pin-controls, .pin-votes { display: flex; align-items: center; flex-wrap: wrap; gap: 0.45rem; }
+    .pin-vote { min-width: 3.4rem; padding: 0.3em 0.6em; font-size: var(--t-small); font-variant-numeric: tabular-nums; }
+    .pin-vote[aria-pressed="true"] { border-color: var(--wine); color: var(--wine-bright); background: var(--wine-wash); }
+    .pin-vote-status { flex-basis: 100%; color: var(--wine-bright); }
 
-    .pin-vote[aria-pressed="true"] {
-      border-color: var(--wine);
-      color: var(--wine-bright);
-      background: var(--wine-wash);
+    @media (min-width: 60rem) {
+      .wall-list { column-count: 2; column-gap: 4rem; }
     }
-
-    .pin-vote-status { flex-basis: 100%; color: var(--wine-bright); font-size: 0.66rem; }
-    .pin-reading { margin-top: 0.95rem; }
-
-    .pin-reading > summary {
-      color: var(--label);
-      font-family: var(--mono);
-      font-size: 0.66rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      cursor: pointer;
-      list-style: none;
-    }
-
-    .pin-reading > summary::-webkit-details-marker { display: none; }
-    .pin-reading > summary::before { content: "+ "; }
-    .pin-reading[open] > summary::before { content: "\2013 "; }
-
-    .pin-reading-body {
-      max-width: 42rem;
-      margin-top: 0.65rem;
-      color: var(--reading);
-      font-size: 1rem;
-      font-style: italic;
-      line-height: 1.65;
-    }
-
-    .w { padding: 0 0.04em; transition: background-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease; }
-    .w.lit { color: var(--bone); background: var(--wine-wash); box-shadow: 0 2px 0 var(--wine); border-radius: 1px; }
-    .quote { border-bottom: 1px dotted var(--wine); cursor: default; }
-    .quote:hover, .quote:focus-visible { color: var(--wine-bright); }
 
     footer {
-      margin-top: 3.5rem;
-      color: var(--label);
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      text-align: center;
+      margin-top: clamp(2.5rem, 6vh, 4rem);
+      padding-top: 1rem;
+      border-top: 1px solid var(--crease);
+      font-size: var(--t-small);
+      line-height: 1.7;
+      color: var(--dim);
     }
 
     @media (max-width: 47.99rem) {
-      .account-name { max-width: 7rem; }
+      .masthead { flex-direction: column; align-items: flex-start; gap: 0.9rem; }
+      .brand { flex: none; width: min(100%, 26rem); min-width: 0; }
+      .epigraph { text-align: left; white-space: normal; }
       .pin-meta { align-items: flex-start; }
-      .pin-controls { width: 100%; justify-content: space-between; }
     }
 
     @media (max-width: 30rem) {
-      .account-bar, .account-area { gap: 0.52rem; font-size: 0.66rem; }
-      .account-name { max-width: 5rem; }
-      .account-bar a, .account-bar button { padding-inline: 0.72em; font-size: 0.66rem; }
-      .pin-controls { align-items: stretch; flex-direction: column; }
-      .pin-votes { width: 100%; }
-      .pin-vote { flex: 1; }
+      .pin-controls { width: 100%; justify-content: space-between; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .w, .quote { transition: none; }
     }
   </style>
 </head>
@@ -267,37 +215,42 @@
     </nav>
 
     <header class="masthead">
-      <a class="brand" href="/cadavre" aria-label="Exquisite Corpse game">
-        <img src="/assets/cadavre-title.png" alt="Exquisite Corpse" width="1300" height="155">
-      </a>
-      <h1>The Wall</h1>
-      <p class="intro">Finished corpses shared from the table, gathered across browsers.</p>
+      <h1 class="brand">
+        <a href="/cadavre" aria-label="Exquisite Corpse"><img src="/assets/cadavre-title.png" alt="Exquisite Corpse" width="1300" height="155"></a>
+      </h1>
+      <p class="epigraph">“The exquisite corpse will drink the new wine.”
+        <span class="attr">the game’s first sentence, Paris, 1925</span>
+      </p>
     </header>
 
     <main class="wall" aria-label="The Wall">
-      <p class="wall-note" id="wallNote">shared corpses, across browsers</p>
+      <div class="wall-head">
+        <h2>The wall</h2>
+        <a href="/cadavre">back to the table</a>
+      </div>
+      <p class="wall-note" id="wallNote">every corpse pinned from any table, newest first</p>
       <p class="wall-status" id="wallStatus" role="status" aria-live="polite">loading the wall…</p>
-      <div id="wallList"></div>
+      <div class="wall-list" id="wallList"></div>
       <div class="wall-more" id="wallMore" hidden>
         <button id="loadWallMore" type="button">earlier corpses</button>
       </div>
     </main>
 
-    <footer><a href="/cadavre">return to the table</a></footer>
+    <footer><p>Pins are shared across browsers. A vote is remembered in this browser; the hand that pinned a corpse can unpin it from the same browser.</p></footer>
   </div>
 
   <script src="https://milwrite.github.io/cadavre-exquis/assets/cadavre-core.js"></script>
   <script>
     const API_BASE = "/api/cadavre";
     const WALL_API = `${API_BASE}/wall`;
+
     const LEGACY_WALL_KEY = "cadavreWall";
     const WALL_TOKENS_KEY = "cadavreWallDeleteTokens";
     const WALL_VOTER_TOKEN_KEY = "cadavreWallVoterToken";
     const WALL_VOTES_KEY = "cadavreWallVotes";
     const Core = window.CadavreCore;
-    const byId = (id) => document.getElementById(id);
+    const el = (id) => document.getElementById(id);
 
-    let authUser = null;
     let legacyWall = readLegacyWall();
     let remoteWall = [];
     let wall = [];
@@ -308,6 +261,8 @@
     let wallVotes = readWallVotes();
     const wallViews = new Map();
     const wallVoting = new Set();
+    let scrolledToHash = false;
+    let authUser = null;
 
     async function api(path, options = {}) {
       const response = await fetch(`${API_BASE}${path}`, {
@@ -324,7 +279,7 @@
     }
 
     function renderAccount() {
-      const area = byId("accountArea");
+      const area = el("accountArea");
       area.innerHTML = "";
       if (!authUser) {
         const signIn = document.createElement("a");
@@ -429,6 +384,7 @@
       try { localStorage.setItem(WALL_VOTES_KEY, JSON.stringify(wallVotes)); } catch {}
     }
 
+    /* ── the poem ↔ reading link, as in the parlor ──────────────────────── */
     const normWord = Core.normalizeWord;
     const matchPhrase = Core.matchPhrase;
 
@@ -479,6 +435,7 @@
       if (last < text.length) target.appendChild(document.createTextNode(text.slice(last)));
     }
 
+    /* ── pins ───────────────────────────────────────────────────────────── */
     function wallItemKey(item) {
       return item.id ? `remote:${item.id}` : `local:${item.legacyKey}`;
     }
@@ -501,7 +458,7 @@
     }
 
     function replaceWallItem(item) {
-      const current = Array.from(byId("wallList").children)
+      const current = Array.from(el("wallList").children)
         .find((node) => node.dataset.wallKey === wallItemKey(item));
       if (!current) {
         renderWall();
@@ -595,11 +552,10 @@
       const pin = document.createElement("article");
       pin.className = "pin";
       pin.dataset.wallKey = wallItemKey(item);
+      if (item.id) pin.id = `pin-${item.id}`;
       const poem = document.createElement("div");
       poem.className = "pin-poem";
-      poem.setAttribute("aria-label", pages.length > 1
-        ? `poem page ${view.page + 1} of ${pages.length}`
-        : "poem");
+      poem.setAttribute("aria-label", pages.length > 1 ? `poem page ${view.page + 1} of ${pages.length}` : "poem");
       const tokens = renderPoemWords(poem, pages[view.page]);
       pin.appendChild(poem);
 
@@ -618,6 +574,9 @@
             if (view.page === index) return;
             view.page = index;
             replaceWallItem(item);
+            const replacement = Array.from(el("wallList").children)
+              .find((node) => node.dataset.wallKey === wallItemKey(item));
+            replacement?.querySelectorAll(".pin-page")[index]?.focus();
           });
           pageNav.appendChild(pageButton);
         });
@@ -629,11 +588,14 @@
         reading.className = "pin-reading";
         reading.open = view.readingOpen;
         const summary = document.createElement("summary");
-        summary.textContent = "close reading";
+        summary.textContent = view.readingOpen ? "close reading" : "read the close reading";
         const body = document.createElement("div");
         body.className = "pin-reading-body";
         renderReadingLinked(body, item.analysis, tokens);
-        reading.addEventListener("toggle", () => { view.readingOpen = reading.open; });
+        reading.addEventListener("toggle", () => {
+          view.readingOpen = reading.open;
+          summary.textContent = reading.open ? "close reading" : "read the close reading";
+        });
         reading.append(summary, body);
         pin.appendChild(reading);
       }
@@ -642,7 +604,7 @@
       meta.className = "pin-meta";
       const who = document.createElement("span");
       const when = new Date(item.ts);
-      who.textContent = `— ${item.name} · ${Number.isNaN(when.getTime()) ? "" : when.toLocaleDateString()}`;
+      who.textContent = item.name + (Number.isNaN(when.getTime()) ? "" : ", " + when.toLocaleDateString());
       meta.appendChild(who);
       const controls = document.createElement("div");
       controls.className = "pin-controls";
@@ -694,22 +656,35 @@
     }
 
     function renderWall() {
-      const list = byId("wallList");
+      const list = el("wallList");
+      Array.from(list.children).forEach((pin) => {
+        const details = pin.querySelector(".pin-reading");
+        const view = wallViews.get(pin.dataset.wallKey);
+        if (details && view) view.readingOpen = details.open;
+      });
       list.innerHTML = "";
-      byId("wallNote").textContent = legacyWall.length
-        ? "shared corpses, plus earlier pins kept in this browser"
-        : "shared corpses, across browsers";
-      byId("wallMore").hidden = !wallCursor;
-      if (!wall.length && !wallLoading) byId("wallStatus").textContent = "No corpses have been pinned yet.";
+      el("wallNote").textContent = legacyWall.length
+        ? "every corpse pinned from any table, newest first, plus earlier pins kept in this browser"
+        : "every corpse pinned from any table, newest first";
+      el("wallMore").hidden = !wallCursor;
+      if (!wall.length && !wallLoading) el("wallStatus").textContent = "Nothing is pinned yet. Play a round and pin the poem.";
       wall.forEach((item) => list.appendChild(renderWallItem(item)));
+      // a link from the parlor names one pin; land on it once it exists
+      if (!scrolledToHash && location.hash) {
+        const target = document.getElementById(location.hash.slice(1));
+        if (target) {
+          scrolledToHash = true;
+          target.scrollIntoView({ block: "start" });
+        }
+      }
     }
 
     async function loadWall(cursor = null) {
       if (wallLoading || (cursor && !wallCursor)) return;
       wallLoading = true;
-      byId("loadWallMore").disabled = true;
-      byId("wallStatus").classList.remove("error");
-      byId("wallStatus").textContent = cursor ? "loading earlier corpses…" : "loading the wall…";
+      el("loadWallMore").disabled = true;
+      el("wallStatus").classList.remove("err");
+      el("wallStatus").textContent = cursor ? "loading earlier corpses…" : "loading the wall…";
       try {
         const url = new URL(WALL_API, location.href);
         url.searchParams.set("limit", "40");
@@ -726,18 +701,18 @@
           remoteWall = data.items;
         }
         wallCursor = data.nextCursor || null;
-        byId("wallStatus").textContent = "";
+        el("wallStatus").textContent = "";
       } catch (error) {
-        byId("wallStatus").textContent = error.message || "the shared wall is unavailable";
-        byId("wallStatus").classList.add("error");
+        el("wallStatus").textContent = error.message || "the shared wall is unavailable";
+        el("wallStatus").classList.add("err");
       } finally {
         wallLoading = false;
-        byId("loadWallMore").disabled = false;
+        el("loadWallMore").disabled = false;
         rebuildWall();
       }
     }
 
-    byId("loadWallMore").addEventListener("click", () => loadWall(wallCursor));
+    el("loadWallMore").addEventListener("click", () => loadWall(wallCursor));
     restoreAccount();
     rebuildWall();
     loadWall();

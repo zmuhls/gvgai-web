@@ -38,12 +38,20 @@ test('Cadavre ships the model catalog UI with additive account and poem features
   assert.match(html, /wall\.href = "\/cadavre\/wall"/);
   assert.match(html, /user\.append\(name, signOut\)/);
   assert.match(html, /area\.append\(poems, wall, user\)/);
-  assert.match(html, /minmax\(10\.75rem, 2fr\)/);
-  assert.match(html, /@media \(max-width: 58\.99rem\)/);
+  assert.match(html, /\.table-setting \{ grid-template-columns: repeat\(4, minmax\(0, 1fr\)\); \}/);
+  assert.match(html, /@media \(max-width: 40rem\)/);
+  assert.match(html, /@media \(min-width: 60rem\) \{\s*\.revealed \{[^}]*grid-template-areas: "poem reading" "foot foot";/);
+  assert.match(html, /\.epigraph \{[^}]*white-space: nowrap;/);
+  assert.match(html, /el\("stage"\)\.classList\.add\("is-playing"\)/);
+  assert.match(html, /el\("stage"\)\.classList\.add\("is-revealed"\)/);
   assert.match(html, /OpenRouter;\\s\*Ollama fallback\|Ollama Cloud/);
   assert.doesNotMatch(html, /id="librarySec"|id="libraryList"|function loadLibrary/);
-  assert.doesNotMatch(html, /id="wallSec"|id="wallList"|id="loadWallMore"/);
-  assert.match(html, /location\.href = "\/cadavre\/wall"/);
+  // the table previews the wall, five lines a pin; whole poems and votes stay on /cadavre/wall
+  assert.match(html, /href="\/cadavre\/wall">every pinned corpse<\/a>/);
+  assert.match(html, /const WALL_PREVIEW_LINES = 5;/);
+  assert.match(html, /\/cadavre\/wall#pin-\$\{encodeURIComponent\(item\.id\)\}/);
+  assert.match(html, /setRevealStatus\("pinned to the wall\.", false, \{ href: wallLink\(data\.item\)/);
+  assert.doesNotMatch(html, /id="loadWallMore"|\/vote`|nextWallVote|paginateLines|location\.href = "\/cadavre\/wall"/);
   assert.match(html, /id="exportPdfBtn"/);
   assert.doesNotMatch(html, /exportMdBtn|text\/markdown|save as markdown/i);
   assert.match(html, /\[502, 503, 504\]\.includes/);
@@ -53,9 +61,9 @@ test('Cadavre ships the model catalog UI with additive account and poem features
   assert.ok(fs.statSync(titlePath).size > 100000);
 
   const modelPosition = html.indexOf('id="modelRoute"');
-  const countdownPosition = html.indexOf('id="countdown"');
   const playerPosition = html.indexOf('id="playerCount"');
-  assert.ok(modelPosition < countdownPosition && countdownPosition < playerPosition);
+  const countdownPosition = html.indexOf('id="countdown"');
+  assert.ok(modelPosition < playerPosition && playerPosition < countdownPosition);
 
   for (const match of html.matchAll(/<script(?: [^>]*)?>([\s\S]*?)<\/script>/g)) {
     if (match[1].trim()) assert.doesNotThrow(() => new Function(match[1]));
