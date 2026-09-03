@@ -135,38 +135,27 @@
     .wall-status { min-height: 1.5em; margin-top: 1rem; font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); }
     .wall-status.err { color: var(--wine-bright); }
 
-    .wall-list { margin-top: 1.2rem; }
+    .wall-list { display: grid; gap: 1.4rem; margin-top: 1.6rem; }
     .wall-more { margin-top: 1.6rem; }
 
+    /* ── one card per corpse: the poem on the left, its reading on the right ── */
     .pin {
-      display: flex;
-      flex-direction: column;
-      gap: 0.8rem;
-      padding: 1.4rem 0 1.6rem;
-      border-top: 1px solid var(--crease-soft);
-      break-inside: avoid;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.4rem;
+      padding: clamp(1.2rem, 3vw, 1.8rem) clamp(1.1rem, 3vw, 2rem);
+      border: 1px solid var(--crease);
     }
 
-    .pin:target { border-top-color: var(--wine); }
-    .pin-poem { font-size: 1.05rem; line-height: 1.55; overflow-wrap: break-word; }
+    .pin:target { border-color: var(--wine); }
+    .pin-poem-pane { display: flex; justify-content: center; }
+    .pin-poem { width: fit-content; max-width: 100%; font-size: 1.1rem; line-height: 1.55; overflow-wrap: break-word; }
     .pin-poem .line:empty::before { content: "\00a0"; }
 
-    .pin-pages { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-    .pin-page { min-width: 2.2rem; padding: 0.3em 0.55em; font-size: var(--t-small); }
-    .pin-page[aria-current="page"] { border-color: var(--wine); color: var(--wine-bright); background: var(--wine-wash); }
-
-    .pin-reading > summary {
-      font-family: var(--sans);
-      font-size: 0.8125rem;
-      color: var(--dim);
-      cursor: pointer;
-      list-style: none;
-      width: fit-content;
-    }
-
-    .pin-reading > summary::-webkit-details-marker { display: none; }
-    .pin-reading > summary:hover { color: var(--wine-bright); }
-    .pin-reading-body { margin-top: 0.5rem; max-width: 40rem; font-size: 1rem; line-height: 1.65; color: var(--reading); text-wrap: pretty; }
+    .pin-reading-pane { min-width: 0; }
+    .pin-reading-head { font-size: var(--t-small); font-style: italic; font-weight: 400; color: var(--dim); margin-bottom: 0.45rem; }
+    .pin-reading { font-size: 1rem; line-height: 1.65; color: var(--reading); text-wrap: pretty; }
+    .pin-reading.none { color: var(--faint); font-style: italic; }
 
     .w { padding: 0 0.04em; transition: background-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease; }
     .w.lit { background: var(--wine-wash); box-shadow: 0 2px 0 var(--wine); color: var(--bone); border-radius: 1px; }
@@ -174,23 +163,59 @@
     .quote:hover, .quote:focus-visible { color: var(--wine-bright); }
 
     .pin-meta {
+      grid-column: 1 / -1;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
       gap: 0.6rem 1rem;
-      font-size: var(--t-small);
+      padding-top: 0.9rem;
+      border-top: 1px solid var(--crease-soft);
+      font-family: var(--sans);
+      font-size: 0.8125rem;
       color: var(--dim);
     }
 
-    .pin-controls, .pin-votes { display: flex; align-items: center; flex-wrap: wrap; gap: 0.45rem; }
+    .pin-controls, .pin-votes { display: flex; align-items: center; flex-wrap: wrap; gap: 0.45rem 0.8rem; }
     .pin-vote { min-width: 3.4rem; padding: 0.3em 0.6em; font-size: var(--t-small); font-variant-numeric: tabular-nums; }
     .pin-vote[aria-pressed="true"] { border-color: var(--wine); color: var(--wine-bright); background: var(--wine-wash); }
     .pin-vote-status { flex-basis: 100%; color: var(--wine-bright); }
 
-    @media (min-width: 60rem) {
-      .wall-list { column-count: 2; column-gap: 4rem; }
+    @media (min-width: 56rem) {
+      .pin { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); column-gap: clamp(1.5rem, 4vw, 3rem); align-items: start; }
+      .pin-reading-pane { border-left: 1px solid var(--crease-soft); padding-left: clamp(1.5rem, 4vw, 3rem); }
     }
+
+    /* ── dialogs ────────────────────────────────────────────────────────── */
+    dialog {
+      background: var(--ink);
+      color: var(--bone);
+      border: 1px solid var(--crease);
+      padding: 1.6rem 1.7rem;
+      width: min(24rem, 92vw);
+      margin: auto;
+    }
+
+    dialog::backdrop { background: rgba(0, 0, 0, 0.72); }
+    dialog p { color: var(--bone-soft); margin-bottom: 1rem; }
+    dialog p.status { font-family: var(--sans); font-size: 0.8125rem; color: var(--dim); margin-bottom: 0.8rem; min-height: 1.4em; }
+    dialog p.status.err { color: var(--wine-bright); }
+
+    dialog input {
+      font: inherit;
+      font-size: 1.2rem;
+      color: var(--bone);
+      background: transparent;
+      border: 0;
+      border-bottom: 1px solid var(--crease);
+      border-radius: 0;
+      padding: 0.3em 0.1em;
+      width: 100%;
+      margin-bottom: 1.2rem;
+    }
+
+    dialog input:focus { border-bottom-color: var(--wine); outline: none; }
+    dialog .row { display: flex; justify-content: flex-end; gap: 0.6rem; flex-wrap: wrap; }
 
     footer {
       margin-top: clamp(2.5rem, 6vh, 4rem);
@@ -252,6 +277,16 @@
     <footer><p>Pins are shared across browsers. A vote is remembered in this browser; the hand that pinned a corpse can unpin it from the same browser.</p></footer>
   </div>
 
+  <dialog id="renameDialog">
+    <p>rename this pin</p>
+    <input id="renameName" type="text" maxlength="40" placeholder="your name, or an alias" aria-label="new name" />
+    <p id="renameStatus" class="status" hidden></p>
+    <div class="row">
+      <button id="renameCancel" type="button">cancel</button>
+      <button id="renameConfirm" class="primary" type="button">rename</button>
+    </div>
+  </dialog>
+
   <script src="https://milwrite.github.io/cadavre-exquis/assets/cadavre-core.js"></script>
   <script>
     const API_BASE = "/api/cadavre";
@@ -275,6 +310,7 @@
     const wallViews = new Map();
     const wallVoting = new Set();
     let scrolledToHash = false;
+    const WALL_CAN_RENAME = false;   // the host offers /wall/:id/rename
     let authUser = null;
 
     async function api(path, options = {}) {
@@ -455,7 +491,7 @@
 
     function wallView(item) {
       const key = wallItemKey(item);
-      if (!wallViews.has(key)) wallViews.set(key, { page: 0, readingOpen: false, voteError: "" });
+      if (!wallViews.has(key)) wallViews.set(key, { voteError: "" });
       return wallViews.get(key);
     }
 
@@ -477,8 +513,6 @@
         renderWall();
         return;
       }
-      const details = current.querySelector(".pin-reading");
-      if (details) wallView(item).readingOpen = details.open;
       current.replaceWith(renderWallItem(item));
     }
 
@@ -560,58 +594,38 @@
 
     function renderWallItem(item) {
       const view = wallView(item);
-      const pages = Core.paginateLines(item.poem, 20);
-      view.page = Math.min(Math.max(0, view.page), pages.length - 1);
+      const lines = String(item.poem || "").split(/\r?\n/);
       const pin = document.createElement("article");
       pin.className = "pin";
       pin.dataset.wallKey = wallItemKey(item);
       if (item.id) pin.id = `pin-${item.id}`;
+
+      // the whole poem, never paged, centred in its third of the card
+      const poemPane = document.createElement("div");
+      poemPane.className = "pin-poem-pane";
       const poem = document.createElement("div");
       poem.className = "pin-poem";
-      poem.setAttribute("aria-label", pages.length > 1 ? `poem page ${view.page + 1} of ${pages.length}` : "poem");
-      const tokens = renderPoemWords(poem, pages[view.page]);
-      pin.appendChild(poem);
+      poem.setAttribute("aria-label", "poem");
+      const tokens = renderPoemWords(poem, lines);
+      poemPane.appendChild(poem);
+      pin.appendChild(poemPane);
 
-      if (pages.length > 1) {
-        const pageNav = document.createElement("nav");
-        pageNav.className = "pin-pages";
-        pageNav.setAttribute("aria-label", `poem pages, ${pages.length} total`);
-        pages.forEach((unused, index) => {
-          const pageButton = document.createElement("button");
-          pageButton.type = "button";
-          pageButton.className = "pin-page";
-          pageButton.textContent = String(index + 1);
-          pageButton.setAttribute("aria-label", `page ${index + 1} of ${pages.length}`);
-          if (index === view.page) pageButton.setAttribute("aria-current", "page");
-          pageButton.addEventListener("click", () => {
-            if (view.page === index) return;
-            view.page = index;
-            replaceWallItem(item);
-            const replacement = Array.from(el("wallList").children)
-              .find((node) => node.dataset.wallKey === wallItemKey(item));
-            replacement?.querySelectorAll(".pin-page")[index]?.focus();
-          });
-          pageNav.appendChild(pageButton);
-        });
-        pin.appendChild(pageNav);
-      }
-
+      // its reading beside it, always open; quotes light the poem's words
+      const readingPane = document.createElement("div");
+      readingPane.className = "pin-reading-pane";
+      const head = document.createElement("h3");
+      head.className = "pin-reading-head";
+      head.textContent = "Close reading";
+      const reading = document.createElement("div");
+      reading.className = "pin-reading";
       if (item.analysis) {
-        const reading = document.createElement("details");
-        reading.className = "pin-reading";
-        reading.open = view.readingOpen;
-        const summary = document.createElement("summary");
-        summary.textContent = view.readingOpen ? "close reading" : "read the close reading";
-        const body = document.createElement("div");
-        body.className = "pin-reading-body";
-        renderReadingLinked(body, item.analysis, tokens);
-        reading.addEventListener("toggle", () => {
-          view.readingOpen = reading.open;
-          summary.textContent = reading.open ? "close reading" : "read the close reading";
-        });
-        reading.append(summary, body);
-        pin.appendChild(reading);
+        renderReadingLinked(reading, item.analysis, tokens);
+      } else {
+        reading.classList.add("none");
+        reading.textContent = "No close reading was kept with this corpse.";
       }
+      readingPane.append(head, reading);
+      pin.appendChild(readingPane);
 
       const meta = document.createElement("div");
       meta.className = "pin-meta";
@@ -646,6 +660,15 @@
         controls.appendChild(votes);
       }
 
+      if (WALL_CAN_RENAME && item.remote && wallTokens[item.id]) {
+        const rename = document.createElement("button");
+        rename.type = "button";
+        rename.className = "linklike";
+        rename.textContent = "rename";
+        rename.addEventListener("click", () => openRename(item));
+        controls.appendChild(rename);
+      }
+
       if (item.local || wallTokens[item.id]) {
         const unpin = document.createElement("button");
         unpin.type = "button";
@@ -668,13 +691,63 @@
       return pin;
     }
 
+    /* ── rename: the hand that pinned a corpse may correct its name ─────── */
+    let renaming = null;
+
+    function openRename(item) {
+      renaming = item;
+      el("renameName").value = item.name || "";
+      el("renameStatus").textContent = "";
+      el("renameStatus").hidden = true;
+      el("renameStatus").classList.remove("err");
+      el("renameDialog").showModal();
+      el("renameName").select();
+    }
+
+    async function renameWallItem() {
+      const item = renaming;
+      const status = el("renameStatus");
+      const confirm = el("renameConfirm");
+      const name = el("renameName").value.trim();
+      if (!item || !wallTokens[item.id]) return;
+      if (!name) {
+        status.hidden = false;
+        status.classList.add("err");
+        status.textContent = "give the pin a name";
+        return;
+      }
+      confirm.disabled = true;
+      status.hidden = false;
+      status.classList.remove("err");
+      status.textContent = "renaming…";
+      try {
+        const response = await fetch(`${WALL_API}/${encodeURIComponent(item.id)}/rename`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deleteToken: wallTokens[item.id], name }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "the pin could not be renamed");
+        const index = remoteWall.findIndex((entry) => entry.id === item.id);
+        if (index >= 0) remoteWall[index] = { ...remoteWall[index], name: data.name || name };
+        el("renameDialog").close();
+        rebuildWall();
+      } catch (error) {
+        status.classList.add("err");
+        status.textContent = error.message || "the pin could not be renamed";
+      } finally {
+        confirm.disabled = false;
+      }
+    }
+
+    el("renameCancel").addEventListener("click", () => el("renameDialog").close());
+    el("renameConfirm").addEventListener("click", renameWallItem);
+    el("renameName").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") { event.preventDefault(); renameWallItem(); }
+    });
+
     function renderWall() {
       const list = el("wallList");
-      Array.from(list.children).forEach((pin) => {
-        const details = pin.querySelector(".pin-reading");
-        const view = wallViews.get(pin.dataset.wallKey);
-        if (details && view) view.readingOpen = details.open;
-      });
       list.innerHTML = "";
       el("wallNote").textContent = legacyWall.length
         ? "every corpse pinned from any table, newest first, plus earlier pins kept in this browser"

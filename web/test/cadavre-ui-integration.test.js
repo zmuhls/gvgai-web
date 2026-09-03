@@ -99,8 +99,11 @@ test('Cadavre serves the shared wall on its own page', () => {
   assert.match(html, /id="loadWallMore"/);
   assert.match(html, /\/vote`/);
   assert.match(html, /\/remove`/);
-  assert.match(html, /Core\.paginateLines/);
+  assert.match(html, /pin-poem-pane/);
+  assert.match(html, /pin-reading-pane/);
   assert.match(html, /renderReadingLinked/);
+  assert.match(html, /const WALL_CAN_RENAME = false;/);
+  assert.doesNotMatch(html, /Core\.paginateLines|pin-pages/);
   assert.match(html, /user\.append\(name, signOut\)/);
   assert.match(html, /area\.append\(poems, user\)/);
 
