@@ -222,7 +222,7 @@
    absent) < ?endpoint=…&model=… URL params (this visit only). Credentials
    never travel in URLs, browser storage, or the published source.          */
 const LOCAL_PAGE = ["localhost", "127.0.0.1", ""].includes(location.hostname);
-const REMOTE_API = location.hostname === "inference-arcade.com"
+const REMOTE_API = ["inference-arcade.com", "gvgai.inference-arcade.com"].includes(location.hostname)
   ? "/api/cadavre"
   : "https://inference-arcade.com/api/cadavre";
 const DEFAULTS = LOCAL_PAGE ? {
