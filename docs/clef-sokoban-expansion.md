@@ -87,8 +87,48 @@ Cloudflare confirmed the account's free daily allocation was exhausted with
 HTTP 429. No enterprise account or alternate provider was used to bypass it.
 The [published quota and reset policy](https://developers.cloudflare.com/workers-ai/platform/pricing/)
 requires paid capacity or the next reset before live testing can continue.
-The release does not claim completed multi-game live coverage until those
-remaining cases have actual results.
+These blocked attempts are preserved as historical evidence. They are superseded
+by the completed OpenRouter run below.
+
+## Completed OpenRouter validation
+
+The [updated receipt](clef-openrouter-2026-11-04.json) records the completed 40-case
+matrix through OpenRouter's native Decisions API, with the Cloudflare serving
+provider pinned and provider fallback disabled. The typed questions and simulator
+evidence are unchanged. A dedicated server key has a $5 limit; the personal
+Cloudflare Workers Paid subscription was not activated.
+
+An initial OpenRouter batch exposed the first-level seed bug described below.
+Its 20 completed cases and interrupted requests remain separate from the corrected
+matrix. The corrected run restarted all 40 cases, checked Java's effective seed
+before any paid request, and completed with **27 wins, 3 losses and 10 capped
+runs**. All 5,124 executed decisions matched their typed CLEF responses, with
+zero provider errors. Caps are 300 decisions and are never counted as wins.
+
+| Game | Wins | Losses | Capped |
+| --- | ---: | ---: | ---: |
+| Aliens | 0 | 0 | 4 |
+| Butterflies | 4 | 0 | 0 |
+| Camel Race | 4 | 0 | 0 |
+| Chase | 3 | 1 | 0 |
+| Crossfire | 4 | 0 | 0 |
+| Frogs | 4 | 0 | 0 |
+| Hungry Birds | 2 | 2 | 0 |
+| Labyrinth | 2 | 0 | 2 |
+| Modality | 2 | 0 | 2 |
+| Zelda | 2 | 0 | 2 |
+
+Every row covers original levels 0/4 and verified seeds 7/2026. The separate
+OpenRouter Sokoban regression also won level 0 in 91 decisions, at effective
+seed zero. The earlier 15 Sokoban wins cover five distinct level/seed-zero
+configurations, not 15 distinct seed configurations.
+
+The corrected matrix cost $3.0028. Including the earlier OpenRouter probe,
+Sokoban regression and interrupted batch, spending before production verification
+was $4.5554. No additional credit purchase or subscription was made. The full
+Java runtime compiled 351 sources; 44 forecast checks, 15 Sokoban path replays,
+and the real socket seed regression passed. The web suite passed 486 tests with
+four database-dependent skips; the arcade dry run also passed.
 
 ## Reproduce
 

@@ -1,0 +1,1823 @@
+{
+  "specification": "clef-openrouter-expansion-v1",
+  "date": "2026-11-04 America/New_York",
+  "recordedAt": "2026-11-05T04:06:18.076Z",
+  "revision": "5f9b7bab65e2ac0ff31d72a09dbb23225cdf21a4",
+  "model": "@cf/cloudflare/clef",
+  "openrouterModel": "cloudflare/clef",
+  "servingProvider": "Cloudflare",
+  "transport": "OpenRouter native Decisions API, Cloudflare endpoint pinned, no provider fallback",
+  "historicalReceipt": "clef-expansion-2026-11-04.json",
+  "historicalFailedAttempts": 40,
+  "seedCorrection": {
+    "oldEffectiveSeed": 0,
+    "correctedUniqueConfigurations": 40,
+    "historicalSokobanUniqueConfigurations": 5,
+    "initialInterruptedOpenRouterBatch": "output/clef-openrouter-2026-11-04/matrix",
+    "correctedCases": 40,
+    "verification": "Java startup acknowledgement checked before model creation; independent scripted socket test verifies repeatability and seed diversity"
+  },
+  "correctedMatrixSourceHashes": {
+    "web/lib/clef-client.js": "dbeb2f6d0976a6f7484091dd8fab797f304297e28675d228321baf2ae2d0e9ab",
+    "web/lib/llm-client.js": "e5aa3f546eb9f9ee428367566d6f7e7e4b530fd47fb3664fd1d9ccedbbf12963",
+    "web/lib/game-manager.js": "eeb7e290ff6927cf580370a424e1c45ed0b299e8c00b7b5eed01925b2a4ad6c0",
+    "web/lib/models.js": "7faafdc6f3dec40f31a1ac6862d23804515e667a46fef95ba2203c8119ebb864",
+    "web/lib/clef-connection.js": "f1e02f8aa885421daae31d7b54de6d453030b96d892575b2306d8a8fa797b9aa",
+    "web/lib/clef-game-config.js": "ab8d21c55418f8f0320e093d344fb46cd61b40cdcfb012bc14895a6875bb2f45",
+    "web/lib/state-converter.js": "3dd07422495f7b069c0cef81941fb3e3c81f2513b7991487b9993c5573e4b8e5",
+    "web/lib/grid-renderer.js": "46fd5e0103359d3b3a246d3f572fa633dbe417f45d08fdfc985d96b96b2b6316",
+    "src/tracks/LearningMachine.java": "87b1d18b9fbb812726ed1ec458e21bb6bc67f63cff6b152035699cd72919746f",
+    "src/core/game/SerializableStateObservation.java": "0bdb82bf3bc1c4675aca5065dbfab2b9d8bbe67a292f968ca9bf4a9c81bf229d",
+    "web/scripts/prepare-java-runtime.js": "b72f2db908014e513fac42b867c83bf900e0834eb0bc0453754e0826712511c0",
+    "web/scripts/run-clef-eval.js": "daf722bc4daa6d40104c99208c67a21144a95252ac91f07a0d05fdd3202cfd70",
+    "web/scripts/clef-eval-budget.js": "4f5dc57d4b266e65ddae1bafbbd969f3e9ed55b831baba326b05c6ab6b1085ce",
+    "src/tools/ActionLookahead.java": "bf9363ded2ae7a373252c6dc3ff8d90f62750f73fdea590af86b8e74df2954a6",
+    "src/core/player/LearningPlayer.java": "c4215bdef085e07ce3994bec7362a8fba72185ac2b41bc49a7fb4f09bf705c7a",
+    "src/ontology/Types.java": "a08d06c6de81db848b7ac01d9a9e6413764b71e9962ceda2ee6352cf556c5f26",
+    "src/tools/SokobanSearch.java": "d5e556c4f120eef60b4ce50b17751926a4011810c1713f3bf7889aac1839277f",
+    "src/ontology/avatar/MovingAvatar.java": "9c9bf3e1071548ead19af6d792674a0137fc133815350334e86434866a5a4d5b",
+    "src/core/vgdl/VGDLViewer.java": "68e55a0372780b4eec911a8f8f544f12d06524356b01a7482f1b408439c1ca5a",
+    "src/tracks/singleLearning/utils/SocketComm.java": "7beff3757a469fbc01c43f8c6145c2fb021457f79c246f16c07c0631044af06b",
+    "src/tracks/singleLearning/utils/JavaServer.java": "d939157e596de0ba779e2e85496760e9479b28985d2c24557c8086d6c80a6408",
+    "web/lib/batch-evaluator.js": "56b798f76214c9a653e2c6d4dfb1ad20f39b70034f16aa204c215bfb7154f5f4",
+    "examples/gridphysics/sokoban.txt": "5700e3c72d494b38dac452941c478e479d3915a99556ab9e99c8f405cf1f3dd2",
+    "examples/gridphysics/sokoban_lvl0.txt": "0fe79fabdc624255516c497ed93c68eea0ec2148bd66fe9cd966b30b9eeb5e28",
+    "examples/gridphysics/aliens.txt": "4621087fdac18bb5868ab9be770b4b5c0238abd7aef28c548f7d8ba1e523e37c",
+    "examples/gridphysics/aliens_lvl0.txt": "e6d68e62540cce6c3afad87fd295169624ad028fe22765529ae06ba77ea82223",
+    "examples/gridphysics/aliens_lvl4.txt": "67cc7426b94e1e3f0dfad9468da07df368ad797b3da9d8f16854f111119e5cdf",
+    "examples/gridphysics/butterflies.txt": "f9acec420b4ce53c171aa3da3b71d77a0340afd95f8df49faf63b6233ae17afb",
+    "examples/gridphysics/butterflies_lvl0.txt": "466b53b5984318485ac340d89dfe5b6512cd12c305c43bed31ebf35b2cdd0036",
+    "examples/gridphysics/butterflies_lvl4.txt": "15ea74122bbea35fe57c4effb2797fdcd24c48b5a16bef5ba311dd88fd3afd05",
+    "examples/gridphysics/camelRace.txt": "112f4cdb66a950448e2457ba3423af9cce2b01be558e5acb69580bea86fc2ac6",
+    "examples/gridphysics/camelRace_lvl0.txt": "c97f94468b2ceebba431d28f24cadfffbc29e84c38034525cd7a50d26f9cbe92",
+    "examples/gridphysics/camelRace_lvl4.txt": "ade6a351bce1f5c5b8129ec1d136a5ab3c9c7a038ef80450f4622ee0a1bc7d5f",
+    "examples/gridphysics/chase.txt": "abef1f8fafeff20d59d43e06fc97c27c3d2163b5766bde1155706ba641697d57",
+    "examples/gridphysics/chase_lvl0.txt": "5526e1432cc167fd4ee89891396303d9cafc61000ce4ad6bc3b907e74f1395f7",
+    "examples/gridphysics/chase_lvl4.txt": "bcd431f4683fdc79be12259ff74e14b3ae2f07720c861e87f4a01eb6de0a568d",
+    "examples/gridphysics/crossfire.txt": "c636c0f6de95abec2e2b1dd99c61786a09d796d7d8693b2b7497b7c1ea668d42",
+    "examples/gridphysics/crossfire_lvl0.txt": "bbe923b06fd7a127e4341fbf0946766340177aa36a12963fde7ba6130cd896e0",
+    "examples/gridphysics/crossfire_lvl4.txt": "b4ee25c3fd2727b40dd48894d897d89902f3827accdf670250bf0f6662fcdee3",
+    "examples/gridphysics/frogs.txt": "99c76cdb11c45a9a2b79d72df16cd5fbb815f36966777c792ab5a6ffe8d673c9",
+    "examples/gridphysics/frogs_lvl0.txt": "25d0b975cddd251da75e3c5f4e3fb0fc5cb127bdf84a9547bff3a86bc0a09923",
+    "examples/gridphysics/frogs_lvl4.txt": "a7c9abbe908b7449716242b276389c373dd2616c006f6a802db4d6eb1499e009",
+    "examples/gridphysics/hungrybirds.txt": "b27b230643579144f901a89ae175f8a994655c92a2d235146cc43e48866f63b4",
+    "examples/gridphysics/hungrybirds_lvl0.txt": "bd3ca702252b901af1a6b0e5719cfb4f9053106205643fb5ff4096dbcd2ad805",
+    "examples/gridphysics/hungrybirds_lvl4.txt": "b54a0f702396166e8ddef232507668f547165a7c6645aa7b1dcb54fded4741a5",
+    "examples/gridphysics/labyrinth.txt": "fc62c100acd49fc2e2286ba1b494787eb511a54ddffcc1f08e7fb6ee80ab4849",
+    "examples/gridphysics/labyrinth_lvl0.txt": "5d72567d44a07afa499181b6b5039d41a9502b9ae72f33708d3bca9492e28883",
+    "examples/gridphysics/modality.txt": "42833a0c41706fbf6a32316a8514d722ea4f3bb303aff77b77021df70a2f2314",
+    "examples/gridphysics/modality_lvl0.txt": "0ab3da525c3cd889c77518fa4f820e5aa91e17a811c340eeeeb824b8f7790189",
+    "examples/gridphysics/labyrinth_lvl4.txt": "aee140fcddabfff03094f1eb72538f439e444df27ab958e7079d11bef3aa53ba",
+    "examples/gridphysics/modality_lvl4.txt": "aa71d37b3548059a209998af028a27eb06f553b3e85621677bdd78187c55211f",
+    "examples/gridphysics/zelda.txt": "6a81daf8a34542e2ced3e0685a086ed5e587a8fed8f8b664d665adbf0b39b996",
+    "examples/gridphysics/zelda_lvl4.txt": "c05d7cb1c4d61af95242945301471851b0a1c43ad23da16e0c6313766838a121",
+    "examples/gridphysics/zelda_lvl0.txt": "9e0098f65224465a4d602cce0425e681e3f5ed2b533d7f748e8c9885e5d27998"
+  },
+  "originalGameHashes": {
+    "examples/gridphysics/sokoban.txt": "5700e3c72d494b38dac452941c478e479d3915a99556ab9e99c8f405cf1f3dd2",
+    "examples/gridphysics/sokoban_lvl0.txt": "0fe79fabdc624255516c497ed93c68eea0ec2148bd66fe9cd966b30b9eeb5e28",
+    "examples/gridphysics/aliens.txt": "4621087fdac18bb5868ab9be770b4b5c0238abd7aef28c548f7d8ba1e523e37c",
+    "examples/gridphysics/aliens_lvl0.txt": "e6d68e62540cce6c3afad87fd295169624ad028fe22765529ae06ba77ea82223",
+    "examples/gridphysics/sokoban_lvl1.txt": "c6eb5a835513cf56c81429785fd0d7afc4c3163b1ef27d58b69ed0952ba9c29f",
+    "examples/gridphysics/sokoban_lvl2.txt": "446a795be499c6dc11806788763c32b524c4353c021e9d5ca5e9230031a0cbb1",
+    "examples/gridphysics/sokoban_lvl3.txt": "834e421d3785fcdbc8d9096953fe91cfc8c3fd3a61843badc00a3bb7c1c82432",
+    "examples/gridphysics/sokoban_lvl4.txt": "4dbf8febd16fef69e21851ad1861fd2874242270fe84176ca3d250f18bdb4108",
+    "examples/gridphysics/aliens_lvl4.txt": "67cc7426b94e1e3f0dfad9468da07df368ad797b3da9d8f16854f111119e5cdf",
+    "examples/gridphysics/butterflies.txt": "f9acec420b4ce53c171aa3da3b71d77a0340afd95f8df49faf63b6233ae17afb",
+    "examples/gridphysics/butterflies_lvl0.txt": "466b53b5984318485ac340d89dfe5b6512cd12c305c43bed31ebf35b2cdd0036",
+    "examples/gridphysics/butterflies_lvl4.txt": "15ea74122bbea35fe57c4effb2797fdcd24c48b5a16bef5ba311dd88fd3afd05",
+    "examples/gridphysics/camelRace.txt": "112f4cdb66a950448e2457ba3423af9cce2b01be558e5acb69580bea86fc2ac6",
+    "examples/gridphysics/camelRace_lvl0.txt": "c97f94468b2ceebba431d28f24cadfffbc29e84c38034525cd7a50d26f9cbe92",
+    "examples/gridphysics/camelRace_lvl4.txt": "ade6a351bce1f5c5b8129ec1d136a5ab3c9c7a038ef80450f4622ee0a1bc7d5f",
+    "examples/gridphysics/chase.txt": "abef1f8fafeff20d59d43e06fc97c27c3d2163b5766bde1155706ba641697d57",
+    "examples/gridphysics/chase_lvl0.txt": "5526e1432cc167fd4ee89891396303d9cafc61000ce4ad6bc3b907e74f1395f7",
+    "examples/gridphysics/chase_lvl4.txt": "bcd431f4683fdc79be12259ff74e14b3ae2f07720c861e87f4a01eb6de0a568d",
+    "examples/gridphysics/crossfire.txt": "c636c0f6de95abec2e2b1dd99c61786a09d796d7d8693b2b7497b7c1ea668d42",
+    "examples/gridphysics/crossfire_lvl0.txt": "bbe923b06fd7a127e4341fbf0946766340177aa36a12963fde7ba6130cd896e0",
+    "examples/gridphysics/crossfire_lvl4.txt": "b4ee25c3fd2727b40dd48894d897d89902f3827accdf670250bf0f6662fcdee3",
+    "examples/gridphysics/frogs.txt": "99c76cdb11c45a9a2b79d72df16cd5fbb815f36966777c792ab5a6ffe8d673c9",
+    "examples/gridphysics/frogs_lvl0.txt": "25d0b975cddd251da75e3c5f4e3fb0fc5cb127bdf84a9547bff3a86bc0a09923",
+    "examples/gridphysics/frogs_lvl4.txt": "a7c9abbe908b7449716242b276389c373dd2616c006f6a802db4d6eb1499e009",
+    "examples/gridphysics/hungrybirds.txt": "b27b230643579144f901a89ae175f8a994655c92a2d235146cc43e48866f63b4",
+    "examples/gridphysics/hungrybirds_lvl0.txt": "bd3ca702252b901af1a6b0e5719cfb4f9053106205643fb5ff4096dbcd2ad805",
+    "examples/gridphysics/hungrybirds_lvl4.txt": "b54a0f702396166e8ddef232507668f547165a7c6645aa7b1dcb54fded4741a5",
+    "examples/gridphysics/labyrinth.txt": "fc62c100acd49fc2e2286ba1b494787eb511a54ddffcc1f08e7fb6ee80ab4849",
+    "examples/gridphysics/labyrinth_lvl0.txt": "5d72567d44a07afa499181b6b5039d41a9502b9ae72f33708d3bca9492e28883",
+    "examples/gridphysics/labyrinth_lvl4.txt": "aee140fcddabfff03094f1eb72538f439e444df27ab958e7079d11bef3aa53ba",
+    "examples/gridphysics/modality.txt": "42833a0c41706fbf6a32316a8514d722ea4f3bb303aff77b77021df70a2f2314",
+    "examples/gridphysics/modality_lvl0.txt": "0ab3da525c3cd889c77518fa4f820e5aa91e17a811c340eeeeb824b8f7790189",
+    "examples/gridphysics/modality_lvl4.txt": "aa71d37b3548059a209998af028a27eb06f553b3e85621677bdd78187c55211f",
+    "examples/gridphysics/zelda.txt": "6a81daf8a34542e2ced3e0685a086ed5e587a8fed8f8b664d665adbf0b39b996",
+    "examples/gridphysics/zelda_lvl0.txt": "9e0098f65224465a4d602cce0425e681e3f5ed2b533d7f748e8c9885e5d27998",
+    "examples/gridphysics/zelda_lvl4.txt": "c05d7cb1c4d61af95242945301471851b0a1c43ad23da16e0c6313766838a121"
+  },
+  "results": [
+    {
+      "gameId": 87,
+      "level": 0,
+      "seed": 0,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level0-seed7/summary.json",
+      "score": 4,
+      "decisions": 91,
+      "apiErrors": 0,
+      "inputTokens": 354055,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 57755,
+      "latencyMs": {
+        "p50": 564,
+        "p95": 957
+      },
+      "requestedSeed": 7,
+      "effectiveSeed": 0,
+      "seedVerified": false,
+      "transport": "cloudflare",
+      "receiptRoot": "output/clef-expansion-2026-11-04/matrix"
+    },
+    {
+      "gameId": 87,
+      "level": 0,
+      "seed": 0,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level0-seed42/summary.json",
+      "score": 4,
+      "decisions": 91,
+      "apiErrors": 0,
+      "inputTokens": 354055,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 58628,
+      "latencyMs": {
+        "p50": 575,
+        "p95": 936
+      },
+      "requestedSeed": 42,
+      "effectiveSeed": 0,
+      "seedVerified": false,
+      "transport": "cloudflare",
+      "receiptRoot": "output/clef-expansion-2026-11-04/matrix"
+    },
+    {
+      "gameId": 87,
+      "level": 0,
+      "seed": 0,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level0-seed2026/summary.json",
+      "score": 4,
+      "decisions": 91,
+      "apiErrors": 0,
+      "inputTokens": 354055,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 58822,
+      "latencyMs": {
+        "p50": 590,
+        "p95": 995
+      },
+      "requestedSeed": 2026,
+      "effectiveSeed": 0,
+      "seedVerified": false,
+      "transport": "cloudflare",
+      "receiptRoot": "output/clef-expansion-2026-11-04/matrix"
+    },
+    {
+      "gameId": 87,
+      "level": 1,
+      "seed": 0,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level1-seed7/summary.json",
+      "score": 3,
+      "decisions": 31,
+      "apiErrors": 0,
+      "inputTokens": 91598,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 16585,
+      "latencyMs": {
+        "p50": 516,
+        "p95": 826
+      },
+      "requestedSeed": 7,
+      "effectiveSeed": 0,
+      "seedVerified": false,
+      "transport": "cloudflare",
+      "receiptRoot": "output/clef-expansion-2026-11-04/matrix"
+    },
+    {
+      "gameId": 87,
+      "level": 1,
+      "seed": 0,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level1-seed42/summary.json",
+      "score": 3,
+      "decisions": 31,
+      "apiErrors": 0,
+      "inputTokens": 91598,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 16573,
+      "latencyMs": {
+        "p50": 511,
+        "p95": 764
+      },
+      "requestedSeed": 42,
+      "effectiveSeed": 0,
+      "seedVerified": false,
+      "transport": "cloudflare",
+      "receiptRoot": "output/clef-expansion-2026-11-04/matrix"
+    },
+    {
+      "gameId": 87,
+      "level": 1,
+      "seed": 0,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level1-seed2026/summary.json",
+      "score": 3,
+      "decisions": 31,
+      "apiErrors": 0,
+      "inputTokens": 91598,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 17687,
+      "latencyMs": {
+        "p50": 516,
+        "p95": 871
+      },
+      "requestedSeed": 2026,
+      "effectiveSeed": 0,
+      "seedVerified": false,
+      "transport": "cloudflare",
+      "receiptRoot": "output/clef-expansion-2026-11-04/matrix"
+    },
+    {
+      "gameId": 87,
+      "level": 2,
+      "seed": 0,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level2-seed7/summary.json",
+      "score": 3,
+      "decisions": 26,
+      "apiErrors": 0,
+      "inputTokens": 74981,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 13920,
+      "latencyMs": {
+        "p50": 518,
+        "p95": 670
+      },
+      "requestedSeed": 7,
+      "effectiveSeed": 0,
+      "seedVerified": false,
+      "transport": "cloudflare",
+      "receiptRoot": "output/clef-expansion-2026-11-04/matrix"
+    },
+    {
+      "gameId": 87,
+      "level": 2,
+      "seed": 0,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level2-seed42/summary.json",
+      "score": 3,
+      "decisions": 26,
+      "apiErrors": 0,
+      "inputTokens": 74981,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 13938,
+      "latencyMs": {
+        "p50": 507,
+        "p95": 715
+      },
+      "requestedSeed": 42,
+      "effectiveSeed": 0,
+      "seedVerified": false,
+      "transport": "cloudflare",
+      "receiptRoot": "output/clef-expansion-2026-11-04/matrix"
+    },
+    {
+      "gameId": 87,
+      "level": 2,
+      "seed": 0,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level2-seed2026/summary.json",
+      "score": 3,
+      "decisions": 26,
+      "apiErrors": 0,
+      "inputTokens": 74981,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 15430,
+      "latencyMs": {
+        "p50": 521,
+        "p95": 851
+      },
+      "requestedSeed": 2026,
+      "effectiveSeed": 0,
+      "seedVerified": false,
+      "transport": "cloudflare",
+      "receiptRoot": "output/clef-expansion-2026-11-04/matrix"
+    },
+    {
+      "gameId": 87,
+      "level": 3,
+      "seed": 0,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level3-seed7/summary.json",
+      "score": 3,
+      "decisions": 31,
+      "apiErrors": 0,
+      "inputTokens": 90103,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 15849,
+      "latencyMs": {
+        "p50": 477,
+        "p95": 738
+      },
+      "requestedSeed": 7,
+      "effectiveSeed": 0,
+      "seedVerified": false,
+      "transport": "cloudflare",
+      "receiptRoot": "output/clef-expansion-2026-11-04/matrix"
+    },
+    {
+      "gameId": 87,
+      "level": 3,
+      "seed": 0,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level3-seed42/summary.json",
+      "score": 3,
+      "decisions": 31,
+      "apiErrors": 0,
+      "inputTokens": 90103,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 18052,
+      "latencyMs": {
+        "p50": 538,
+        "p95": 812
+      },
+      "requestedSeed": 42,
+      "effectiveSeed": 0,
+      "seedVerified": false,
+      "transport": "cloudflare",
+      "receiptRoot": "output/clef-expansion-2026-11-04/matrix"
+    },
+    {
+      "gameId": 87,
+      "level": 3,
+      "seed": 0,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level3-seed2026/summary.json",
+      "score": 3,
+      "decisions": 31,
+      "apiErrors": 0,
+      "inputTokens": 90103,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 16874,
+      "latencyMs": {
+        "p50": 519,
+        "p95": 806
+      },
+      "requestedSeed": 2026,
+      "effectiveSeed": 0,
+      "seedVerified": false,
+      "transport": "cloudflare",
+      "receiptRoot": "output/clef-expansion-2026-11-04/matrix"
+    },
+    {
+      "gameId": 87,
+      "level": 4,
+      "seed": 0,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level4-seed7/summary.json",
+      "score": 2,
+      "decisions": 8,
+      "apiErrors": 0,
+      "inputTokens": 19219,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 4600,
+      "latencyMs": {
+        "p50": 445,
+        "p95": 941
+      },
+      "requestedSeed": 7,
+      "effectiveSeed": 0,
+      "seedVerified": false,
+      "transport": "cloudflare",
+      "receiptRoot": "output/clef-expansion-2026-11-04/matrix"
+    },
+    {
+      "gameId": 87,
+      "level": 4,
+      "seed": 0,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level4-seed42/summary.json",
+      "score": 2,
+      "decisions": 8,
+      "apiErrors": 0,
+      "inputTokens": 19219,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 4152,
+      "latencyMs": {
+        "p50": 416,
+        "p95": 789
+      },
+      "requestedSeed": 42,
+      "effectiveSeed": 0,
+      "seedVerified": false,
+      "transport": "cloudflare",
+      "receiptRoot": "output/clef-expansion-2026-11-04/matrix"
+    },
+    {
+      "gameId": 87,
+      "level": 4,
+      "seed": 0,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level4-seed2026/summary.json",
+      "score": 2,
+      "decisions": 8,
+      "apiErrors": 0,
+      "inputTokens": 19219,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 5163,
+      "latencyMs": {
+        "p50": 516,
+        "p95": 1061
+      },
+      "requestedSeed": 2026,
+      "effectiveSeed": 0,
+      "seedVerified": false,
+      "transport": "cloudflare",
+      "receiptRoot": "output/clef-expansion-2026-11-04/matrix"
+    },
+    {
+      "gameId": 0,
+      "level": 4,
+      "seed": 7,
+      "outcome": "capped",
+      "exitCode": 0,
+      "receipt": "game0-level4-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 62,
+      "decisions": 300,
+      "apiErrors": 0,
+      "inputTokens": 706383,
+      "actionIntegrity": true,
+      "endedBy": "decision-cap",
+      "reportedCostUsd": 0.16953191999999995,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 176734,
+      "latencyMs": {
+        "p50": 388,
+        "p95": 672
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 0,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "capped",
+      "exitCode": 0,
+      "receipt": "game0-level0-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 69,
+      "decisions": 300,
+      "apiErrors": 0,
+      "inputTokens": 705338,
+      "actionIntegrity": true,
+      "endedBy": "decision-cap",
+      "reportedCostUsd": 0.16928111999999998,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 178582,
+      "latencyMs": {
+        "p50": 400,
+        "p95": 672
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 0,
+      "level": 0,
+      "seed": 7,
+      "outcome": "capped",
+      "exitCode": 0,
+      "receipt": "game0-level0-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 67,
+      "decisions": 300,
+      "apiErrors": 0,
+      "inputTokens": 705310,
+      "actionIntegrity": true,
+      "endedBy": "decision-cap",
+      "reportedCostUsd": 0.1692744000000001,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 184240,
+      "latencyMs": {
+        "p50": 400,
+        "p95": 759
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 13,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game13-level0-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 16,
+      "decisions": 89,
+      "apiErrors": 0,
+      "inputTokens": 220256,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.052861440000000016,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 68727,
+      "latencyMs": {
+        "p50": 386,
+        "p95": 756
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 13,
+      "level": 4,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game13-level4-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 14,
+      "decisions": 26,
+      "apiErrors": 0,
+      "inputTokens": 62790,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.0150696,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 21034,
+      "latencyMs": {
+        "p50": 416,
+        "p95": 578
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 13,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game13-level4-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 14,
+      "decisions": 74,
+      "apiErrors": 0,
+      "inputTokens": 181991,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.04367784000000002,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 53271,
+      "latencyMs": {
+        "p50": 399,
+        "p95": 550
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 13,
+      "level": 0,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game13-level0-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 62,
+      "decisions": 191,
+      "apiErrors": 0,
+      "inputTokens": 480175,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.11524199999999996,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 154703,
+      "latencyMs": {
+        "p50": 409,
+        "p95": 703
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 0,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "capped",
+      "exitCode": 0,
+      "receipt": "game0-level4-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 67,
+      "decisions": 300,
+      "apiErrors": 0,
+      "inputTokens": 703668,
+      "actionIntegrity": true,
+      "endedBy": "decision-cap",
+      "reportedCostUsd": 0.16888031999999997,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 177916,
+      "latencyMs": {
+        "p50": 394,
+        "p95": 653
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 15,
+      "level": 0,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game15-level0-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 1,
+      "decisions": 45,
+      "apiErrors": 0,
+      "inputTokens": 126189,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.030285359999999997,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 38133,
+      "latencyMs": {
+        "p50": 432,
+        "p95": 706
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 15,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game15-level0-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 1,
+      "decisions": 45,
+      "apiErrors": 0,
+      "inputTokens": 126371,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.030329040000000005,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 37487,
+      "latencyMs": {
+        "p50": 434,
+        "p95": 768
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 15,
+      "level": 4,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game15-level4-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 1,
+      "decisions": 49,
+      "apiErrors": 0,
+      "inputTokens": 138963,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.03335112,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 38840,
+      "latencyMs": {
+        "p50": 410,
+        "p95": 657
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 15,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game15-level4-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 1,
+      "decisions": 49,
+      "apiErrors": 0,
+      "inputTokens": 138963,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.03335112,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 39645,
+      "latencyMs": {
+        "p50": 460,
+        "p95": 702
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 18,
+      "level": 0,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game18-level0-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 7,
+      "decisions": 142,
+      "apiErrors": 0,
+      "inputTokens": 354662,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.08511887999999998,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 92908,
+      "latencyMs": {
+        "p50": 384,
+        "p95": 598
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 18,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game18-level0-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 5,
+      "decisions": 148,
+      "apiErrors": 0,
+      "inputTokens": 362779,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.08706695999999997,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 99942,
+      "latencyMs": {
+        "p50": 392,
+        "p95": 563
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 18,
+      "level": 4,
+      "seed": 7,
+      "outcome": "loss",
+      "exitCode": 0,
+      "receipt": "game18-level4-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 6,
+      "decisions": 172,
+      "apiErrors": 0,
+      "inputTokens": 397097,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.09530327999999992,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 109881,
+      "latencyMs": {
+        "p50": 377,
+        "p95": 600
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 26,
+      "level": 0,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game26-level0-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 5,
+      "decisions": 38,
+      "apiErrors": 0,
+      "inputTokens": 96670,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.02320079999999999,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 29926,
+      "latencyMs": {
+        "p50": 394,
+        "p95": 576
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 26,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game26-level0-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 5,
+      "decisions": 38,
+      "apiErrors": 0,
+      "inputTokens": 96947,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.023267279999999998,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 30185,
+      "latencyMs": {
+        "p50": 374,
+        "p95": 606
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 26,
+      "level": 4,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game26-level4-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 5,
+      "decisions": 36,
+      "apiErrors": 0,
+      "inputTokens": 92423,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.022181520000000003,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 29884,
+      "latencyMs": {
+        "p50": 409,
+        "p95": 690
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 18,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game18-level4-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 11,
+      "decisions": 180,
+      "apiErrors": 0,
+      "inputTokens": 426697,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.10240728,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 118898,
+      "latencyMs": {
+        "p50": 364,
+        "p95": 558
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 26,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game26-level4-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 5,
+      "decisions": 46,
+      "apiErrors": 0,
+      "inputTokens": 118151,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.028356239999999994,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 39717,
+      "latencyMs": {
+        "p50": 424,
+        "p95": 608
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 44,
+      "level": 0,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game44-level0-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 1,
+      "decisions": 81,
+      "apiErrors": 0,
+      "inputTokens": 214198,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.05140752,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 65867,
+      "latencyMs": {
+        "p50": 387,
+        "p95": 713
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 44,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game44-level0-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 1,
+      "decisions": 98,
+      "apiErrors": 0,
+      "inputTokens": 259188,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.06220511999999999,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 81470,
+      "latencyMs": {
+        "p50": 405,
+        "p95": 570
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 44,
+      "level": 4,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game44-level4-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 1,
+      "decisions": 106,
+      "apiErrors": 0,
+      "inputTokens": 285324,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.06847776,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 83660,
+      "latencyMs": {
+        "p50": 406,
+        "p95": 646
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 44,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game44-level4-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 1,
+      "decisions": 84,
+      "apiErrors": 0,
+      "inputTokens": 223414,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.05361936000000001,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 64354,
+      "latencyMs": {
+        "p50": 396,
+        "p95": 607
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 50,
+      "level": 0,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game50-level0-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 100,
+      "decisions": 60,
+      "apiErrors": 0,
+      "inputTokens": 148680,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.035683200000000005,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 33283,
+      "latencyMs": {
+        "p50": 419,
+        "p95": 703
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 50,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game50-level0-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 100,
+      "decisions": 60,
+      "apiErrors": 0,
+      "inputTokens": 148680,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.035683200000000005,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 29957,
+      "latencyMs": {
+        "p50": 401,
+        "p95": 656
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 50,
+      "level": 4,
+      "seed": 7,
+      "outcome": "loss",
+      "exitCode": 0,
+      "receipt": "game50-level4-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 0,
+      "decisions": 61,
+      "apiErrors": 0,
+      "inputTokens": 154165,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.036999600000000014,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 31294,
+      "latencyMs": {
+        "p50": 409,
+        "p95": 637
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 58,
+      "level": 0,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game58-level0-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 1,
+      "decisions": 36,
+      "apiErrors": 0,
+      "inputTokens": 85964,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.020631360000000005,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 18399,
+      "latencyMs": {
+        "p50": 398,
+        "p95": 621
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 50,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "loss",
+      "exitCode": 0,
+      "receipt": "game50-level4-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 0,
+      "decisions": 61,
+      "apiErrors": 0,
+      "inputTokens": 154165,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.036999600000000014,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 28454,
+      "latencyMs": {
+        "p50": 383,
+        "p95": 543
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 58,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game58-level0-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 1,
+      "decisions": 36,
+      "apiErrors": 0,
+      "inputTokens": 85964,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.020631360000000005,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 17500,
+      "latencyMs": {
+        "p50": 393,
+        "p95": 583
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 66,
+      "level": 0,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game66-level0-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 1,
+      "decisions": 6,
+      "apiErrors": 0,
+      "inputTokens": 13141,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.0031538399999999998,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 2868,
+      "latencyMs": {
+        "p50": 390,
+        "p95": 664
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 66,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game66-level0-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 1,
+      "decisions": 6,
+      "apiErrors": 0,
+      "inputTokens": 13141,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.0031538399999999998,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 3341,
+      "latencyMs": {
+        "p50": 452,
+        "p95": 772
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 58,
+      "level": 4,
+      "seed": 7,
+      "outcome": "capped",
+      "exitCode": 0,
+      "receipt": "game58-level4-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 0,
+      "decisions": 300,
+      "apiErrors": 0,
+      "inputTokens": 686259,
+      "actionIntegrity": true,
+      "endedBy": "decision-cap",
+      "reportedCostUsd": 0.1647021599999999,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 133839,
+      "latencyMs": {
+        "p50": 384,
+        "p95": 605
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 58,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "capped",
+      "exitCode": 0,
+      "receipt": "game58-level4-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 0,
+      "decisions": 300,
+      "apiErrors": 0,
+      "inputTokens": 686259,
+      "actionIntegrity": true,
+      "endedBy": "decision-cap",
+      "reportedCostUsd": 0.1647021599999999,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 135761,
+      "latencyMs": {
+        "p50": 383,
+        "p95": 644
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 66,
+      "level": 4,
+      "seed": 7,
+      "outcome": "capped",
+      "exitCode": 0,
+      "receipt": "game66-level4-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 0,
+      "decisions": 300,
+      "apiErrors": 0,
+      "inputTokens": 692818,
+      "actionIntegrity": true,
+      "endedBy": "decision-cap",
+      "reportedCostUsd": 0.16627631999999976,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 129467,
+      "latencyMs": {
+        "p50": 385,
+        "p95": 642
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 66,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "capped",
+      "exitCode": 0,
+      "receipt": "game66-level4-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 0,
+      "decisions": 300,
+      "apiErrors": 0,
+      "inputTokens": 692818,
+      "actionIntegrity": true,
+      "endedBy": "decision-cap",
+      "reportedCostUsd": 0.16627631999999976,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 138362,
+      "latencyMs": {
+        "p50": 427,
+        "p95": 681
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 108,
+      "level": 4,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game108-level4-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 4,
+      "decisions": 32,
+      "apiErrors": 0,
+      "inputTokens": 88857,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.021325679999999996,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 22520,
+      "latencyMs": {
+        "p50": 494,
+        "p95": 974
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 108,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game108-level4-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 4,
+      "decisions": 29,
+      "apiErrors": 0,
+      "inputTokens": 80514,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "reportedCostUsd": 0.01932336,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 20903,
+      "latencyMs": {
+        "p50": 508,
+        "p95": 843
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 108,
+      "level": 0,
+      "seed": 7,
+      "outcome": "capped",
+      "exitCode": 0,
+      "receipt": "game108-level0-seed7/summary.json",
+      "effectiveSeed": 7,
+      "seedVerified": true,
+      "score": 2,
+      "decisions": 300,
+      "apiErrors": 0,
+      "inputTokens": 777256,
+      "actionIntegrity": true,
+      "endedBy": "decision-cap",
+      "reportedCostUsd": 0.18654143999999911,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 195419,
+      "latencyMs": {
+        "p50": 466,
+        "p95": 674
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    },
+    {
+      "gameId": 108,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "capped",
+      "exitCode": 0,
+      "receipt": "game108-level0-seed2026/summary.json",
+      "effectiveSeed": 2026,
+      "seedVerified": true,
+      "score": 4,
+      "decisions": 300,
+      "apiErrors": 0,
+      "inputTokens": 778884,
+      "actionIntegrity": true,
+      "endedBy": "decision-cap",
+      "reportedCostUsd": 0.1869321599999993,
+      "servingProviders": [
+        "Cloudflare"
+      ],
+      "elapsedMs": 193985,
+      "latencyMs": {
+        "p50": 450,
+        "p95": 697
+      },
+      "transport": "openrouter",
+      "receiptRoot": "output/clef-openrouter-2026-11-04/matrix-verified-seeds"
+    }
+  ],
+  "totals": {
+    "decisions": 5685,
+    "inputTokens": 14401380,
+    "win": 42,
+    "capped": 10,
+    "loss": 3
+  },
+  "byGame": [
+    {
+      "gameId": 87,
+      "cases": 15,
+      "win": 15
+    },
+    {
+      "gameId": 0,
+      "cases": 4,
+      "capped": 4
+    },
+    {
+      "gameId": 13,
+      "cases": 4,
+      "win": 4
+    },
+    {
+      "gameId": 15,
+      "cases": 4,
+      "win": 4
+    },
+    {
+      "gameId": 18,
+      "cases": 4,
+      "win": 3,
+      "loss": 1
+    },
+    {
+      "gameId": 26,
+      "cases": 4,
+      "win": 4
+    },
+    {
+      "gameId": 44,
+      "cases": 4,
+      "win": 4
+    },
+    {
+      "gameId": 50,
+      "cases": 4,
+      "win": 2,
+      "loss": 2
+    },
+    {
+      "gameId": 58,
+      "cases": 4,
+      "win": 2,
+      "capped": 2
+    },
+    {
+      "gameId": 66,
+      "cases": 4,
+      "win": 2,
+      "capped": 2
+    },
+    {
+      "gameId": 108,
+      "cases": 4,
+      "win": 2,
+      "capped": 2
+    }
+  ],
+  "integrationPassed": true,
+  "sokobanTransportRegression": {
+    "runId": "sokoban-level0-sync-seed7",
+    "gameId": 87,
+    "gameName": "sokoban",
+    "levelId": 0,
+    "modelId": "@cf/cloudflare/clef",
+    "modelName": "clef",
+    "provider": "openrouter",
+    "strategyId": "default",
+    "strategy": "",
+    "mode": "sync",
+    "seed": 0,
+    "elapsedMs": 55699,
+    "result": {
+      "runId": "sokoban-level0-sync-seed7",
+      "gameId": 87,
+      "gameName": "sokoban",
+      "archetype": null,
+      "levelId": 0,
+      "modelId": "@cf/cloudflare/clef",
+      "modelName": "clef",
+      "provider": "openrouter",
+      "modelUsed": "@cf/cloudflare/clef",
+      "fallback": null,
+      "strategyId": "default",
+      "finalScore": 4,
+      "winner": "PLAYER_WINS",
+      "won": true,
+      "ticks": 90,
+      "decisions": 91,
+      "actions": [
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_DOWN",
+        "ACTION_RIGHT",
+        "ACTION_UP",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_DOWN",
+        "ACTION_DOWN",
+        "ACTION_LEFT",
+        "ACTION_DOWN",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_DOWN",
+        "ACTION_RIGHT",
+        "ACTION_UP",
+        "ACTION_DOWN",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_UP",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_DOWN",
+        "ACTION_RIGHT",
+        "ACTION_UP",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_UP",
+        "ACTION_UP",
+        "ACTION_UP",
+        "ACTION_UP",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_UP",
+        "ACTION_RIGHT",
+        "ACTION_DOWN",
+        "ACTION_DOWN",
+        "ACTION_DOWN",
+        "ACTION_DOWN",
+        "ACTION_LEFT",
+        "ACTION_DOWN",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_DOWN",
+        "ACTION_RIGHT",
+        "ACTION_UP",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_LEFT",
+        "ACTION_UP",
+        "ACTION_UP",
+        "ACTION_UP",
+        "ACTION_UP",
+        "ACTION_UP",
+        "ACTION_RIGHT",
+        "ACTION_DOWN",
+        "ACTION_DOWN",
+        "ACTION_DOWN",
+        "ACTION_DOWN",
+        "ACTION_LEFT",
+        "ACTION_DOWN",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_RIGHT",
+        "ACTION_DOWN",
+        "ACTION_RIGHT",
+        "ACTION_UP"
+      ],
+      "adherence": {
+        "label": "Not measured",
+        "mentioned": 0,
+        "total": 0,
+        "keywords": []
+      },
+      "highlights": [],
+      "nilActionLoop": false,
+      "survivedMinTicks": true,
+      "recordedAt": "2026-11-05T03:32:42.515Z",
+      "llmErrors": [],
+      "eventCount": 184
+    },
+    "endedBy": "game-over",
+    "apiAttempts": 91,
+    "apiErrors": 0,
+    "modelDecisions": 91,
+    "controlDecisions": 0,
+    "discarded": 0,
+    "engineActionCount": 91,
+    "actionIntegrity": true,
+    "engineActionSources": {
+      "clef-choice": 91
+    },
+    "inputTokens": 354055,
+    "reportedCostUsd": 0.08497320000000001,
+    "servingProviders": [
+      "Cloudflare"
+    ],
+    "latencyMs": {
+      "p50": 530,
+      "p95": 1004
+    },
+    "requestedSeed": 7,
+    "effectiveSeed": 0,
+    "seedVerified": false
+  },
+  "matrixBudget": {
+    "limitTokens": 13750000,
+    "chargedTokens": 12511512,
+    "reportedTokens": 12511512,
+    "unknownRequests": 0,
+    "reservedTokens": 0,
+    "maxRequestTokens": 65536,
+    "usdPerMillionInputTokens": 0.24,
+    "conservativeUsd": 3.0027628799999997
+  },
+  "spending": {
+    "authorizedTestUsd": 5,
+    "keyLimitUsd": 5,
+    "reportedCostBeforeProductionUsd": 4.555392719999998,
+    "initialSpendIncludingInterruptedBatchUsd": 1.55262984,
+    "subscriptionActivated": false
+  },
+  "engineChecks": {
+    "sourceCount": 351,
+    "sokobanWinningPathReplays": 15,
+    "expandedCases": 44,
+    "games": 11,
+    "levels": [
+      0,
+      4
+    ],
+    "seeds": [
+      7,
+      2026
+    ]
+  },
+  "webTests": {
+    "passed": 486,
+    "skipped": 4,
+    "failed": 0
+  },
+  "limits": "15 original Sokoban runs use direct Cloudflare and effective seed zero, despite their requested seed labels; the corrected 40 cases use OpenRouter with verified effective seeds and the Cloudflare serving provider. Provider transport is not a new game model. Losses and caps remain recorded; seed repeats are not independent draws in deterministic games."
+}
