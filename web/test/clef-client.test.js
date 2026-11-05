@@ -105,6 +105,60 @@ test('relay uses only its scoped secret and preserves typed response validation'
   assert.equal(isModelAvailable(resolveModel(MODEL_ID), {CLEF_RELAY_URL:'https://clef.example',CLEF_RELAY_SECRET:relaySecret}), true);
 });
 
+test('OpenRouter uses the native Decisions API and preserves the typed choice and cost', async () => {
+  const request = input();
+  const result = await requestClef(request, {
+    provider:'openrouter', openrouterKey:'test-router-key', relayUrl:'https://unused.example',
+    relaySecret:'must-not-be-sent', apiToken:'must-not-be-sent',
+    fetch:async (url, options) => {
+      assert.equal(url,'https://openrouter.ai/api/alpha/decisions');
+      assert.equal(options.headers.Authorization,'Bearer test-router-key');
+      assert.equal(options.redirect,'error');
+      const body = JSON.parse(options.body);
+      assert.equal(body.model,'cloudflare/clef-flash');
+      assert.deepEqual(body.questions,request.questions);
+      assert.deepEqual(body.state,JSON.parse(JSON.stringify(request.state)));
+      assert.deepEqual(body.provider,{only:['Cloudflare'],allow_fallbacks:false,max_price:{prompt:0.24,completion:0}});
+      assert.equal(body.messages,undefined);
+      return {ok:true,json:async()=>({...response().result,model:'cloudflare/clef-flash',provider:'Cloudflare',
+        usage:{input_tokens:180,output_tokens:0,cost:0.00000486}})};
+    }
+  });
+  assert.equal(result.action,'ACTION_RIGHT');
+  assert.equal(result.source,'clef-choice');
+  assert.equal(result.usage.cost,0.00000486);
+});
+
+test('OpenRouter transport rejects another serving provider and hides error bodies', async () => {
+  const options = {provider:'openrouter',openrouterKey:'test'};
+  await assert.rejects(requestClef(input(),{...options,fetch:async()=>({ok:true,json:async()=>({
+    ...response().result,model:'cloudflare/clef-flash',provider:'unexpected'
+  })})}),/unexpected CLEF serving provider/);
+  await assert.rejects(requestClef(input(),{...options,fetch:async()=>({ok:false,status:402,
+    text:async()=>assert.fail('error body must not be read')})}),/^Error: OpenRouter Clef HTTP 402$/);
+});
+
+test('OpenRouter selection stays unavailable without its own key even when a relay exists', () => {
+  const env = {CLEF_PROVIDER:'openrouter',CLEF_RELAY_URL:'https://unused.example',CLEF_RELAY_SECRET:'s'.repeat(32)};
+  const model = resolveModel(MODEL_ID,env);
+  assert.equal(model.provider,'openrouter');
+  assert.equal(model.fallback,null);
+  assert.equal(isModelAvailable(model,env),false);
+  assert.equal(isModelAvailable(model,{...env,CLEF_OPENROUTER_API_KEY:'test'}),true);
+});
+
+test('OpenRouter CLEF decisions retain the same executor and truthful provider events', async t => {
+  const prior = process.env.CLEF_PROVIDER;
+  process.env.CLEF_PROVIDER = 'openrouter';
+  t.after(()=>{ if(prior===undefined) delete process.env.CLEF_PROVIDER; else process.env.CLEF_PROVIDER=prior; });
+  const instance = client();
+  const result = await instance.requestLLMAction(JSON.stringify(state));
+  assert.equal(result.provider,'openrouter');
+  assert.equal(result.action,'ACTION_RIGHT');
+  assert.equal(result.decisionSource,'clef-choice');
+  assert.equal(instance.buildProviderRoutes(resolveModel(MODEL_ID)).length,1);
+});
+
 test('invalid relay configuration fails closed without falling back to account credentials', async () => {
   for (const relayUrl of ['http://clef.example', 'https://user:password@clef.example', 'https://clef.example/?token=secret', 'https://clef.example/path']) {
     await assert.rejects(requestClef(input(), {

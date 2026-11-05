@@ -13,16 +13,26 @@ preferences, not chances of winning. No model-authored rationale is fabricated.
 
 ## Run locally
 
-Requires Node 22+ and Java 11. Keep Cloudflare credentials on the server; a token
-must have Workers AI access to the selected account.
+Requires Node 22+ and Java 11. Keep provider credentials on the server. To use
+CLEF through OpenRouter's native Decisions API:
 
 ```sh
 npm --prefix web ci
 npm --prefix web run java:prepare
-export CLOUDFLARE_ACCOUNT_ID=your_account_id
-export CLOUDFLARE_API_TOKEN=your_workers_ai_token
+export CLEF_PROVIDER=openrouter
+export CLEF_OPENROUTER_API_KEY=your_budget_limited_openrouter_key
 npm --prefix web run start:clef
 ```
+
+This route pins the Cloudflare serving provider, caps its input price at $0.24
+per million tokens, and disables provider fallback. It preserves the same typed
+action schema and probability validation. The catalog keeps stable CLEF model
+IDs while events identify OpenRouter as the transport. The dedicated key avoids
+changing credentials used by legacy chat models.
+
+Direct Workers AI remains supported: set `CLEF_PROVIDER=cloudflare`,
+`CLOUDFLARE_ACCOUNT_ID` and a server-side `CLOUDFLARE_API_TOKEN` with Workers AI
+access, or configure the dedicated `CLEF_RELAY_URL` and `CLEF_RELAY_SECRET`.
 
 Open http://localhost:3000, choose a game, leave Clef selected, and start model
 play. Each Clef run stops after the selected level. Clef-flash uses the same control loop. Human play and the legacy chat models
@@ -45,7 +55,8 @@ they do not silently become waiting moves or calls to another provider.
    per first action, including seven immediate risk samples. Static Sokoban dead
    squares receive an explicit warning.
 3. Clef receives the source VGDL rules, coordinates, recent outcomes and candidate
-   consequences through Cloudflare's native `state` / `questions` API.
+   consequences through the typed `state` / `questions` API, directly or through
+   OpenRouter's Decisions endpoint.
 4. The server validates model identity, legal choice and the probability
    distribution, applies that action once, and requests the next observation.
 5. The browser shows action preferences and expandable simulator evidence. It does
@@ -71,10 +82,12 @@ requests, responses, actual engine actions, latencies, token counts, and explici
 terminal/capped/error outcomes. `--capture-only` inspects inputs locally without
 contacting a provider and can never pass acceptance.
 
-The November 4 acceptance suite verified seven distinct wins with full Clef:
+The initial November 4 acceptance suite verified seven distinct wins with full Clef:
 Labyrinth, Crossfire, Hungry Birds, Camel Race, Butterflies, Chase and Modality.
-Sokoban remained unfinished at its decision cap. These are original level 0,
-seed 42 results; broader robustness is not established.
+Sokoban initially reached its decision cap. The subsequent push-space search
+fix won all five original Sokoban levels on seeds 7, 42 and 2026: 15/15 runs.
+See the [expanded validation report](docs/clef-sokoban-expansion.md) for the
+complete matrix, provider failures and later transport checks.
 
 See [research, design and acceptance evidence](docs/clef-overhaul.md), and the
 preserved [October pilot](docs/clef-flash-pilot.md) and

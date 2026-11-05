@@ -54,7 +54,7 @@ async function main() {
   if (previous && previous.maxActions !== maxActions) throw new Error('Resume must keep the original action cap');
   const report = {specification:'clef-expansion-v1', startedAt:new Date().toISOString(),
     revision:execFileSync('git', ['rev-parse','HEAD'], {encoding:'utf8'}).trim(),
-    model:'@cf/cloudflare/clef', maxActions, concurrency, resumeFrom,
+    model:'@cf/cloudflare/clef', provider:process.env.CLEF_PROVIDER || 'cloudflare', maxActions, concurrency, resumeFrom,
     cases:previous?remainingCases(previous):buildCases(), results:[]};
   const write = () => {
     report.budget = budget.snapshot();
@@ -85,6 +85,7 @@ async function main() {
       const result = {...c, outcome:classify(receipt), exitCode:code, receipt:name+'/summary.json',
         score:receipt?.result?.finalScore, decisions:receipt?.modelDecisions, apiErrors:receipt?.apiErrors,
         inputTokens:receipt?.inputTokens, actionIntegrity:receipt?.actionIntegrity, endedBy:receipt?.endedBy,
+        reportedCostUsd:receipt?.reportedCostUsd, servingProviders:receipt?.servingProviders,
         elapsedMs:receipt?.elapsedMs, latencyMs:receipt?.latencyMs};
       if (result.outcome === 'error') report.stopReason = `Case ${name} failed; stop scheduling requests and inspect its receipt before resuming.`;
       report.results.push(result); write(); console.log(JSON.stringify({event:'result',...result}));

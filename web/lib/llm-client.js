@@ -1254,8 +1254,8 @@ class LLMClient {
       this.remoteProviderCallCount += 1;
     }
 
-    if (provider === 'cloudflare') {
-      return requestClef(decisionInput, { timeoutMs: this.actionTimeoutMs });
+    if (resolveModel(modelId).decisionModel) {
+      return requestClef(decisionInput, { provider, timeoutMs: this.actionTimeoutMs });
     }
 
     if (provider === 'ollama-cloud') {

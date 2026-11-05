@@ -66,17 +66,18 @@ async function main() {
   const { runEvalCase } = require('../lib/batch-evaluator');
   const LLMClient = require('../lib/llm-client');
   const MODEL_ID = `@cf/cloudflare/${model}`;
+  const provider = require('../lib/models').resolveModel(MODEL_ID).provider;
   const report = {
     specification: 'clef-gvgai-acceptance-v2', startedAt: new Date().toISOString(),
     revision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
-    model: MODEL_ID, seed, level, games, maxActions, modes, timeoutMs, requiredWins, captureOnly,
+    model: MODEL_ID, provider, seed, level, games, maxActions, modes, timeoutMs, requiredWins, captureOnly,
     inputPolicy: 'Only committed public VGDL rules and newly simulated engine states; no local templates, human traces, player tactics, or strategy memory.',
     sourceRepository: 'https://github.com/zmuhls/gvgai-web',
     purpose: 'Verify simulator-assisted CLEF choices against original Java engine win conditions.',
     results: []
   };
   const files = ['web/lib/clef-client.js', 'web/lib/llm-client.js', 'web/lib/game-manager.js',
-    'web/lib/models.js', 'web/lib/clef-game-config.js', 'web/lib/state-converter.js',
+    'web/lib/models.js', 'web/lib/clef-connection.js', 'web/lib/clef-game-config.js', 'web/lib/state-converter.js',
     'web/lib/grid-renderer.js', 'src/tracks/LearningMachine.java', 'src/core/game/SerializableStateObservation.java',
     'web/scripts/prepare-java-runtime.js', 'web/scripts/run-clef-eval.js', 'web/scripts/clef-eval-budget.js',
     'src/tools/ActionLookahead.java', 'src/core/player/LearningPlayer.java', 'src/ontology/Types.java',
@@ -105,7 +106,7 @@ async function main() {
       let pendingProviderCalls = 0;
       let client;
       const evalCase = { runId, gameId, gameName, levelId: level, modelId: MODEL_ID,
-        modelName: model, provider: 'cloudflare', strategyId: 'default', strategy: '' };
+        modelName: model, provider, strategyId: 'default', strategy: '' };
       const start = Date.now();
       let result;
       try {
@@ -162,7 +163,8 @@ async function main() {
                 reserved = true;
                 const response = await call(...params);
                 Object.assign(attempt, { action: response.action, confidence: response.confidence,
-                  probabilities: response.probabilities, usage: response.usage, model: response.model });
+                  probabilities: response.probabilities, usage: response.usage, model: response.model,
+                  servingProvider:response.raw?.provider });
                 return response;
               } catch (error) {
                 attempt.error = error.message;
@@ -205,13 +207,15 @@ async function main() {
         engineActionCount: engineActions.length,
         actionIntegrity: engineActions.length === decisions.length && engineActions.every(action =>
           decisions.some(decision => decision.gameState.tick === action.tick &&
-            decision.action === action.action && decision.provider === 'cloudflare' &&
+            decision.action === action.action && decision.provider === provider &&
             decision.modelUsed === MODEL_ID && decision.decisionSource === 'clef-choice')),
         engineActionSources: engineActions.reduce((counts, action) => {
           counts[action.source] = (counts[action.source] || 0) + 1;
           return counts;
         }, {}),
         inputTokens: attempts.reduce((sum, attempt) => sum + (attempt.usage?.input_tokens || 0), 0),
+        reportedCostUsd: provider === 'openrouter' ? attempts.reduce((sum, attempt) => sum + (attempt.usage?.cost || 0), 0) : null,
+        servingProviders: [...new Set(attempts.map(attempt=>attempt.servingProvider).filter(Boolean))],
         latencyMs: { p50: percentile(latencies, 0.5), p95: percentile(latencies, 0.95) },
         attempts, engineActions, events
       };

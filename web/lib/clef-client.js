@@ -130,10 +130,10 @@ function buildClefInput(sso, config, tracker, strategy, modelId = MODEL_ID) {
 }
 
 function parseClefResponse(data, availableActions, expectedModel) {
-  if (data.success === false) throw new Error('Cloudflare rejected the Clef request');
+  if (data.success === false || data.error) throw new Error('Provider rejected the Clef request');
   const result = data.result || data;
-  if (expectedModel && ![expectedModel, `@cf/cloudflare/${expectedModel}`].includes(result.model)) {
-    throw new Error('Cloudflare returned an unexpected decision model');
+  if (expectedModel && ![expectedModel, `@cf/cloudflare/${expectedModel}`, `cloudflare/${expectedModel}`].includes(result.model)) {
+    throw new Error('Provider returned an unexpected decision model');
   }
   const answer = result.answers?.action;
   const probabilities = answer?.probabilities;
@@ -165,9 +165,17 @@ function parseClefResponse(data, availableActions, expectedModel) {
 async function requestClef(input, options = {}) {
   const modelId = Object.keys(MODEL_SELECTORS).find(id => MODEL_SELECTORS[id] === input?.model);
   if (!modelId) throw new Error('Unsupported Cloudflare decision model');
-  const body = JSON.stringify(input);
-  if (Buffer.byteLength(body) > 64000) throw new Error('Clef decision context exceeds the 64 KB application limit');
+  if (Buffer.byteLength(JSON.stringify(input)) > 64000) throw new Error('Clef decision context exceeds the 64 KB application limit');
+  // Keep the decision schema identical across transports. OpenRouter's native
+  // Decisions endpoint uses a catalog slug rather than the Workers AI selector.
   const connection = clefConnection(modelId, process.env, options);
+  const providerLabel = connection.provider === 'openrouter' ? 'OpenRouter' : 'Cloudflare';
+  const payload = connection.provider === 'openrouter' ? {
+    ...input, model:`cloudflare/${input.model}`,
+    provider:{only:['Cloudflare'], allow_fallbacks:false, max_price:{prompt:0.24,completion:0}}
+  } : input;
+  const body = JSON.stringify(payload);
+  if (Buffer.byteLength(body) > 64000) throw new Error('Clef decision context exceeds the 64 KB application limit');
   const controller = new AbortController();
   const timeoutMs = options.timeoutMs || 12000;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -185,11 +193,15 @@ async function requestClef(input, options = {}) {
     if (!response.ok) {
       // Provider bodies can contain request data. Keep credentials and state out
       // of errors sent to the browser; HTTP status is sufficient for diagnosis.
-      throw new Error(`Cloudflare Clef HTTP ${response.status}`);
+      throw new Error(`${providerLabel} Clef HTTP ${response.status}`);
     }
-    return parseClefResponse(await response.json(), input.state.legalActions, input.model);
+    const data = await response.json();
+    if (connection.provider === 'openrouter' && data.provider !== 'Cloudflare') {
+      throw new Error('OpenRouter returned an unexpected CLEF serving provider');
+    }
+    return parseClefResponse(data, input.state.legalActions, input.model);
   } catch (error) {
-    if (controller.signal.aborted) throw new Error(`Cloudflare Clef timed out after ${timeoutMs}ms`);
+    if (controller.signal.aborted) throw new Error(`${providerLabel} Clef timed out after ${timeoutMs}ms`);
     throw error;
   } finally {
     clearTimeout(timer);

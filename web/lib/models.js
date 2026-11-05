@@ -194,10 +194,16 @@ function loadFinetunedModels() {
 }
 
 // Built-in catalog + fine-tuned registry models (id collisions keep the built-in).
+function configuredModel(model, env = process.env) {
+  return model.decisionModel && env.CLEF_PROVIDER === 'openrouter'
+    ? {...model, provider:'openrouter', description:'Cloudflare CLEF via OpenRouter · legal-action probabilities'}
+    : model;
+}
+
 function getAllModels() {
   const fineTuned = loadFinetunedModels()
     .filter(ft => !MODELS.some(m => m.id === ft.id));
-  return [...MODELS, ...fineTuned];
+  return [...MODELS.map(model => configuredModel(model)), ...fineTuned];
 }
 
 // --- Availability ---
@@ -209,6 +215,9 @@ function getAllModels() {
 // entrypoints load the root .env after this module is required.
 function isModelAvailable(model, env = process.env) {
   if (!model) return false;
+  if (model.decisionModel) {
+    try { clefConnection(model.id, env); return true; } catch { return false; }
+  }
   switch (model.provider) {
     case 'cloudflare':
       try { clefConnection(model.id, env); return true; } catch { return false; }
@@ -228,7 +237,7 @@ function isModelAvailable(model, env = process.env) {
 // plan shape stays deterministic where it used to be.
 function availableEvalModels(env = process.env) {
   const clef = MODELS.find(m => m.id === '@cf/cloudflare/clef');
-  if (isModelAvailable(clef, env)) return [clef];
+  if (isModelAvailable(clef, env)) return [configuredModel(clef, env)];
   const featured = MODELS.filter(m => m.featured);
   const availableFeatured = featured.filter(m => isModelAvailable(m, env));
   if (availableFeatured.length) return availableFeatured;
@@ -241,9 +250,9 @@ function availableEvalModels(env = process.env) {
 // Fine-tuned registry models resolve to ollama-local — without this check the
 // inference below would send them to Ollama Cloud, which has no such tag.
 // Inference: a '/' means an OpenRouter slug; otherwise treat as an Ollama Cloud tag.
-function resolveModel(id) {
+function resolveModel(id, env = process.env) {
   const found = MODELS.find(m => m.id === id);
-  if (found) return found;
+  if (found) return configuredModel(found, env);
   const fineTuned = loadFinetunedModels().find(m => m.id === id);
   if (fineTuned) return fineTuned;
   if (id && id.includes('/')) return { id, provider: 'openrouter', fallback: null };

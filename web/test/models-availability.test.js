@@ -114,3 +114,11 @@ test('Cloudflare-configured arcade defaults to CLEF without spending on chat pro
   const env = { CLOUDFLARE_ACCOUNT_ID: 'a'.repeat(32), CLOUDFLARE_API_TOKEN: 'test', OLLAMA_API_KEY: 'test' };
   assert.deepEqual(models.availableEvalModels(env).map(m => m.id), ['@cf/cloudflare/clef']);
 });
+
+test('OpenRouter-configured arcade keeps CLEF as its default and identifies its transport', () => {
+  const env = {CLEF_PROVIDER:'openrouter',CLEF_OPENROUTER_API_KEY:'test'};
+  const roster = models.availableEvalModels(env);
+  assert.deepEqual(roster.map(m=>m.id),['@cf/cloudflare/clef']);
+  assert.equal(roster[0].provider,'openrouter');
+  assert.equal(roster[0].decisionModel,true);
+});
