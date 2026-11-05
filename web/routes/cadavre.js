@@ -619,6 +619,7 @@ function isAllowedOrigin(origin) {
     if (!['http:', 'https:'].includes(url.protocol)) return false;
     if (['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return true;
     return url.origin === 'https://inference-arcade.com' ||
+      url.origin === 'https://gvgai.inference-arcade.com' ||
       url.origin === 'https://milwrite.github.io';
   } catch {
     return false;

@@ -834,6 +834,8 @@ test('cadavre Legion calls retain the OpenAI-compatible request shape', async ()
 
 test('cadavre route limits CORS to the deployed sites and localhost', () => {
   assert.equal(_private.isAllowedOrigin('https://inference-arcade.com'), true);
+  assert.equal(_private.isAllowedOrigin('https://gvgai.inference-arcade.com'), true);
+  assert.equal(_private.isAllowedOrigin('https://jeopardy.inference-arcade.com'), false);
   assert.equal(_private.isAllowedOrigin('https://milwrite.github.io'), true);
   assert.equal(_private.isAllowedOrigin('http://localhost:8800'), true);
   assert.equal(_private.isAllowedOrigin('http://127.0.0.1:8800'), true);
