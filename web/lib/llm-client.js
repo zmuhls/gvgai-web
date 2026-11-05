@@ -599,6 +599,7 @@ class LLMClient {
   }
 
   recordClefExecution(sso, action, source, decisionTick) {
+    if (resolveModel(this.model).decisionFamily === 'jev') source = source.replace(/^clef-/, 'jev-');
     const step = { tick: sso.gameTick, action, source, decisionTick };
     this.controlSteps.push(step);
     if (this.io) this.io.emit('game-state', {

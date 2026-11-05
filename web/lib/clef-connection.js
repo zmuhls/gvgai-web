@@ -1,6 +1,7 @@
 // Relay credentials never fall back to an account-wide Cloudflare token.
 function clefConnection(modelId, env = process.env, options = {}) {
-  const provider = options.provider ?? env.CLEF_PROVIDER ?? 'cloudflare';
+  const provider = modelId === 'typesafe/jev-1.14' ? 'openrouter'
+    : options.provider ?? env.CLEF_PROVIDER ?? 'cloudflare';
   if (!['cloudflare', 'openrouter'].includes(provider)) throw new Error('Unsupported CLEF provider');
   if (provider === 'openrouter') {
     const token = options.openrouterKey || env.CLEF_OPENROUTER_API_KEY || env.OPENROUTER_API_KEY;

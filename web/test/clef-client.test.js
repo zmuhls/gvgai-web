@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 process.env.GVGAI_TRACE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'clef-test-'));
 process.env.MODEL_GUARDRAIL_STATE = path.join(process.env.GVGAI_TRACE_DIR, 'usage.json');
-const { MODEL_ID, buildClefInput, parseClefResponse, requestClef } = require('../lib/clef-client');
+const { MODEL_ID, JEV_MODEL_ID, buildClefInput, parseClefResponse, requestClef } = require('../lib/clef-client');
 const { resolveModel, isModelAvailable } = require('../lib/models');
 const LLMClient = require('../lib/llm-client');
 const telemetry = require('../lib/telemetry-store');
@@ -21,6 +21,29 @@ function response() {
     usage: { input_tokens: 180, output_tokens: 0 } } };
 }
 function input() { return buildClefInput(state, { gameName: 'test', gameContent: 'Reach the exit.' }, null, null); }
+
+test('Jev uses its pinned Decisions provider, price and model with the same legal-action validation', async () => {
+  const request = buildClefInput(state, {gameName:'test'}, null, null, JEV_MODEL_ID);
+  const model = resolveModel(JEV_MODEL_ID);
+  assert.equal(model.decisionModel,true);
+  assert.equal(model.provider,'openrouter');
+  assert.equal(model.fallback,null);
+  assert.equal(isModelAvailable(model,{CLOUDFLARE_ACCOUNT_ID:'a'.repeat(32),CLOUDFLARE_API_TOKEN:'test'}),false);
+  assert.equal(isModelAvailable(model,{CLEF_OPENROUTER_API_KEY:'test'}),true);
+  const result = await requestClef(request,{openrouterKey:'test',fetch:async (url,options)=>{
+    assert.equal(url,'https://openrouter.ai/api/alpha/decisions');
+    const body=JSON.parse(options.body);
+    assert.equal(body.model,JEV_MODEL_ID);
+    assert.deepEqual(body.provider,{only:['TypeSafe'],allow_fallbacks:false,max_price:{prompt:0.042,completion:0}});
+    return {ok:true,json:async()=>({...response().result,model:`${JEV_MODEL_ID}-20261014`,provider:'TypeSafe'})};
+  }});
+  assert.equal(result.source,'jev-choice');
+  assert.equal(result.action,'ACTION_RIGHT');
+  assert.throws(()=>parseClefResponse(response(),actions,JEV_MODEL_ID),/unexpected decision model/);
+  await assert.rejects(requestClef(request,{openrouterKey:'test',fetch:async()=>({ok:true,json:async()=>({
+    ...response().result,model:JEV_MODEL_ID,provider:'Cloudflare'
+  })})}),/unexpected Jev serving provider/);
+});
 
 test('Clef catalog routing requires both server credentials', () => {
   const model = resolveModel(MODEL_ID);

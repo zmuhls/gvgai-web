@@ -204,11 +204,15 @@ const navLinks = Array.from(document.querySelectorAll('#main-nav .nav-link'));
 const topLevelSections = Array.from(document.querySelectorAll('#app > .section'));
 const canvasCtx = gameCanvas.getContext('2d', { alpha: false });
 const frameState = {
-  pending: null,
+  pacer: new window.FramePacer(),
   rafId: null,
+  timerId: null,
+  generation: 0,
   decoding: false,
   drawn: 0,
-  dropped: 0,
+  received: 0,
+  gaps: [],
+  maxDelayMs: 0,
   lastFrameAt: 0
 };
 
@@ -1116,7 +1120,8 @@ function setupEventListeners() {
         playerType,
         strategy: playerType === 'human' ? null : ((strategyText?.value || '').trim() || null),
         summary: state.lastSummary || null,
-        decisions: state.traceLog
+        decisions: state.traceLog,
+        playback: playbackStats()
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -1194,6 +1199,8 @@ function setupWebSocket() {
   socket.on('llm-reasoning', (data) => {
     if (!isCurrentRun(data)) return;
     console.log('[App] LLM reasoning:', data);
+    frameState.pacer.observeDecision(data.gameState?.tick, performance.now(),
+      data.elapsed, data.planningMillis, data.decision?.control?.maxTicks);
 
     // Update game state overlay
     if (scoreEl) scoreEl.textContent = data.gameState?.score || 0;
@@ -1346,6 +1353,7 @@ function setupWebSocket() {
   // End-of-run summary card (fires on level end, carries adherence + highlights)
   socket.on('run-summary', (data) => {
     if (!isCurrentRun(data)) return;
+    finishFramePlayback();
     console.log('[App] Run summary:', data);
     cleanupHumanPlay();
     if (steerForm) steerForm.classList.add('hidden');
@@ -1369,6 +1377,7 @@ function setupWebSocket() {
   // Full session end (all levels done)
   socket.on('session-end', (data) => {
     if (!isCurrentRun(data)) return;
+    finishFramePlayback();
     state.processId = null;
     stopGameBtn.textContent = 'Back to Games';
     console.log('[App] Session ended:', data);
@@ -1476,31 +1485,63 @@ function renderRunSummary(s) {
 }
 
 function resetFrameDisplay() {
-  frameState.pending = null;
+  frameState.generation++;
+  clearTimeout(frameState.timerId);
+  cancelAnimationFrame(frameState.rafId);
+  frameState.timerId = null;
+  frameState.rafId = null;
+  frameState.pacer.reset(playerType !== 'human');
   frameState.drawn = 0;
-  frameState.dropped = 0;
+  frameState.received = 0;
+  frameState.gaps = [];
+  frameState.maxDelayMs = 0;
   frameState.lastFrameAt = 0;
   if (canvasCtx && gameCanvas.width && gameCanvas.height) {
     canvasCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
   }
   gameCanvas.removeAttribute('data-live');
+  gameCanvas.removeAttribute('data-playback');
   gameCanvas.closest('.game-display')?.classList.remove('is-live');
   if (frameStatus) frameStatus.textContent = 'Waiting for frame';
 }
 
 function queueGameFrame(frame) {
-  if (frameState.pending) frameState.dropped += 1;
-  frameState.pending = frame;
-  if (frameState.rafId || frameState.decoding) return;
-  frameState.rafId = requestAnimationFrame(drawQueuedFrame);
+  frameState.received++;
+  frameState.pacer.push(frame, performance.now());
+  scheduleFrameDraw();
+}
+
+function scheduleFrameDraw() {
+  if (frameState.rafId || frameState.timerId || frameState.decoding ||
+      !frameState.pacer.queue.length) return;
+  frameState.timerId = setTimeout(() => {
+    frameState.timerId = null;
+    frameState.rafId = requestAnimationFrame(drawQueuedFrame);
+  }, frameState.pacer.delay(performance.now()));
+}
+
+function finishFramePlayback() {
+  frameState.pacer.finish();
+  clearTimeout(frameState.timerId);
+  frameState.timerId = null;
+  scheduleFrameDraw();
+}
+
+function playbackStats() {
+  const gaps = [...frameState.gaps].sort((a,b) => a-b);
+  return {receivedFrames:frameState.received, drawnFrames:frameState.drawn,
+    droppedFrames:frameState.pacer.dropped, maxDisplayDelayMs:Math.round(frameState.maxDelayMs),
+    frameGapMedianMs:Math.round(gaps[Math.floor(gaps.length/2)] || 0),
+    frameGapP95Ms:Math.round(gaps[Math.min(gaps.length-1,Math.floor(gaps.length*0.95))] || 0),
+    frameGapMaxMs:Math.round(gaps.at(-1) || 0)};
 }
 
 async function drawQueuedFrame() {
   frameState.rafId = null;
-  if (!frameState.pending || frameState.decoding) return;
-
-  const frame = frameState.pending;
-  frameState.pending = null;
+  if (frameState.decoding) return;
+  const frame = frameState.pacer.take(performance.now());
+  if (!frame) { scheduleFrameDraw(); return; }
+  const generation = frameState.generation;
   frameState.decoding = true;
 
   try {
@@ -1525,6 +1566,7 @@ async function drawQueuedFrame() {
       });
     }
 
+    if (generation !== frameState.generation) return;
     const width = img.naturalWidth || img.width;
     const height = img.naturalHeight || img.height;
     if (!width || !height) return;
@@ -1540,21 +1582,29 @@ async function drawQueuedFrame() {
     canvasCtx.drawImage(img, 0, 0, width, height);
 
     frameState.drawn += 1;
-    frameState.lastFrameAt = performance.now();
+    const now = performance.now();
+    if (frameState.lastFrameAt) {
+      frameState.gaps.push(now-frameState.lastFrameAt);
+      if (frameState.gaps.length > 2000) frameState.gaps.shift();
+    }
+    frameState.lastFrameAt = now;
+    frameState.pacer.lastDrawAt = now;
+    const latency = Math.max(0, Date.now() - frame.timestamp);
+    frameState.maxDelayMs = Math.max(frameState.maxDelayMs, latency);
     gameCanvas.dataset.live = 'true';
+    gameCanvas.dataset.playback = JSON.stringify(playbackStats());
     gameCanvas.closest('.game-display')?.classList.add('is-live');
     if (frameStatus) {
-      const latency = Math.max(0, Date.now() - frame.timestamp);
       frameStatus.textContent = `Frame ${frameState.drawn} · ${latency}ms`;
     }
   } catch (error) {
-    console.error('[App] Failed to draw game frame:', error.message);
-    if (frameStatus) frameStatus.textContent = 'Frame failed';
+    if (generation === frameState.generation) {
+      console.error('[App] Failed to draw game frame:', error.message);
+      if (frameStatus) frameStatus.textContent = 'Frame failed';
+    }
   } finally {
     frameState.decoding = false;
-    if (frameState.pending && !frameState.rafId) {
-      frameState.rafId = requestAnimationFrame(drawQueuedFrame);
-    }
+    scheduleFrameDraw();
   }
 }
 

@@ -21,6 +21,12 @@ const MODELS = [
     speed: 'fast', cost: 'low', featured: true
   },
   {
+    id: 'typesafe/jev-1.14', name: 'Jev 1.14',
+    provider: 'openrouter', fallback: null, decisionModel: true, decisionFamily: 'jev',
+    description: 'TypeSafe via OpenRouter · fast simulator-assisted decisions',
+    speed: 'fast', cost: 'low', featured: false
+  },
+  {
     id: '@cf/cloudflare/clef-flash', name: 'Clef-flash',
     provider: 'cloudflare', fallback: null, decisionModel: true,
     description: 'Cloudflare decision model · legal-action probabilities',
@@ -195,7 +201,7 @@ function loadFinetunedModels() {
 
 // Built-in catalog + fine-tuned registry models (id collisions keep the built-in).
 function configuredModel(model, env = process.env) {
-  return model.decisionModel && env.CLEF_PROVIDER === 'openrouter'
+  return model.id.startsWith('@cf/cloudflare/clef') && env.CLEF_PROVIDER === 'openrouter'
     ? {...model, provider:'openrouter', description:'Cloudflare CLEF via OpenRouter · legal-action probabilities'}
     : model;
 }

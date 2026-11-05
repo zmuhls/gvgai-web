@@ -4,9 +4,11 @@ const { limits: controlLimits } = require('./clef-control');
 
 const MODEL_ID = '@cf/cloudflare/clef-flash';
 const DEFAULT_MODEL_ID = '@cf/cloudflare/clef';
+const JEV_MODEL_ID = 'typesafe/jev-1.14';
 const MODEL_SELECTORS = Object.freeze({
   [DEFAULT_MODEL_ID]: 'clef',
-  [MODEL_ID]: 'clef-flash'
+  [MODEL_ID]: 'clef-flash',
+  [JEV_MODEL_ID]: JEV_MODEL_ID
 });
 const ACTIONS = Object.freeze({
   ACTION_UP: 'Move up (decrease row).',
@@ -43,7 +45,7 @@ function buildActionQuestion(criteria, puzzle = false, holds = false) {
 
 function buildClefInput(sso, config, tracker, strategy, modelId = MODEL_ID, controlTicks = 1) {
   const selector = MODEL_SELECTORS[modelId];
-  if (!selector) throw new Error('Unsupported Cloudflare decision model');
+  if (!selector) throw new Error('Unsupported decision model');
   const available = [...new Set(sso.availableActions || [])];
   if (!available.length || available.some(action => !Object.hasOwn(ACTIONS, action))) {
     throw new Error('Clef requires a nonempty list of supported GVGAI actions');
@@ -137,7 +139,10 @@ function buildClefInput(sso, config, tracker, strategy, modelId = MODEL_ID, cont
 function parseClefResponse(data, availableActions, expectedModel) {
   if (data.success === false || data.error) throw new Error('Provider rejected the Clef request');
   const result = data.result || data;
-  if (expectedModel && ![expectedModel, `@cf/cloudflare/${expectedModel}`, `cloudflare/${expectedModel}`].includes(result.model)) {
+  const expectedIds = expectedModel === JEV_MODEL_ID
+    ? [JEV_MODEL_ID, `${JEV_MODEL_ID}-20261014`]
+    : [expectedModel, `@cf/cloudflare/${expectedModel}`, `cloudflare/${expectedModel}`];
+  if (expectedModel && !expectedIds.includes(result.model)) {
     throw new Error('Provider returned an unexpected decision model');
   }
   const answer = result.answers?.action;
@@ -157,7 +162,7 @@ function parseClefResponse(data, availableActions, expectedModel) {
   return {
     action: answer.choice,
     reason: '', // A probability distribution is not a model-authored rationale.
-    source: 'clef-choice',
+    source: result.model?.startsWith('typesafe/jev-') ? 'jev-choice' : 'clef-choice',
     valid: true,
     confidence: answer.confidence,
     probabilities,
@@ -169,15 +174,18 @@ function parseClefResponse(data, availableActions, expectedModel) {
 
 async function requestClef(input, options = {}) {
   const modelId = Object.keys(MODEL_SELECTORS).find(id => MODEL_SELECTORS[id] === input?.model);
-  if (!modelId) throw new Error('Unsupported Cloudflare decision model');
+  if (!modelId) throw new Error('Unsupported decision model');
+  const isJev = modelId === JEV_MODEL_ID;
+  const servingProvider = isJev ? 'TypeSafe' : 'Cloudflare';
+  const modelLabel = isJev ? 'Jev' : 'Clef';
   if (Buffer.byteLength(JSON.stringify(input)) > 64000) throw new Error('Clef decision context exceeds the 64 KB application limit');
   // Keep the decision schema identical across transports. OpenRouter's native
   // Decisions endpoint uses a catalog slug rather than the Workers AI selector.
   const connection = clefConnection(modelId, process.env, options);
   const providerLabel = connection.provider === 'openrouter' ? 'OpenRouter' : 'Cloudflare';
   const payload = connection.provider === 'openrouter' ? {
-    ...input, model:`cloudflare/${input.model}`,
-    provider:{only:['Cloudflare'], allow_fallbacks:false, max_price:{prompt:0.24,completion:0}}
+    ...input, model:isJev ? JEV_MODEL_ID : `cloudflare/${input.model}`,
+    provider:{only:[servingProvider], allow_fallbacks:false, max_price:{prompt:isJev ? 0.042 : 0.24,completion:0}}
   } : input;
   const body = JSON.stringify(payload);
   if (Buffer.byteLength(body) > 64000) throw new Error('Clef decision context exceeds the 64 KB application limit');
@@ -198,19 +206,19 @@ async function requestClef(input, options = {}) {
     if (!response.ok) {
       // Provider bodies can contain request data. Keep credentials and state out
       // of errors sent to the browser; HTTP status is sufficient for diagnosis.
-      throw new Error(`${providerLabel} Clef HTTP ${response.status}`);
+      throw new Error(`${providerLabel} ${modelLabel} HTTP ${response.status}`);
     }
     const data = await response.json();
-    if (connection.provider === 'openrouter' && data.provider !== 'Cloudflare') {
-      throw new Error('OpenRouter returned an unexpected CLEF serving provider');
+    if (connection.provider === 'openrouter' && data.provider !== servingProvider) {
+      throw new Error(`OpenRouter returned an unexpected ${isJev ? 'Jev' : 'CLEF'} serving provider`);
     }
     return parseClefResponse(data, input.state.legalActions, input.model);
   } catch (error) {
-    if (controller.signal.aborted) throw new Error(`${providerLabel} Clef timed out after ${timeoutMs}ms`);
+    if (controller.signal.aborted) throw new Error(`${providerLabel} ${modelLabel} timed out after ${timeoutMs}ms`);
     throw error;
   } finally {
     clearTimeout(timer);
   }
 }
 
-module.exports = { MODEL_ID, DEFAULT_MODEL_ID, MODEL_SELECTORS, buildActionQuestion, buildClefInput, decisionPromptConfig, parseClefResponse, requestClef };
+module.exports = { MODEL_ID, DEFAULT_MODEL_ID, JEV_MODEL_ID, MODEL_SELECTORS, buildActionQuestion, buildClefInput, decisionPromptConfig, parseClefResponse, requestClef };

@@ -335,7 +335,7 @@
     const reason = document.createElement('div');
     reason.className = 'reason';
     reason.textContent = data.decision?.probabilities
-      ? `Clef action preference: ${Math.round((data.decision.probabilities[data.action] || 0) * 100)}%. Simulator-assisted; not a win probability.`
+      ? `Model action preference: ${Math.round((data.decision.probabilities[data.action] || 0) * 100)}%. Simulator-assisted; not a win probability.`
       : data.reason || data.response || '(thinking…)';
     const act = document.createElement('div');
     act.className = 'act';

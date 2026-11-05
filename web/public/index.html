@@ -55,7 +55,7 @@
     <div id="game-selector" class="step active">
       <p class="step-label">1 / cabinet</p>
       <h2>Choose a Game</h2>
-      <p class="step-note">Choose a game and watch Clef decide each move, or take the controls yourself.</p>
+      <p class="step-note">Choose a game and a model to play it, or take the controls yourself.</p>
       <div class="games-toolbar">
         <span id="games-mode-label" class="games-mode-label">11 selected cabinets</span>
       </div>
@@ -302,7 +302,7 @@
 
         <div class="reasoning-panel">
           <h3>Move Trace</h3>
-          <p class="panel-note">Clef compares simulated moves. Percentages show action preferences, not chances of winning.</p>
+          <p class="panel-note">Decision models compare simulated moves. Percentages show action preferences, not chances of winning.</p>
           <div id="strategy-active" class="strategy-active hidden"></div>
           <form id="steer-form" class="steer-form hidden" autocomplete="off">
             <input type="text" id="steer-input" maxlength="240"
@@ -540,7 +540,8 @@
   <script src="js/telemetry-client.js"></script>
   <script src="js/shell.js"></script>
   <script src="js/marble-popout.js?v=uxmin-20260708"></script>
-  <script src="js/app.js?v=fec6e6c7e3d3" type="module"></script>
+  <script src="js/frame-pacer.js?v=277389aa3bc2"></script>
+  <script src="js/app.js?v=e7c3fc367201" type="module"></script>
   <script src="js/dashboard.js"></script>
   <script src="js/leaderboard-dashboard.js"></script>
 </body>
