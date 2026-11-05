@@ -589,7 +589,7 @@ function annotateGameCardsWithTraces() {
 // Render models dropdown (featured frontier models first, one selected by default)
 function renderModels(models) {
   modelSelect.innerHTML = models.map(model => `
-    <option value="${escapeHtml(model.id)}">${escapeHtml(model.name)}${model.featured ? ' ★' : ''}${model.description ? ` — ${escapeHtml(model.description)}` : ''}</option>
+    <option value="${escapeHtml(model.id)}" ${model.available === false ? 'disabled' : ''}>${escapeHtml(model.name)}${model.featured ? ' ★' : ''}${model.description ? ` — ${escapeHtml(model.description)}` : ''}</option>
   `).join('');
   // Prefer a model whose provider can actually answer here (the server marks
   // dead-key providers available:false) so a keyless kiosk defaults to its
@@ -604,6 +604,7 @@ function renderModels(models) {
 // Model chip rack — the cabinet's brains. The <select> stays in the DOM
 // (hidden) as the single source of truth that startGame() reads.
 const PROVIDER_LABELS = {
+  'cloudflare': 'Cloudflare',
   'ollama-cloud': 'Cloud',
   'openrouter': 'OpenRouter',
   'ollama-local': 'Local',
@@ -612,7 +613,9 @@ const PROVIDER_LABELS = {
 
 function renderModelChips(models) {
   if (!modelChips) return;
-  modelChips.innerHTML = models.map(model => {
+  const available = models.filter(model => model.available !== false);
+  const displayed = available.length ? available : models;
+  modelChips.innerHTML = displayed.map(model => {
     const tags = [
       `<span class="chip-badge provider">${escapeHtml(PROVIDER_LABELS[model.provider] || model.provider)}</span>`,
       /open.weight/i.test(model.description || '') ? '<span class="chip-badge">Open-weight</span>' : '',
@@ -620,7 +623,7 @@ function renderModelChips(models) {
       model.cost ? `<span class="chip-badge">${escapeHtml(model.cost)} cost</span>` : ''
     ].filter(Boolean).join('');
     return `
-      <button type="button" class="model-chip" data-model-id="${escapeHtml(model.id)}">
+      <button type="button" class="model-chip" data-model-id="${escapeHtml(model.id)}" ${model.available === false ? 'disabled title="Provider credentials are not configured"' : ''}>
         <span class="model-chip-name">${escapeHtml(model.name)}${model.featured ? ' ★' : ''}</span>
         <span class="chip-tags">${tags}</span>
       </button>
@@ -643,6 +646,7 @@ function syncModelChips() {
   if (!modelChips) return;
   modelChips.querySelectorAll('.model-chip').forEach(chip => {
     chip.classList.toggle('selected', chip.dataset.modelId === modelSelect.value);
+    chip.setAttribute('aria-pressed', String(chip.dataset.modelId === modelSelect.value));
   });
   const model = state.models.find(m => m.id === modelSelect.value);
   if (backendLabel && model) {
@@ -875,6 +879,7 @@ async function startGame() {
     console.log('[App] Game started:', data);
 
     // Show game viewer
+    stopGameBtn.textContent = 'Stop Game';
     document.getElementById('current-game-name').textContent = state.selectedGame.name;
     reasoningLog.innerHTML = '';
     state.lastSummary = null;
@@ -924,7 +929,10 @@ async function startGame() {
 
 // Stop game
 async function stopGame() {
-  if (!state.processId) return;
+  if (!state.processId) {
+    showStep(gameSelector);
+    return;
+  }
   cleanupHumanPlay();
 
   try {
@@ -977,6 +985,8 @@ window.addEventListener('pagehide', () => {
 function showStep(step) {
   [gameSelector, modelSelector, gameViewer].forEach(s => s.classList.remove('active'));
   step.classList.add('active');
+  document.body.dataset.arcadeStep = step.id;
+  if (step !== gameViewer) window.scrollTo({ top: 0, behavior: 'instant' });
   if (step === gameViewer) {
     requestAnimationFrame(() => {
       const reduceMotion = typeof window.matchMedia === 'function'
@@ -1204,7 +1214,8 @@ function setupWebSocket() {
         plan: data.plan || null,
         elapsedMs: data.elapsed ?? null,
         provider: data.provider || null,
-        modelUsed: data.modelUsed || null
+        modelUsed: data.modelUsed || null,
+        decision: data.decision || null
       });
     }
 
@@ -1217,14 +1228,18 @@ function setupWebSocket() {
     entry.className = 'reasoning-entry';
 
     const timing = data.elapsed > 800 ? 'slow' : 'fast';
-    const narration = data.reason || data.response || '(no rationale)';
+    const narration = data.decision?.probabilities
+      ? `Action preferences: ${Object.entries(data.decision.probabilities)
+        .sort((a, b) => b[1] - a[1])
+        .map(([action, probability]) => `${action.replace('ACTION_', '')} ${Math.round(probability * 100)}%`).join(' · ')}. These are not win probabilities.`
+      : data.reason || data.response || '(no rationale)';
 
     const narrDiv = document.createElement('div');
     narrDiv.className = 'narration';
     narrDiv.textContent = narration;
     entry.appendChild(narrDiv);
 
-    if (moveFollowsStrategy(data)) {
+    if (!data.decision && moveFollowsStrategy(data)) {
       const badge = document.createElement('span');
       badge.className = 'strategy-badge';
       badge.textContent = '↳ following your strategy';
@@ -1312,7 +1327,7 @@ function setupWebSocket() {
     const entry = document.createElement('div');
     entry.className = 'reasoning-entry';
     entry.innerHTML = `
-      <div class="action fast">Level ${data.level} complete: ${result} (Score: ${data.score})</div>
+      <div class="action fast">Level ${data.level + 1} complete: ${result} (Score: ${data.score})</div>
     `;
     reasoningLog.insertBefore(entry, reasoningLog.firstChild);
 
@@ -1346,6 +1361,8 @@ function setupWebSocket() {
   // Full session end (all levels done)
   socket.on('session-end', (data) => {
     if (!isCurrentRun(data)) return;
+    state.processId = null;
+    stopGameBtn.textContent = 'Back to Games';
     console.log('[App] Session ended:', data);
     cleanupHumanPlay();
     if (steerForm) steerForm.classList.add('hidden');
@@ -1406,8 +1423,16 @@ function setupWebSocket() {
 // Populate the end-of-run summary card from the run-summary payload
 function renderRunSummary(s) {
   const resultEl = document.getElementById('final-result');
+  if (scoreEl && s.finalScore != null) scoreEl.textContent = s.finalScore;
+  if (tickEl && s.ticks != null) tickEl.textContent = s.ticks;
+  const stopLabels = {
+    'provider-error': 'Model request failed',
+    'usage-limit': 'Usage limit reached',
+    'decision-cap': 'Decision limit reached',
+    'socket-close': 'Run stopped'
+  };
   resultEl.textContent = s.won ? 'Victory!' :
-    (s.winner === 'PLAYER_LOSES' ? 'Defeat' : 'Time up');
+    (s.winner === 'PLAYER_LOSES' ? 'Defeat' : stopLabels[s.endedBy] || 'Run ended');
   document.getElementById('final-score').textContent = s.finalScore != null ? s.finalScore : 0;
 
   // Echo the strategy
@@ -1535,13 +1560,21 @@ function buildAutopsy(data) {
   const details = document.createElement('details');
   details.className = 'raw-toggle';
   const summary = document.createElement('summary');
-  summary.textContent = 'decision autopsy';
+  summary.textContent = 'Decision details';
   details.appendChild(summary);
 
   const flow = document.createElement('div');
   flow.className = 'autopsy-flow';
-  flow.textContent = `state → prompt → ${data.modelUsed || 'model'} (${data.provider || '?'}) → REASON → ${data.action || '—'}`;
+  flow.textContent = data.decision
+    ? `Current state → simulated alternatives → ${data.modelUsed || 'Clef'} → ${data.action || '—'} → observe again`
+    : `state → prompt → ${data.modelUsed || 'model'} (${data.provider || '?'}) → REASON → ${data.action || '—'}`;
   details.appendChild(flow);
+  if (data.decision?.planning) {
+    const forecast = document.createElement('pre');
+    forecast.className = 'layer-text';
+    forecast.textContent = JSON.stringify(data.decision.planning, null, 2);
+    details.appendChild(forecast);
+  }
 
   if (Array.isArray(data.promptLayers) && data.promptLayers.length) {
     const stack = document.createElement('div');
@@ -1580,7 +1613,7 @@ function buildAutopsy(data) {
 function updateAdherenceRibbon(data) {
   const ribbon = document.getElementById('adherence-ribbon');
   if (!ribbon) return;
-  if (!data.strategy) { ribbon.classList.add('hidden'); return; }
+  if (!data.strategy || data.decision) { ribbon.classList.add('hidden'); return; }
   state.adherenceTotal = (state.adherenceTotal || 0) + 1;
   if (moveFollowsStrategy(data)) {
     state.adherenceMentioned = (state.adherenceMentioned || 0) + 1;

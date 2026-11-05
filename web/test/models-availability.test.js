@@ -67,7 +67,7 @@ test('availableEvalModels prefers available featured, then registry locals, then
   try {
     assert.deepEqual(
       models.availableEvalModels({ OLLAMA_API_KEY: 'k' }).map(m => m.id),
-      featuredIds
+      featuredIds.filter(id => id !== '@cf/cloudflare/clef')
     );
 
     // Keyless box with a registry: the local model carries the marquee.
@@ -100,7 +100,7 @@ test('buildArcadeEvalPlan applies availability only when availabilityEnv is pass
 
     // Keyed env: unchanged featured roster.
     const keyed = buildArcadeEvalPlan({ gameCount: 1, availabilityEnv: { OLLAMA_API_KEY: 'k' } });
-    assert.deepEqual(keyed.modelIds, featuredIds);
+    assert.deepEqual(keyed.modelIds, featuredIds.filter(id => id !== '@cf/cloudflare/clef'));
 
     // No availabilityEnv: deterministic legacy default regardless of registry.
     const legacy = buildArcadeEvalPlan({ gameCount: 1 });
@@ -108,4 +108,9 @@ test('buildArcadeEvalPlan applies availability only when availabilityEnv is pass
   } finally {
     restore();
   }
+});
+
+test('Cloudflare-configured arcade defaults to CLEF without spending on chat providers', () => {
+  const env = { CLOUDFLARE_ACCOUNT_ID: 'a'.repeat(32), CLOUDFLARE_API_TOKEN: 'test', OLLAMA_API_KEY: 'test' };
+  assert.deepEqual(models.availableEvalModels(env).map(m => m.id), ['@cf/cloudflare/clef']);
 });

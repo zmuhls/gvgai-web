@@ -1,9 +1,10 @@
 // Shared model catalog and routing resolution.
 //
-// The built-in catalog is the stated Ollama Cloud roster, drawing on
+// The chat catalog is the stated Ollama Cloud roster, drawing on
 // OLLAMA_API_KEY. OpenRouter is the per-call fallback for rows with a known
 // compatible slug. The featured set intentionally spans vendors so the marquee
 // does not become a Gemma-only loop.
+// Clef-flash uses Cloudflare's typed decision API and separate server credentials.
 //
 // NOTE: confirm exact Ollama Cloud tags and OpenRouter slugs near the event —
 // a stale id 404s at call time (surfaced via the 'llm-error' socket event), and
@@ -11,6 +12,18 @@
 // below were verified against OpenRouter /api/v1/models on 2026-07-08.
 
 const MODELS = [
+  {
+    id: '@cf/cloudflare/clef', name: 'Clef',
+    provider: 'cloudflare', fallback: null, decisionModel: true,
+    description: 'Cloudflare · simulator-assisted decisions',
+    speed: 'fast', cost: 'low', featured: true
+  },
+  {
+    id: '@cf/cloudflare/clef-flash', name: 'Clef-flash',
+    provider: 'cloudflare', fallback: null, decisionModel: true,
+    description: 'Cloudflare decision model · legal-action probabilities',
+    speed: 'fast', cost: 'low', featured: false
+  },
   // --- Gemma 3 (Google) ---
   {
     id: 'gemma3:4b', name: 'Gemma 3 4B',
@@ -195,6 +208,8 @@ function getAllModels() {
 function isModelAvailable(model, env = process.env) {
   if (!model) return false;
   switch (model.provider) {
+    case 'cloudflare':
+      return Boolean((env.CLOUDFLARE_API_TOKEN || env.CLOUDFLARE_AUTH_TOKEN) && /^[a-f0-9]{32}$/i.test(env.CLOUDFLARE_ACCOUNT_ID || ''));
     case 'ollama-cloud':
       return Boolean(env.OLLAMA_CLOUD_API_KEY || env.OLLAMA_API_KEY) ||
         Boolean(model.fallback && env.OPENROUTER_API_KEY);
@@ -210,6 +225,8 @@ function isModelAvailable(model, env = process.env) {
 // availability finds nothing at all, fall back to the legacy featured list so
 // plan shape stays deterministic where it used to be.
 function availableEvalModels(env = process.env) {
+  const clef = MODELS.find(m => m.id === '@cf/cloudflare/clef');
+  if (isModelAvailable(clef, env)) return [clef];
   const featured = MODELS.filter(m => m.featured);
   const availableFeatured = featured.filter(m => isModelAvailable(m, env));
   if (availableFeatured.length) return availableFeatured;

@@ -261,7 +261,9 @@ public class LearningMachine {
             System.out.println(" ** Playing game " + game_file + ", level " + level_file + " (" + level_time + ") **");
 
         // Create a new random seed for the next level.
-        int randomSeed = new Random().nextInt();
+        // An optional seed makes web evaluation runs reproducible; interactive
+        // runs keep the original random-seed behavior.
+        int randomSeed = Integer.getInteger("gvgai.seed", new Random().nextInt());
 
         //build the level in the game.
         toPlay.buildLevel(level_file, randomSeed);

@@ -292,6 +292,23 @@ Human play traces → training data → QLoRA fine-tune → registry → the mod
 
 ## Deployment (Railway + Cloudflare + Supabase)
 
+**CLEF rollout (November 2026).** The arcade now prefers full Cloudflare CLEF
+when `CLOUDFLARE_ACCOUNT_ID` and a server-side `CLOUDFLARE_API_TOKEN` with Workers
+AI access are configured. CLEF uses typed decisions and synchronous simulator
+lookahead through `JSON_PLANNING`; it does not use the legacy chat-model queue,
+40 ms controller budget, saved strategy memory, or provider fallback. See
+`docs/clef-overhaul.md` for research and validation limits.
+
+The production Docker entry point remains `server.js`, so set the interactive
+limits explicitly on Railway: `MODEL_RUN_MAX_ACTIONS=300`,
+`MODEL_RUN_MAX_PROVIDER_CALLS=300`, `MODEL_RUN_MAX_MS=600000`,
+`MODEL_GUARDRAIL_SESSION=300`, `MODEL_GUARDRAIL_HOURLY=1000`,
+`MODEL_GUARDRAIL_DAILY=2000`, and `MODEL_GUARDRAIL_MONTHLY=10000`.
+These remain bounded shared allowances; the older 20-call limits stop most games
+before completion. Keep the existing disabled background-inference flags and
+`PORT=3000`. Use a durable API token in the production secret store, not a local
+Wrangler OAuth access token. Each CLEF browser run ends after the selected level.
+
 The arcade is live at **https://inference-arcade.com** (Cloudflare-proxied apex CNAME → `gaaqisv1.up.railway.app`; the Railway-generated domain is `inference-arcade-production.up.railway.app`).
 
 - **Railway**: project/service `inference-arcade`, built from the root `Dockerfile` per `railway.json` (healthcheck `/api/games`). GitHub push-to-deploy is connected (since July 5 2026): the service's source is `zmuhls/gvgai-web` branch `master`, so every push to master triggers a full rebuild and deploy — including docs-only commits. `railway up --service inference-arcade --detach` from the repo root still works for deploying uncommitted local state.

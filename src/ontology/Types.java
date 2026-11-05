@@ -197,7 +197,8 @@ public class Types {
     public static enum LEARNING_SSO_TYPE {
         IMAGE,
         JSON,
-        BOTH
+        BOTH,
+        JSON_PLANNING
     }
 
     public static final int SCORE_DISQ = -1000;

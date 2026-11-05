@@ -27,7 +27,14 @@ const JAVA_ENV = process.env.GVGAI_JAVAC_BIN
 
 const archivePaths = ['src', 'examples', 'sprites', 'gson-2.6.2.jar'];
 const localOverrides = [
+  'src/tools/ActionLookahead.java',
+  'src/testing/TestActionLookahead.java',
+  'src/core/player/LearningPlayer.java',
+  'src/ontology/Types.java',
+  'src/ontology/avatar/MovingAvatar.java',
+  'src/core/game/SerializableStateObservation.java',
   'src/core/vgdl/VGDLFactory.java',
+  'src/core/vgdl/VGDLViewer.java',
   'src/tracks/LearningMachine.java',
   'src/tracks/singleLearning/utils/JavaServer.java',
   'src/tracks/singleLearning/utils/SocketComm.java',

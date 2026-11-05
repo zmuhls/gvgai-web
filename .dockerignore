@@ -4,7 +4,11 @@ out
 sources.txt
 node_modules
 web/node_modules
-web/.gvgai-runtime
+web/.gvgai-runtime*
+web/data/play-traces
+web/data/usage-guardrail.json
+web/data/cadavre.db*
+output
 web/public-local
 web/data/telemetry-events.jsonl
 web/data/eval-runs

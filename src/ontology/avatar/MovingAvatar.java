@@ -139,7 +139,12 @@ public class MovingAvatar extends VGDLSprite {
             action = ACTIONS.ACTION_NIL;
         }
 
-        if (CompetitionParameters.TIME_CONSTRAINED && ect.exceededMaxTime()) {
+        // Explicit remote planning mode advances one engine tick per decision.
+        // Its socket/request deadlines bound wall time; competition controllers
+        // retain the original CPU budget. Game rules and tick limits are unchanged.
+        boolean remotePlanning = this.player instanceof core.player.LearningPlayer &&
+            ((core.player.LearningPlayer)this.player).getLearningSsoType() == Types.LEARNING_SSO_TYPE.JSON_PLANNING;
+        if (!remotePlanning && CompetitionParameters.TIME_CONSTRAINED && ect.exceededMaxTime()) {
             long exceeded = -ect.remainingTimeMillis();
 
             if (ect.elapsedMillis() > CompetitionParameters.ACTION_TIME_DISQ) {

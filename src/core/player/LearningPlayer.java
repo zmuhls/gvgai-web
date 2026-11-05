@@ -60,6 +60,12 @@ public class LearningPlayer extends Player {
         try {
             SerializableStateObservation sso;
             switch (comm.getLastSsoType()) {
+                case JSON_PLANNING:
+                    so.currentGameState = Types.GAMESTATES.ACT_STATE;
+                    sso = new SerializableStateObservation(so);
+                    sso.actionOutcomes = tools.ActionLookahead.evaluate(so);
+                    comm.commSend(sso.serialize(null));
+                    break;
                 case JSON:
                     so.currentGameState = Types.GAMESTATES.ACT_STATE;
                     sso = new SerializableStateObservation(so);

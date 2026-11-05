@@ -11,6 +11,7 @@
   var iframe = popout.querySelector('iframe');
   var iframeSrc = iframe ? iframe.getAttribute('src') : null;
   var pointerStartY = null;
+  var dismissed = false;
 
   function iframeUrl(expanded) {
     if (!iframeSrc) return null;
@@ -47,12 +48,14 @@
   }
 
   function closePopout() {
+    dismissed = true;
     popout.classList.add('is-hidden');
     if (iframe) iframe.setAttribute('src', 'about:blank');
     track('marble_popout_closed');
   }
 
-  function updateStatus(mode) {
+  function updateStatus(mode, enabled) {
+    popout.classList.toggle('is-hidden', dismissed || enabled !== true);
     var state = 'off';
     var label = 'idle';
 
@@ -142,7 +145,7 @@
       updateStatus('IDLE');
     });
     socket.on('marble-run-state', function (snapshot) {
-      updateStatus(snapshot && snapshot.mode);
+      updateStatus(snapshot && snapshot.mode, snapshot && snapshot.enabled);
     });
   }
 
@@ -164,7 +167,7 @@
   fetch('/api/marble/state')
     .then(function (response) { return response.ok ? response.json() : null; })
     .then(function (snapshot) {
-      if (snapshot) updateStatus(snapshot.mode);
+      if (snapshot) updateStatus(snapshot.mode, snapshot.enabled);
     })
     .catch(function () {
       if (status) status.textContent = 'offline';

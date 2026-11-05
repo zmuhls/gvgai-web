@@ -1,0 +1,469 @@
+{
+  "specification": "clef-gvgai-acceptance-v2",
+  "startedAt": "2026-11-04T20:03:27.989Z",
+  "revision": "711e04836afb88c1095c9bcc37d40fbda4232939",
+  "model": "@cf/cloudflare/clef",
+  "seed": 42,
+  "level": 0,
+  "games": [
+    58,
+    26,
+    50,
+    15,
+    13,
+    18,
+    66,
+    87
+  ],
+  "maxActions": 250,
+  "modes": [
+    "sync"
+  ],
+  "timeoutMs": 500000,
+  "requiredWins": 5,
+  "captureOnly": false,
+  "inputPolicy": "Only committed public VGDL rules and newly simulated engine states; no local templates, human traces, player tactics, or strategy memory.",
+  "sourceRepository": "https://github.com/zmuhls/gvgai-web",
+  "purpose": "Verify simulator-assisted CLEF choices against original Java engine win conditions.",
+  "results": [
+    {
+      "runId": "labyrinth-sync-seed42",
+      "gameId": 58,
+      "gameName": "labyrinth",
+      "levelId": 0,
+      "modelId": "@cf/cloudflare/clef",
+      "modelName": "clef",
+      "provider": "cloudflare",
+      "strategyId": "default",
+      "strategy": "",
+      "mode": "sync",
+      "seed": 42,
+      "elapsedMs": 21280,
+      "endedBy": "game-over",
+      "apiAttempts": 36,
+      "apiErrors": 0,
+      "modelDecisions": 36,
+      "controlDecisions": 0,
+      "discarded": 0,
+      "engineActionCount": 36,
+      "actionIntegrity": true,
+      "engineActionSources": {
+        "clef-choice": 36
+      },
+      "inputTokens": 85964,
+      "latencyMs": {
+        "p50": 494,
+        "p95": 716
+      },
+      "result": {
+        "winner": "PLAYER_WINS",
+        "won": true,
+        "finalScore": 1,
+        "ticks": 35,
+        "decisions": 36,
+        "modelUsed": "@cf/cloudflare/clef",
+        "fallback": null,
+        "error": null
+      }
+    },
+    {
+      "runId": "crossfire-sync-seed42",
+      "gameId": 26,
+      "gameName": "crossfire",
+      "levelId": 0,
+      "modelId": "@cf/cloudflare/clef",
+      "modelName": "clef",
+      "provider": "cloudflare",
+      "strategyId": "default",
+      "strategy": "",
+      "mode": "sync",
+      "seed": 42,
+      "elapsedMs": 36657,
+      "endedBy": "game-over",
+      "apiAttempts": 39,
+      "apiErrors": 0,
+      "modelDecisions": 39,
+      "controlDecisions": 0,
+      "discarded": 0,
+      "engineActionCount": 39,
+      "actionIntegrity": true,
+      "engineActionSources": {
+        "clef-choice": 39
+      },
+      "inputTokens": 98722,
+      "latencyMs": {
+        "p50": 507,
+        "p95": 901
+      },
+      "result": {
+        "winner": "PLAYER_WINS",
+        "won": true,
+        "finalScore": 5,
+        "ticks": 38,
+        "decisions": 39,
+        "modelUsed": "@cf/cloudflare/clef",
+        "fallback": null,
+        "error": null
+      }
+    },
+    {
+      "runId": "hungrybirds-sync-seed42",
+      "gameId": 50,
+      "gameName": "hungrybirds",
+      "levelId": 0,
+      "modelId": "@cf/cloudflare/clef",
+      "modelName": "clef",
+      "provider": "cloudflare",
+      "strategyId": "default",
+      "strategy": "",
+      "mode": "sync",
+      "seed": 42,
+      "elapsedMs": 36462,
+      "endedBy": "game-over",
+      "apiAttempts": 60,
+      "apiErrors": 0,
+      "modelDecisions": 60,
+      "controlDecisions": 0,
+      "discarded": 0,
+      "engineActionCount": 60,
+      "actionIntegrity": true,
+      "engineActionSources": {
+        "clef-choice": 60
+      },
+      "inputTokens": 148680,
+      "latencyMs": {
+        "p50": 492,
+        "p95": 860
+      },
+      "result": {
+        "winner": "PLAYER_WINS",
+        "won": true,
+        "finalScore": 100,
+        "ticks": 59,
+        "decisions": 60,
+        "modelUsed": "@cf/cloudflare/clef",
+        "fallback": null,
+        "error": null
+      }
+    },
+    {
+      "runId": "camelRace-sync-seed42",
+      "gameId": 15,
+      "gameName": "camelRace",
+      "levelId": 0,
+      "modelId": "@cf/cloudflare/clef",
+      "modelName": "clef",
+      "provider": "cloudflare",
+      "strategyId": "default",
+      "strategy": "",
+      "mode": "sync",
+      "seed": 42,
+      "elapsedMs": 45913,
+      "endedBy": "game-over",
+      "apiAttempts": 45,
+      "apiErrors": 0,
+      "modelDecisions": 45,
+      "controlDecisions": 0,
+      "discarded": 0,
+      "engineActionCount": 45,
+      "actionIntegrity": true,
+      "engineActionSources": {
+        "clef-choice": 45
+      },
+      "inputTokens": 126221,
+      "latencyMs": {
+        "p50": 622,
+        "p95": 771
+      },
+      "result": {
+        "winner": "PLAYER_WINS",
+        "won": true,
+        "finalScore": 1,
+        "ticks": 44,
+        "decisions": 45,
+        "modelUsed": "@cf/cloudflare/clef",
+        "fallback": null,
+        "error": null
+      }
+    },
+    {
+      "runId": "butterflies-sync-seed42",
+      "gameId": 13,
+      "gameName": "butterflies",
+      "levelId": 0,
+      "modelId": "@cf/cloudflare/clef",
+      "modelName": "clef",
+      "provider": "cloudflare",
+      "strategyId": "default",
+      "strategy": "",
+      "mode": "sync",
+      "seed": 42,
+      "elapsedMs": 97388,
+      "endedBy": "game-over",
+      "apiAttempts": 83,
+      "apiErrors": 0,
+      "modelDecisions": 83,
+      "controlDecisions": 0,
+      "discarded": 0,
+      "engineActionCount": 83,
+      "actionIntegrity": true,
+      "engineActionSources": {
+        "clef-choice": 83
+      },
+      "inputTokens": 204811,
+      "latencyMs": {
+        "p50": 587,
+        "p95": 2510
+      },
+      "result": {
+        "winner": "PLAYER_WINS",
+        "won": true,
+        "finalScore": 26,
+        "ticks": 82,
+        "decisions": 83,
+        "modelUsed": "@cf/cloudflare/clef",
+        "fallback": null,
+        "error": null
+      }
+    },
+    {
+      "runId": "chase-sync-seed42",
+      "gameId": 18,
+      "gameName": "chase",
+      "levelId": 0,
+      "modelId": "@cf/cloudflare/clef",
+      "modelName": "clef",
+      "provider": "cloudflare",
+      "strategyId": "default",
+      "strategy": "",
+      "mode": "sync",
+      "seed": 42,
+      "elapsedMs": 107986,
+      "endedBy": "game-over",
+      "apiAttempts": 138,
+      "apiErrors": 0,
+      "modelDecisions": 138,
+      "controlDecisions": 0,
+      "discarded": 0,
+      "engineActionCount": 138,
+      "actionIntegrity": true,
+      "engineActionSources": {
+        "clef-choice": 138
+      },
+      "inputTokens": 344538,
+      "latencyMs": {
+        "p50": 471,
+        "p95": 774
+      },
+      "result": {
+        "winner": "PLAYER_WINS",
+        "won": true,
+        "finalScore": 7,
+        "ticks": 137,
+        "decisions": 138,
+        "modelUsed": "@cf/cloudflare/clef",
+        "fallback": null,
+        "error": null
+      }
+    },
+    {
+      "runId": "modality-sync-seed42",
+      "gameId": 66,
+      "gameName": "modality",
+      "levelId": 0,
+      "modelId": "@cf/cloudflare/clef",
+      "modelName": "clef",
+      "provider": "cloudflare",
+      "strategyId": "default",
+      "strategy": "",
+      "mode": "sync",
+      "seed": 42,
+      "elapsedMs": 3884,
+      "endedBy": "game-over",
+      "apiAttempts": 6,
+      "apiErrors": 0,
+      "modelDecisions": 6,
+      "controlDecisions": 0,
+      "discarded": 0,
+      "engineActionCount": 6,
+      "actionIntegrity": true,
+      "engineActionSources": {
+        "clef-choice": 6
+      },
+      "inputTokens": 13141,
+      "latencyMs": {
+        "p50": 514,
+        "p95": 1041
+      },
+      "result": {
+        "winner": "PLAYER_WINS",
+        "won": true,
+        "finalScore": 1,
+        "ticks": 5,
+        "decisions": 6,
+        "modelUsed": "@cf/cloudflare/clef",
+        "fallback": null,
+        "error": null
+      }
+    },
+    {
+      "runId": "sokoban-sync-seed42",
+      "gameId": 87,
+      "gameName": "sokoban",
+      "levelId": 0,
+      "modelId": "@cf/cloudflare/clef",
+      "modelName": "clef",
+      "provider": "cloudflare",
+      "strategyId": "default",
+      "strategy": "",
+      "mode": "sync",
+      "seed": 42,
+      "elapsedMs": 155432,
+      "endedBy": "decision-cap",
+      "apiAttempts": 250,
+      "apiErrors": 0,
+      "modelDecisions": 250,
+      "controlDecisions": 0,
+      "discarded": 0,
+      "engineActionCount": 250,
+      "actionIntegrity": true,
+      "engineActionSources": {
+        "clef-choice": 250
+      },
+      "inputTokens": 553181,
+      "latencyMs": {
+        "p50": 455,
+        "p95": 770
+      },
+      "result": {
+        "winner": "NO_WINNER",
+        "won": false,
+        "finalScore": 3,
+        "ticks": 250,
+        "decisions": 250,
+        "modelUsed": "@cf/cloudflare/clef",
+        "fallback": null,
+        "error": null
+      }
+    }
+  ],
+  "sourceHashes": {
+    "web/lib/clef-client.js": "92ac3829daa672f97c5956125c662e8168cc5e559191589fecc5732f518811c4",
+    "web/lib/llm-client.js": "661100b91fc39b077693f0657940fd0af88fdaddda28448f87987cc52e85edd0",
+    "web/lib/game-manager.js": "f70be02cb0a8c356bd23754cd410e84f98c1541fb79572e1c9408bd87e302282",
+    "web/lib/models.js": "4a30435ecc7ff62219e8d1fdb4fc543fb4ae25b6c1ecf5c09f8bcb7f6fa16b83",
+    "web/lib/clef-game-config.js": "ab8d21c55418f8f0320e093d344fb46cd61b40cdcfb012bc14895a6875bb2f45",
+    "web/lib/state-converter.js": "3dd07422495f7b069c0cef81941fb3e3c81f2513b7991487b9993c5573e4b8e5",
+    "web/lib/grid-renderer.js": "46fd5e0103359d3b3a246d3f572fa633dbe417f45d08fdfc985d96b96b2b6316",
+    "src/tracks/LearningMachine.java": "87b1d18b9fbb812726ed1ec458e21bb6bc67f63cff6b152035699cd72919746f",
+    "src/core/game/SerializableStateObservation.java": "0bdb82bf3bc1c4675aca5065dbfab2b9d8bbe67a292f968ca9bf4a9c81bf229d",
+    "web/scripts/prepare-java-runtime.js": "f0eb6b8973a2a8af3755b53b8579aa6f0c19ab01caece2fa6ed55864feceb9f6",
+    "web/scripts/run-clef-eval.js": "751ff60e7aad8d657f557fb3afe2f5260b19a239d20a2df592fc750f5516d9d2",
+    "src/tools/ActionLookahead.java": "307d175a2d12db5fc375ba98f63c44acf7d74d73aceb942fce880224f7f2c182",
+    "src/core/player/LearningPlayer.java": "003fd19647ccc5889ddbec3bade0baf2a478eb4994e923564a20b92fcd002eb1",
+    "src/ontology/Types.java": "a08d06c6de81db848b7ac01d9a9e6413764b71e9962ceda2ee6352cf556c5f26",
+    "src/ontology/avatar/MovingAvatar.java": "9c9bf3e1071548ead19af6d792674a0137fc133815350334e86434866a5a4d5b",
+    "src/tracks/singleLearning/utils/SocketComm.java": "7beff3757a469fbc01c43f8c6145c2fb021457f79c246f16c07c0631044af06b",
+    "examples/gridphysics/sokoban.txt": "5700e3c72d494b38dac452941c478e479d3915a99556ab9e99c8f405cf1f3dd2",
+    "examples/gridphysics/sokoban_lvl0.txt": "0fe79fabdc624255516c497ed93c68eea0ec2148bd66fe9cd966b30b9eeb5e28",
+    "examples/gridphysics/aliens.txt": "4621087fdac18bb5868ab9be770b4b5c0238abd7aef28c548f7d8ba1e523e37c",
+    "examples/gridphysics/aliens_lvl0.txt": "e6d68e62540cce6c3afad87fd295169624ad028fe22765529ae06ba77ea82223",
+    "examples/gridphysics/labyrinth.txt": "fc62c100acd49fc2e2286ba1b494787eb511a54ddffcc1f08e7fb6ee80ab4849",
+    "examples/gridphysics/labyrinth_lvl0.txt": "5d72567d44a07afa499181b6b5039d41a9502b9ae72f33708d3bca9492e28883",
+    "examples/gridphysics/crossfire.txt": "c636c0f6de95abec2e2b1dd99c61786a09d796d7d8693b2b7497b7c1ea668d42",
+    "examples/gridphysics/crossfire_lvl0.txt": "bbe923b06fd7a127e4341fbf0946766340177aa36a12963fde7ba6130cd896e0",
+    "examples/gridphysics/hungrybirds.txt": "b27b230643579144f901a89ae175f8a994655c92a2d235146cc43e48866f63b4",
+    "examples/gridphysics/hungrybirds_lvl0.txt": "bd3ca702252b901af1a6b0e5719cfb4f9053106205643fb5ff4096dbcd2ad805",
+    "examples/gridphysics/camelRace.txt": "112f4cdb66a950448e2457ba3423af9cce2b01be558e5acb69580bea86fc2ac6",
+    "examples/gridphysics/camelRace_lvl0.txt": "c97f94468b2ceebba431d28f24cadfffbc29e84c38034525cd7a50d26f9cbe92",
+    "examples/gridphysics/butterflies.txt": "f9acec420b4ce53c171aa3da3b71d77a0340afd95f8df49faf63b6233ae17afb",
+    "examples/gridphysics/butterflies_lvl0.txt": "466b53b5984318485ac340d89dfe5b6512cd12c305c43bed31ebf35b2cdd0036",
+    "examples/gridphysics/chase.txt": "abef1f8fafeff20d59d43e06fc97c27c3d2163b5766bde1155706ba641697d57",
+    "examples/gridphysics/chase_lvl0.txt": "5526e1432cc167fd4ee89891396303d9cafc61000ce4ad6bc3b907e74f1395f7",
+    "examples/gridphysics/modality.txt": "42833a0c41706fbf6a32316a8514d722ea4f3bb303aff77b77021df70a2f2314",
+    "examples/gridphysics/modality_lvl0.txt": "0ab3da525c3cd889c77518fa4f820e5aa91e17a811c340eeeeb824b8f7790189"
+  },
+  "finishedAt": "2026-11-04T20:11:53.338Z",
+  "successfulGames": [
+    58,
+    26,
+    50,
+    15,
+    13,
+    18,
+    66
+  ],
+  "passed": true,
+  "rawReceipts": "output/clef-overhaul-2026-11-04/acceptance-v4",
+  "notes": [
+    "All games use original level 0 and seed 42; UI labels this Level 1.",
+    "This is one evaluation suite, not a multi-seed win-rate estimate.",
+    "The later VGDLViewer change adds frames only; decision client and planner hashes below remain unchanged."
+  ],
+  "browserAcceptance": {
+    "date": "2026-11-04",
+    "model": "@cf/cloudflare/clef",
+    "gameId": 15,
+    "level": 0,
+    "winner": "PLAYER_WINS",
+    "score": 1,
+    "decisions": 45,
+    "frames": 46,
+    "pageErrors": [],
+    "mobile": {
+      "width": 390,
+      "scrollWidth": 390
+    },
+    "completedLevels": 1
+  },
+  "checks": {
+    "web": {
+      "total": 474,
+      "passed": 470,
+      "skipped": 4,
+      "failed": 0,
+      "database": "CADAVRE_DB_PATH=:memory: isolates the test processes from local preview storage"
+    },
+    "java": {
+      "compiledSources": 349,
+      "invariantGames": [
+        "sokoban",
+        "hungrybirds",
+        "camelRace",
+        "crossfire",
+        "butterflies",
+        "chase"
+      ]
+    },
+    "arcadeDryRun": {
+      "planned": 210,
+      "executed": 0
+    }
+  },
+  "browserStop": {
+    "model": "@cf/cloudflare/clef-flash",
+    "gameId": 15,
+    "level": 0,
+    "passed": true,
+    "decisions": 3,
+    "lateDecisions": 0,
+    "pageErrors": [],
+    "mobile": {
+      "width": 390,
+      "scrollWidth": 390
+    },
+    "observationWindowMs": 3000
+  },
+  "finalIntegrationHashes": {
+    "web/lib/llm-client.js": "987496aa5c728fdce1cb850cc7e85023955bbd5c5b41098208a40e0a41744a85",
+    "web/server.js": "93386facdef2823c2426e31d114553cd4f3a523e225ab1ddf6d7c7b734f39d44",
+    "src/core/vgdl/VGDLViewer.java": "68e55a0372780b4eec911a8f8f544f12d06524356b01a7482f1b408439c1ca5a",
+    "web/public/js/app.js": "89c3158dce3c9cf92a4007bbe82c8edb787eccc2e064223506ed4c0ce386f20b",
+    "web/public/js/marble-popout.js": "4848723bbef982f4f6b53b32ed15833ddf8eead1d560d66750d06d3c347ed397",
+    "web/public/css/styles.css": "d913e2dc79b393a53405e584d385d9cba86c3a7435e9d7c86bd0a67cfebda3e2",
+    "web/public/index.html": "49a6985686a81a3d5c410e46b5a0e9ba13aed3ea5c6f36ef65552113270e2a1a",
+    "web/scripts/start-clef.js": "e2b4164e123a1fb031d28c784cf226de32fd6564af2131ee2dcff9a24354372b",
+    "web/scripts/prepare-java-runtime.js": "bbe408c69db1226bddae8ec594f12cc660591f5677e21221fa148ec25a2c5da3",
+    "web/scripts/run-clef-eval.js": "ac94943332c71a3631f2432180553c8b7817cf26475c495016ad4739ee06924f"
+  }
+}

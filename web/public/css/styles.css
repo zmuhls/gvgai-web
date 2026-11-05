@@ -1513,7 +1513,12 @@ label {
   transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
-.model-chip:hover {
+.model-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.model-chip:hover:not(:disabled) {
   border-color: var(--arcade-accent);
 }
 
@@ -3571,7 +3576,9 @@ details[open] > .station-head .station-caret {
   touch-action: pan-y;
 }
 
-.marble-popout.is-hidden {
+.marble-popout.is-hidden,
+body[data-arcade-step="model-selector"] .marble-popout,
+body[data-arcade-step="game-viewer"] .marble-popout {
   display: none;
 }
 

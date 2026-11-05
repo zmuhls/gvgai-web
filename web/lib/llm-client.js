@@ -4,6 +4,8 @@ const config = getConfig();
 const { buildPrompt, computeAdherence, sanitizeStrategy, GameStateTracker } = require('./state-converter');
 const { parseStructured } = require('./response-parser');
 const { resolveModel } = require('./models');
+const { buildClefInput, decisionPromptConfig, requestClef } = require('./clef-client');
+const { clefGameConfig } = require('./clef-game-config');
 const promptStore = require('./prompt-store');
 const telemetry = require('./telemetry-store');
 const traceStore = require('./play-trace-store');
@@ -79,7 +81,10 @@ class LLMClient {
     this.pendingDirectionPulseAction = null;
     this.levelCount = normalizeLevelId(options.initialLevelId, DEFAULT_INITIAL_LEVEL_ID);  // Current level id
     this.maxLevelId = normalizeLevelId(options.maxLevelId, DEFAULT_MAX_LEVEL_ID);
+    this.stopAfterLevel = Boolean(options.stopAfterLevel);
     this.onSessionEnd = null;  // Callback for session cleanup
+    this.sessionEndEmitted = false;
+    this.completedLevels = 0;
     this.gameId = null;  // Game ID for prompt config lookup
     this.gameName = null;  // Resolved game name from CSV
     this.promptConfig = null;  // Resolved prompt config from dashboard
@@ -99,10 +104,12 @@ class LLMClient {
       DEFAULT_MAX_PROVIDER_CALLS
     );
     this.remoteProviderCallCount = 0;
+    this.decisionEpoch = 0;
     this.initResponseType = options.initResponseType || (this.synchronousActions ? 'JSON' : 'BOTH');
     this.actResponseType = options.actResponseType || (this.synchronousActions ? 'JSON' : 'BOTH');
     this.runId = options.runId || null;
     this.promptConfigOptions = options.promptConfigOptions || {};
+    this.promptConfigOverride = options.promptConfig || null;
     this.providerOverride = options.providerOverride || null;
     this.preferProviderFallback = !!options.preferProviderFallback;
     this.lastTraceTickLogged = null;
@@ -187,8 +194,17 @@ class LLMClient {
 
   async connect(port, model, io, gameId, gameName, sessionStrategy = null) {
     this.model = model;
+    if (resolveModel(model).decisionModel) {
+      // Remote choices belong to exactly one observed state. Never repeat an
+      // old action while the provider is still deciding the next one.
+      this.synchronousActions = true;
+      this.initResponseType = 'JSON_PLANNING';
+      this.actResponseType = 'JSON_PLANNING';
+    }
     this.io = io;
     this.gameActive = true;
+    this.sessionEndEmitted = false;
+    this.completedLevels = 0;
     this.gameId = gameId != null ? gameId : null;
     this.gameName = gameName || 'unknown';
     // Runtime-only directive — lives on the instance, never reaches promptStore.saveGameConfig.
@@ -210,7 +226,9 @@ class LLMClient {
     this.lastPolicyDecisionActionLogged = null;
     this.lastPolicyDecisionScoreLogged = null;
     this.lastLoopBreakTick = -STAGNATION_BREAK_INTERVAL;
-    this.promptConfig = promptStore.resolveGamePromptConfig(this.gameId, this.levelCount, this.promptConfigOptions);
+    this.promptConfig = this.promptConfigOverride || (resolveModel(this.model).decisionModel
+      ? clefGameConfig(this.gameId)
+      : promptStore.resolveGamePromptConfig(this.gameId, this.levelCount, this.promptConfigOptions));
     // Ensure gameName is set even when game config doesn't specify it
     if (this.promptConfig && !this.promptConfig.gameName) {
       this.promptConfig.gameName = this.gameName;
@@ -277,10 +295,10 @@ class LLMClient {
   }
 
   async processMessage(message) {
+    const msgId = message.split('#', 1)[0];
     try {
       // Parse message format: messageId#jsonPayload
       const parts = message.split('#');
-      const msgId = parts[0];
       const jsonPayload = parts.slice(1).join('#');  // Rejoin in case payload contains '#'
 
       // Debug: uncomment to trace messages
@@ -315,14 +333,7 @@ class LLMClient {
             levelsPlayed: this.levelCount
           }
         });
-        if (this.io) {
-          this.io.emit('session-end', {
-            runId: this.runId,
-            reason: 'finished',
-            levelsPlayed: this.levelCount
-          });
-        }
-        this._triggerSessionEnd();
+        this._triggerSessionEnd('finished');
         return;
       }
 
@@ -348,13 +359,14 @@ class LLMClient {
         // async case burns 60-150 provider calls instead of ~40.
         if (this.maxActions && this.runLog.length >= this.maxActions) {
           console.log(`[LLMClient] Max actions reached (${this.maxActions}); ending Java eval case`);
+          this.recordActState(jsonPayload, null);
           this.sendMessageWithId(msgId, `ABORT#${this.actResponseType}`);
           // Java doesn't reliably close the socket after ABORT, so emit the
           // run-summary now — otherwise the eval/marble case hangs until the
           // per-case timeout. The summaryEmitted guard makes this idempotent
           // if the socket does later close. (Only reached in eval/marble mode;
           // the walk-up path never sets maxActions.)
-          this.emitCloseSummary();
+          this.emitCloseSummary('decision-cap');
           return;
         }
         if (this.synchronousActions) {
@@ -372,7 +384,14 @@ class LLMClient {
           }
           const sso = this.recordActState(jsonPayload, null);
           try {
-            const decision = await this.requestLLMAction(jsonPayload);
+            let decision = await this.requestLLMAction(jsonPayload);
+            if (decision.stale && resolveModel(this.model).decisionModel) {
+              if (!this.gameActive) return;
+              // A tactic may change while the game is paused. Re-evaluate the
+              // same observation once; never substitute a steering key press.
+              decision = await this.requestLLMAction(jsonPayload);
+              if (decision.stale) throw new Error('Strategy changed repeatedly during the decision');
+            }
             let action = decision.action;
             if (decision.stale || !action) {
               const steering = this.resolveSteeringAction(sso);
@@ -387,6 +406,13 @@ class LLMClient {
             this.sendMessageWithId(msgId, `${action}#${this.actResponseType}`);
           } catch (error) {
             console.error('[LLMClient] Error in synchronous LLM action:', error.message);
+            if (resolveModel(this.model).decisionModel) {
+              this.sendMessageWithId(msgId, `ABORT#${this.actResponseType}`);
+              this.emitCloseSummary(error.guardrail ? 'usage-limit' : 'provider-error');
+              this.gameActive = false;
+              this._triggerSessionEnd();
+              return;
+            }
             this.recordActionDecision('ACTION_NIL', sso ? sso.gameTick : 0, error.message, sso);
             this.sendMessageWithId(msgId, `ACTION_NIL#${this.actResponseType}`);
           }
@@ -473,17 +499,25 @@ class LLMClient {
     } catch (error) {
       console.error('[LLMClient] Error processing message:', error);
       if (msgId) {
-        this.sendMessageWithId(msgId, `ACTION_NIL#${this.actResponseType}`);
+        if (resolveModel(this.model).decisionModel) {
+          this.sendMessageWithId(msgId, `ABORT#${this.actResponseType}`);
+          this.emitCloseSummary('invalid-state');
+          this.gameActive = false;
+          this._triggerSessionEnd();
+        } else this.sendMessageWithId(msgId, `ACTION_NIL#${this.actResponseType}`);
       }
     }
   }
 
   async handleInit(msgId) {
+    this.decisionEpoch += 1;
     console.log('[LLMClient] Game initializing...');
     this.summaryEmitted = false;
     // Reload prompt config for current level (picks up level-specific progression context)
     if (this.gameId != null) {
-      this.promptConfig = promptStore.resolveGamePromptConfig(this.gameId, this.levelCount, this.promptConfigOptions);
+      this.promptConfig = this.promptConfigOverride || (resolveModel(this.model).decisionModel
+        ? clefGameConfig(this.gameId)
+        : promptStore.resolveGamePromptConfig(this.gameId, this.levelCount, this.promptConfigOptions));
       this.configureAsyncCodePlans();
       if (this.promptConfig && !this.promptConfig.gameName) {
         this.promptConfig.gameName = this.gameName;
@@ -530,11 +564,13 @@ class LLMClient {
   // --- Macro-action plan executor -----------------------------------------
 
   macroEnabled() {
+    if (resolveModel(this.model).decisionModel) return false;
     if (process.env.MACRO_ACTIONS_DISABLED === '1') return false;
     return Boolean(this.promptConfig?.macroActions?.enabled);
   }
 
   configureAsyncCodePlans() {
+    if (resolveModel(this.model).decisionModel) return;
     const protocol = this.promptConfig?.codeProtocol;
     if (
       this.synchronousActions ||
@@ -1020,6 +1056,7 @@ class LLMClient {
   // -------------------------------------------------------------------------
 
   resolveAuthoritativePolicy(jsonPayload) {
+    if (resolveModel(this.model).decisionModel) return null;
     if (!this.promptConfig?.codeProtocol?.enabled) return null;
 
     let sso;
@@ -1167,7 +1204,7 @@ class LLMClient {
 
   // Call a single provider's OpenAI-compatible chat endpoint. Returns the response
   // text, or throws on a non-OK status so the caller can trigger the fallback.
-  async callProvider(provider, modelId, messages, settings) {
+  async callProvider(provider, modelId, messages, settings, decisionInput) {
     // Local Ollama thinking models (gemma4 E-series) burn all max_tokens on
     // reasoning and return empty content via the OpenAI-compatible endpoint.
     // Route them through the native /api/chat endpoint with think:false so they
@@ -1187,7 +1224,7 @@ class LLMClient {
       temperature: settings.temperature !== undefined ? settings.temperature : 0.7
     };
 
-    if (provider === 'ollama-cloud' || provider === 'openrouter') {
+    if (provider === 'ollama-cloud' || provider === 'openrouter' || provider === 'cloudflare') {
       const verdict = this.remoteProviderCallCount >= this.maxProviderCalls
         ? {
             allowed: false,
@@ -1215,6 +1252,10 @@ class LLMClient {
       // Count the attempt before the request. Timeouts and provider errors still
       // consume the per-run allowance and cannot create an unbounded retry loop.
       this.remoteProviderCallCount += 1;
+    }
+
+    if (provider === 'cloudflare') {
+      return requestClef(decisionInput, { timeoutMs: this.actionTimeoutMs });
     }
 
     if (provider === 'ollama-cloud') {
@@ -1335,6 +1376,12 @@ class LLMClient {
 
   async requestLLMAction(jsonPayload) {
     const sso = JSON.parse(jsonPayload);
+    const isDecisionModel = Boolean(resolveModel(this.model).decisionModel);
+    const epochAtStart = this.decisionEpoch;
+    const levelAtStart = this.levelCount;
+    const clefInput = isDecisionModel
+      ? buildClefInput(sso, this.promptConfig, this.stateTracker, this.sessionStrategy, this.model)
+      : null;
     const {
       systemMessage,
       userMessage,
@@ -1344,8 +1391,9 @@ class LLMClient {
       fallbackAction,
       fallbackActionCode,
       policyAuthoritative
-    } = buildPrompt(sso, this.promptConfig, this.stateTracker, this.sessionStrategy);
-    const prompt = userMessage;
+    } = buildPrompt(sso, isDecisionModel ? decisionPromptConfig(this.promptConfig) : this.promptConfig,
+      this.stateTracker, this.sessionStrategy);
+    const prompt = clefInput ? JSON.stringify(clefInput) : userMessage;
     const strategyRevisionAtStart = this.strategyRevision;
     const strategyAtStart = this.sessionStrategy;
 
@@ -1384,6 +1432,7 @@ class LLMClient {
       : catalogResolved;
     const startTime = Date.now();
     let llmResponse;
+    let typedDecision = null;
     let usedProvider = resolved.provider;
     let usedModel = resolved.id;
     const routes = this.buildProviderRoutes(resolved);
@@ -1395,7 +1444,13 @@ class LLMClient {
       usedModel = route.modelId;
 
       try {
-        llmResponse = await this.callProvider(route.provider, route.modelId, messages, settings);
+        const result = await this.callProvider(route.provider, route.modelId, messages, settings, clefInput);
+        if (isDecisionModel) {
+          typedDecision = result;
+          llmResponse = JSON.stringify(result.raw);
+        } else {
+          llmResponse = result;
+        }
         if (index > 0) {
           console.log(`[LLMClient] Fell back to ${route.provider}/${route.modelId}`);
         }
@@ -1448,6 +1503,15 @@ class LLMClient {
     }
 
     const elapsed = Date.now() - startTime;
+    if (isDecisionModel && (epochAtStart !== this.decisionEpoch || levelAtStart !== this.levelCount ||
+        (this.lastSso && (!(this.lastSso.availableActions || []).includes(typedDecision.action) ||
+          this.lastSso.gameTick - sso.gameTick > MAX_PLAN_AGE_TICKS)))) {
+      if (this.io) this.io.emit('model-decision-discarded', {
+        runId: this.runId, decisionSource: 'stale-state', provider: usedProvider,
+        requestedTick: sso.gameTick, elapsed, usage: typedDecision.usage
+      });
+      return { action: null, stale: true, decisionSource: 'stale-state', elapsed, provider: usedProvider };
+    }
     if (strategyRevisionAtStart !== this.strategyRevision || strategyAtStart !== this.sessionStrategy) {
       console.log('[LLMClient] Ignoring stale LLM response after steering update');
       return {
@@ -1468,7 +1532,7 @@ class LLMClient {
     const maxPlanSteps = codePlanEnabled
       ? Math.min(codePlanSteps, MAX_PLAN_STEPS)
       : this.promptConfig?.macroActions?.maxSteps || MAX_PLAN_STEPS;
-    const parsed = parseStructured(llmResponse, sso.availableActions, actionCodeMap, { maxPlanSteps });
+    const parsed = typedDecision || parseStructured(llmResponse, sso.availableActions, actionCodeMap, { maxPlanSteps });
     let { action, reason } = parsed;
     let decisionSource = parsed.source || 'unknown';
     const trustedCodeParse = !responseMode || responseMode !== 'code' || [
@@ -1503,7 +1567,7 @@ class LLMClient {
     let planActions = (acceptsParsedPlan && parsed.valid !== false && Array.isArray(parsed.plan) && parsed.plan.length > 0)
       ? parsed.plan
       : [action];
-    const steering = this.applySteeringToPlan(action, planActions, sso);
+    const steering = isDecisionModel ? { planActions } : this.applySteeringToPlan(action, planActions, sso);
     planActions = steering.planActions || planActions;
     if (steering.steering) {
       action = steering.action;
@@ -1541,23 +1605,26 @@ class LLMClient {
         action,
         reason,
         decisionSource,
+        decision: typedDecision ? { confidence: typedDecision.confidence, probabilities: typedDecision.probabilities,
+          usage: typedDecision.usage, requestedTick: sso.gameTick,
+          planning: clefInput.state.planning } : undefined,
         parsedAction: parsed.action,
         policyAuthoritative: Boolean(policyAuthoritative),
         fallbackAction,
         fallbackActionCode,
         modelUsed: usedModel,
-        responseMode: responseMode || 'text',
+        responseMode: typedDecision ? 'choice' : (responseMode || 'text'),
         plan: planActions,
         planLength: planActions.length,
         planSource: parsed.planSource || 'single-action',
         strategy_present: Boolean(this.sessionStrategy),
         prompt: storeRawText ? prompt : undefined,
-        systemPrompt: storeRawText ? systemMessage || null : undefined,
+        systemPrompt: storeRawText ? (clefInput ? null : systemMessage || null) : undefined,
         response: storeRawText ? llmResponse : undefined
       },
       metrics: {
         prompt_chars: prompt.length,
-        system_prompt_chars: systemMessage ? systemMessage.length : 0,
+        system_prompt_chars: clefInput ? 0 : (systemMessage ? systemMessage.length : 0),
         action_code_count: actionCodeMap ? Object.keys(actionCodeMap).length : 0,
         parse_valid: parsed.valid === false ? 0 : 1,
         response_chars: llmResponse.length,
@@ -1570,11 +1637,14 @@ class LLMClient {
       this.io.emit('llm-reasoning', {
         runId: this.runId,
         prompt,
-        systemPrompt: systemMessage || null,
-        promptLayers: promptLayers || null,
+        systemPrompt: clefInput ? null : systemMessage || null,
+        promptLayers: clefInput ? clefInput.state.context : promptLayers || null,
         response: llmResponse,
         reason,
         decisionSource,
+        decision: typedDecision ? { confidence: typedDecision.confidence, probabilities: typedDecision.probabilities,
+          usage: typedDecision.usage, requestedTick: sso.gameTick,
+          planning: clefInput.state.planning } : undefined,
         parsedAction: parsed.action,
         policyAuthoritative: Boolean(policyAuthoritative),
         fallbackAction,
@@ -1624,8 +1694,12 @@ class LLMClient {
   }
 
   async handleEnd(sso, msgId) {
+    this.decisionEpoch += 1;
+    this.completedLevels += 1;
     const completedLevel = this.levelCount;
-    const progression = nextLevelResponse(completedLevel, sso.gameWinner, { maxLevelId: this.maxLevelId });
+    const progression = this.stopAfterLevel
+      ? { finished: true, nextLevelId: null, response: 'END_TRAINING' }
+      : nextLevelResponse(completedLevel, sso.gameWinner, { maxLevelId: this.maxLevelId });
     console.log(`[LLMClient] Level ${completedLevel} ended`);
     console.log(`[LLMClient] Score: ${sso.gameScore}`);
     console.log(`[LLMClient] Winner: ${sso.gameWinner}`);
@@ -1732,7 +1806,9 @@ class LLMClient {
   // strategy, a stated-adherence signal, and a few concrete highlight decisions.
   buildRunSummary(sso) {
     const won = sso.gameWinner === 'PLAYER_WINS' || sso.gameWinner === true;
-    const adherence = computeAdherence(this.sessionStrategy, this.runLog);
+    const adherence = resolveModel(this.model).decisionModel
+      ? { label: 'Not measured', mentioned: 0, total: 0, keywords: [] }
+      : computeAdherence(this.sessionStrategy, this.runLog);
 
     // Highlights: prefer score-gaining decisions; fall back to strategy-mentioning ones
     let highlights = this.runLog
@@ -1802,7 +1878,7 @@ class LLMClient {
     }
   }
 
-  emitCloseSummary() {
+  emitCloseSummary(endedBy = 'socket-close') {
     if (this.summaryEmitted || (!this.lastSso && this.runLog.length === 0)) return;
     const sso = this.lastSso || {};
     const summary = this.buildRunSummary({
@@ -1811,7 +1887,7 @@ class LLMClient {
       gameTick: sso.gameTick || this.runLog.length,
       gameScore: sso.gameScore || this.runStartScore || 0
     });
-    summary.endedBy = 'socket-close';
+    summary.endedBy = endedBy;
     this.emitRunSummary(summary);
   }
 
@@ -1850,7 +1926,15 @@ class LLMClient {
     return { text, warnings };
   }
 
-  _triggerSessionEnd() {
+  _triggerSessionEnd(reason = 'closed') {
+    // END_TRAINING can close Java's socket without a FINISH message. Both
+    // paths must finish the browser session, once, before server cleanup.
+    if (!this.sessionEndEmitted) {
+      this.sessionEndEmitted = true;
+      this.io?.emit('session-end', {
+        runId: this.runId, reason, levelsPlayed: this.completedLevels
+      });
+    }
     if (this.onSessionEnd) {
       const cb = this.onSessionEnd;
       this.onSessionEnd = null;  // Prevent double-call
@@ -1859,6 +1943,7 @@ class LLMClient {
   }
 
   disconnect() {
+    this.decisionEpoch += 1;
     this.gameActive = false;
     this.onSessionEnd = null;  // Don't trigger cleanup on intentional disconnect
     if (this.socket) {

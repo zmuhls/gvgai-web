@@ -1,4 +1,4 @@
-// Cost guardrail for remote model providers. Ollama Cloud and OpenRouter share
+// Cost guardrail for remote model providers. Ollama Cloud, OpenRouter and Cloudflare share
 // hour/day/month buckets so reaching one provider's cap cannot transfer spend
 // to the other provider. The state file uses Railway's mounted volume when
 // available, which keeps a deployment or restart from resetting the budget.
@@ -22,7 +22,7 @@ const path = require('path');
 const DEFAULT_STATE_PATH = path.join(__dirname, '..', 'data', 'usage-guardrail.json');
 const DEFAULT_LIMITS = { hourly: 20, daily: 30, monthly: 100, session: 20 };
 const DEFAULT_CADAVRE_RESERVE_LIMITS = { hourly: 5, daily: 10, monthly: 25 };
-const REMOTE_PROVIDERS = new Set(['ollama-cloud', 'openrouter']);
+const REMOTE_PROVIDERS = new Set(['ollama-cloud', 'openrouter', 'cloudflare']);
 
 let state = null;
 let persistenceError = null;

@@ -9,7 +9,7 @@ const { getConfig, getConfigLoadStatus } = require('./lib/runtime-config');
 const { resolveScreenshotPath } = require('./lib/screenshot-path');
 const { sanitizeStrategy } = require('./lib/state-converter');
 const { createCadavreMirror } = require('./lib/cadavre-mirror');
-const { getAllModels, isModelAvailable } = require('./lib/models');
+const { getAllModels, isModelAvailable, resolveModel } = require('./lib/models');
 const coordinator = require('./lib/attract-coordinator');
 const finetunePipeline = require('./lib/finetune-pipeline');
 const config = getConfig();
@@ -199,7 +199,7 @@ function stopScreenshotStreaming() {
 
 // Middleware
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use((req, res, next) => {
   if (!req.path.startsWith('/api/') || req.path.startsWith('/api/telemetry')) {
     next();
@@ -436,6 +436,8 @@ app.post('/api/game/start', async (req, res) => {
       : new runtime.LLMClient({
         runId,
         initialLevelId,
+        // A typed-decision run ends with the selected level's visible result.
+        stopAfterLevel: Boolean(resolveModel(model).decisionModel),
         maxActions: positiveEnv('MODEL_RUN_MAX_ACTIONS', 20),
         maxProviderCalls: positiveEnv('MODEL_RUN_MAX_PROVIDER_CALLS', 20),
         promptConfigOptions: { strategyMemory: 'accepted' }
@@ -802,7 +804,7 @@ async function startServer() {
     server.listen(PORT, () => {
       console.log(`[Server] Running on http://localhost:${PORT}`);
       console.log(`[Server] GVGAI project root: ${config.gvgai.projectRoot}`);
-      console.log(`[Server] OpenRouter API key loaded from environment`);
+      console.log(`[Server] Available models: ${getAllModels().filter(model => isModelAvailable(model)).map(model => model.name).join(', ') || 'none configured'}`);
       const backgroundInference = backgroundInferenceSettings(process.env);
       if (backgroundInference.cadavreWarmer) {
         cadavreRoutes.startModelWarmer();

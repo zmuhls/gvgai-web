@@ -9,7 +9,8 @@ const path = require('path');
 const models = require('../lib/models');
 
 test('built-in catalog exposes every stated Ollama Cloud model', () => {
-  assert.deepEqual(models.MODELS.map(model => model.id), [
+  const ollamaModels = models.MODELS.filter(model => model.provider === 'ollama-cloud');
+  assert.deepEqual(ollamaModels.map(model => model.id), [
     'gemma3:4b',
     'gemma3:12b',
     'gemma3:27b',
@@ -27,8 +28,8 @@ test('built-in catalog exposes every stated Ollama Cloud model', () => {
     'gemma4:31b'
   ]);
 
-  assert.deepEqual(models.MODELS.map(model => model.provider), Array(15).fill('ollama-cloud'));
   assert.deepEqual(models.MODELS.filter(model => model.featured).map(model => model.id), [
+    '@cf/cloudflare/clef',
     'gemma3:27b',
     'qwen3-coder-next',
     'ministral-3:14b',

@@ -84,6 +84,7 @@ node_modules/
 gameStateByBytes.png
 logs/
 web/.gvgai-runtime/
+web/.gvgai-runtime-*/
 web/data/telemetry-events.jsonl
 web/data/usage-guardrail.json
 web/data/cadavre.db*

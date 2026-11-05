@@ -1,6 +1,7 @@
 package core.game;
 
 import core.competition.CompetitionParameters;
+import core.vgdl.VGDLRegistry;
 import tools.com.google.gson.Gson;
 import ontology.Types;
 import tools.ElapsedCpuTimer;
@@ -49,6 +50,8 @@ public class SerializableStateObservation {
 
     public ArrayList<Types.ACTIONS> availableActions;
     public HashMap<Integer, Integer> avatarResources;
+    public HashMap<Integer, String> spriteTypes;
+    public java.util.Map<String, tools.ActionLookahead.Candidate> actionOutcomes;
     public Observation[][][] observationGrid;
     public int observationGridNum;
     public int observationGridMaxRow;
@@ -112,8 +115,15 @@ public class SerializableStateObservation {
     }
 
     private void buildGameData(StateObservation s){
+        // Observation metadata lets decision models distinguish same-category
+        // sprites (for example a Sokoban goal and a wall are both immovable).
+        spriteTypes = new HashMap<Integer, String>();
+        VGDLRegistry registry = VGDLRegistry.GetInstance();
+        for (int i = 0; i < registry.numSpriteTypes(); i++) {
+            spriteTypes.put(i, registry.getRegisteredSpriteKey(i));
+        }
         setPhase(s.getGameState());
-        availableActions = s.getAvailableActions();
+        availableActions = s.getAvailableActions(true);
         gameScore = (float) s.getGameScore();
         gameTick = s.getGameTick();
         gameWinner = s.getGameWinner();

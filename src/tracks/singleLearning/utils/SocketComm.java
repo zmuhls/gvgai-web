@@ -51,6 +51,7 @@ public class SocketComm extends Comm {
 
 
             //Initialize input and output through socket.
+            socket.setSoTimeout(20000);
             in = new Scanner(socket.getInputStream());
             out = new PrintStream(socket.getOutputStream());
 
@@ -92,7 +93,7 @@ public class SocketComm extends Comm {
      */
     public void commSend(String msg) throws IOException {
         String message = messageId + TOKEN_SEP + msg + lineSep;
-        out.format(message);
+        out.print(message);
         out.flush();
         messageId++;
     }
@@ -187,6 +188,9 @@ public class SocketComm extends Comm {
                 if (messageParts.length >= 3) {
                     String ssoType = messageParts[2];
                     switch (ssoType) {
+                        case "JSON_PLANNING":
+                            this.lastSsoType = LEARNING_SSO_TYPE.JSON_PLANNING;
+                            break;
                         case "JSON":
                             this.lastSsoType = LEARNING_SSO_TYPE.JSON;
                             break;
@@ -216,7 +220,8 @@ public class SocketComm extends Comm {
                 return null;
             }
         } else {
-            return null;
+            // EOF or socket deadline: terminate the run instead of spinning.
+            return "ABORT";
         }
     }
 

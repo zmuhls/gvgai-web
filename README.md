@@ -1,66 +1,92 @@
 # Inference Arcade
 
-Language models play classic video games in real time. You read the reasoning behind each move, hand the model a strategy in plain English, and watch where it follows the plan or breaks from it. The arcade runs itself between visitors. A fine-tune pipeline captures human gameplay, trains models via Unsloth QLoRA on a local GPU, and reloads them into the cabinet so visitors see their own play patterns reflected back in the next run.
+Play the original GVGAI games with Cloudflare **Clef**, or select **Clef-flash**
+for its smaller decision model. The Java engine supplies legal actions and bounded
+simulated consequences. Clef returns a typed action distribution; the engine
+executes one selected action, then observes and replans.
 
-A fork of the [GVGAI framework](https://github.com/GAIGResearch/GVGAI) supplying a Java engine for 122 2D grid games written in VGDL, with everything under `web/` built new. A Node server bridges an LLM to the engine over TCP. A browser frontend renders the canvas, the model's per-move reasoning, a telemetry dashboard with live standings, and a training pipeline that captures human traces to fine-tune models via Unsloth QLoRA.
+This is a simulator-assisted agent. It runs in synchronized decision mode, with
+request deadlines rather than the competition's 40 ms controller budget. Original
+game mechanics, levels, scoring, and win conditions remain unchanged. Forecasts
+are estimates, especially in stochastic games. Displayed percentages are action
+preferences, not chances of winning. No model-authored rationale is fabricated.
 
-Part of the CUNY AI Lab's Inference Arcade initiative fostering critical play with large language models by retrofitting them to the design grammar of classic games.
+## Run locally
 
-Live at **[inference-arcade.com](https://inference-arcade.com)**.
+Requires Node 22+ and Java 11. Keep Cloudflare credentials on the server; a token
+must have Workers AI access to the selected account.
 
----
+```sh
+npm --prefix web ci
+npm --prefix web run java:prepare
+export CLOUDFLARE_ACCOUNT_ID=your_account_id
+export CLOUDFLARE_API_TOKEN=your_workers_ai_token
+npm --prefix web run start:clef
+```
 
-## What you see
+Open http://localhost:3000, choose a game, leave Clef selected, and start model
+play. Each Clef run stops after the selected level. Clef-flash uses the same control loop. Human play and the legacy chat models
+remain selectable when configured. The generic `npm --prefix web start` entry
+point retains the operator's existing configuration.
 
-Pick a game, tap a strategy card or write your own tactic in plain English, then watch the model play under real-time pressure with one decision per tick.
+The explicit CLEF startup profile supplies defaults of 300 decisions/calls and
+10 minutes per run, with shared caps of 1,000 calls/hour, 2,000/day and 10,000/month.
+Existing environment settings take priority, including the older 20-call settings
+in `.env.example`. Those short limits will stop most games before completion.
+Background inference stays off unless explicitly enabled. Calls, including failed
+attempts, consume the persisted allowance. Provider errors end the run visibly;
+they do not silently become waiting moves or calls to another provider.
 
-A live panel beside the game canvas surfaces each decision as it happens, displaying the action, the model's stated reason, which provider answered, and an expandable **decision autopsy** that dissects the prompt layers behind the move. A running adherence ribbon tracks whether the model's stated reasoning references your strategy's keywords. When the run ends a summary card reports the score, echoes the strategy, rates how closely the model followed it, and highlights the decisions that gained the most points.
+## Decision loop
 
-When nobody is at the cabinet an **attract-mode marble run** cycles the featured models through the featured games under contrasting strategies, broadcasting live so the cabinet is never dark. A spectator feed lives at `/marquee` for embedding. The marble run yields to any walk-up player, resuming when the visitor stops. Live standings appear on the Telemetry tab with per-model win rate, mean score, fallback rate, strong-adherence rate, and a per-strategy breakdown.
+1. The browser starts the Java game over the existing Node/Socket.IO bridge.
+2. Java sends the current observation, sprite names and one forecast per legal
+   action. Search is bounded to 12 steps, beam width 16 and 800 simulator advances
+   per first action, including seven immediate risk samples. Static Sokoban dead
+   squares receive an explicit warning.
+3. Clef receives the source VGDL rules, coordinates, recent outcomes and candidate
+   consequences through Cloudflare's native `state` / `questions` API.
+4. The server validates model identity, legal choice and the probability
+   distribution, applies that action once, and requests the next observation.
+5. The browser shows action preferences and expandable simulator evidence. It does
+   not score strategy adherence from prose that Clef never generated.
 
-## How a decision gets made
+The engine's planning API is available only in the explicit `JSON_PLANNING`
+protocol mode. Other controllers retain their competition time budget. The game
+cannot advance while a Clef request is outstanding. A stopped run, changed level,
+or obsolete strategy invalidates its pending response.
 
-The browser talks to the Node server over HTTP and WebSocket. The Node server spawns the Java engine and communicates over a TCP socket with one message per game tick. The engine serializes the full game state as JSON, sends it to the server, which assembles an 8-layer prompt and calls the model. The model replies with an action and a one-sentence reason. The server sends the action back to Java within the tick budget.
+## Validate
 
-The engine demands an action within 40ms per tick but a model takes 200-2000ms to answer. The server bridges this gap by responding to each tick immediately with the previous decision while the next one computes in the background, so decisions land a few ticks late. That lag is why the showcase favors slower puzzle games over twitch games, why a macro-action plan executor queues multi-step plans that drain deterministically across ticks while the next LLM call is in flight.
+```sh
+npm --prefix web test
+npm --prefix web run eval:arcade
+npm --prefix web run eval:clef -- --games 58,26,50,15,13,18,66,87 --max-actions 250 --require-wins 5
+```
 
-### Prompt layers
+`eval:arcade` only plans cases. `eval:clef` uses real API calls and the original
+Java engine. It exits unsuccessfully unless the requested number of distinct games
+win without provider errors. Receipts include source hashes, public input provenance,
+requests, responses, actual engine actions, latencies, token counts, and explicit
+terminal/capped/error outcomes. `--capture-only` inspects inputs locally without
+contacting a provider and can never pass acceptance.
 
-The assembler (`state-converter.js`) builds the prompt from eight layers, each optional, each carrying a specific job in the assembled context the model receives.
+The November 4 acceptance suite verified seven distinct wins with full Clef:
+Labyrinth, Crossfire, Hungry Birds, Camel Race, Butterflies, Chase and Modality.
+Sokoban remained unfinished at its decision cap. These are original level 0,
+seed 42 results; broader robustness is not established.
 
-1. **System** — the game's system prompt template
-2. **Game rules** — derived from the VGDL definition or replaced by an accepted strategy-memory digest
-3. **Play history** — compressed summary of human traces for this game serving as a reward signal showing what high-scoring players did and what led to losses
-4. **Progression** — per-level context
-5. **Player tactic** — the visitor's plain-English strategy sanitized and fenced below the game rules
-6. **History** — rolling recent actions with score and health deltas
-7. **Spatial + grid** — ASCII grid map with orientation legend plus nearest threats, hazards, and goals in component-distance format
-8. **Tick state** — current score, health, tick, last action, available actions, loop-detection warning
+See [research, design and acceptance evidence](docs/clef-overhaul.md), and the
+preserved [October pilot](docs/clef-flash-pilot.md) and
+[extended pilot](docs/clef-flash-extended.md). The wider GVGAI library is a research
+benchmark, not a promise that this controller wins every game or level.
 
-A separate **Prompt Dashboard** tab exposes every layer for editing. The visitor's in-session tactic never overwrites the saved config because it layers on top at runtime, discarded when the run ends. A preview button assembles the full prompt without running the game so you can inspect what the model will receive.
+## Other agents and training
 
-### Strategy sanitization
-
-The visitor's free-text tactic is untrusted input that enters the prompt only after length capping at 240 chars, control-character collapse, contract-marker defanging, injection-stem removal, and role-prefix stripping. The cleaned text is fenced inside `<<<PLAYER_TACTIC>>>` markers, ordered below the game rules so a hostile note cannot override the action contract.
-
-## Model routing
-
-The featured marquee rotation uses five open-weight Ollama Cloud models across Google, Alibaba, and Mistral/Devstral. The unavailable 12B Google Gemma tag is intentionally absent.
-
-| Model | Provider | Fallback (OpenRouter) |
-|---|---|---|
-| Gemma 3 27B (featured, default) | Ollama Cloud | `google/gemma-3-27b-it` |
-| Qwen3 Coder Next (featured) | Ollama Cloud | `qwen/qwen3-coder-next` |
-| Ministral 3 14B (featured) | Ollama Cloud | `mistralai/ministral-14b-2512` |
-| Ministral 3 8B (featured) | Ollama Cloud | `mistralai/ministral-8b-2512` |
-| Ministral 3 3B | Ollama Cloud | `mistralai/ministral-3b-2512` |
-| Devstral Small 2 24B (featured) | Ollama Cloud | none |
-
-The server calls the selected primary provider first. Legion vLLM routes fall back to `LEGION_FALLBACK_MODEL` on Ollama Cloud, then to the matching OpenRouter slug when one exists. Ollama Cloud routes fall back to OpenRouter directly when the selected model has a slug. The provider that answered is reported on the `llm-reasoning` socket event and on the telemetry dashboard. A shared usage guardrail counts Ollama Cloud and OpenRouter calls against hourly, daily, monthly, and per-session limits. Railway persists these counters on its mounted volume and blocks remote calls when it cannot persist them. Reaching a limit ends the request without shifting spend to another remote provider.
-
-The guardrail measures calls because provider pricing varies by model and runtime. Keep a hard spending limit on each provider key and leave automatic credit reloads disabled; the application limits add a separate ceiling for unattended or abusive traffic.
-
-Fine-tuned models appear in the catalog automatically once registered, routing through the local Ollama daemon at `localhost:11434`, separate from the cloud API.
+The earlier Ollama Cloud, OpenRouter, local Ollama and Legion routes remain
+available as optional comparisons. Their text prompts and asynchronous action
+queues are separate from Clef's typed, synchronized controller. The training
+pipeline below applies to those chat models; it does not fine-tune Clef.
 
 ## Fine-tune pipeline
 

@@ -120,6 +120,14 @@ function buildJavaArgs(runtime, gameId, levelId, screenshotPath) {
     '-imgPath', screenshotPath
   ];
 
+  if (process.env.GVGAI_SEED !== undefined) {
+    const seed = Number(process.env.GVGAI_SEED);
+    if (!Number.isInteger(seed) || seed < -2147483648 || seed > 2147483647) {
+      throw new Error('GVGAI_SEED must be a signed 32-bit integer');
+    }
+    args.unshift(`-Dgvgai.seed=${seed}`);
+  }
+
   if (runtime.gamesDir) {
     args.push('-gamesDir', runtime.gamesDir);
   }
