@@ -59,7 +59,7 @@ public class VGDLViewer extends JComponent
             Types.LEARNING_SSO_TYPE ssoType = learningPlayer.getLearningSsoType();
             if (ssoType == Types.LEARNING_SSO_TYPE.IMAGE ||
                 ssoType == Types.LEARNING_SSO_TYPE.BOTH ||
-                ssoType == Types.LEARNING_SSO_TYPE.JSON_PLANNING) {
+                ssoType.name().startsWith("JSON_PLANNING")) {
                 saveImage(CompetitionParameters.SCREENSHOT_FILENAME);
             }
         }
@@ -121,7 +121,7 @@ public class VGDLViewer extends JComponent
 
             if (ssoType == Types.LEARNING_SSO_TYPE.IMAGE ||
                 ssoType == Types.LEARNING_SSO_TYPE.BOTH ||
-                ssoType == Types.LEARNING_SSO_TYPE.JSON_PLANNING) {
+                ssoType.name().startsWith("JSON_PLANNING")) {
                 saveImage(CompetitionParameters.SCREENSHOT_FILENAME);
             }
         }

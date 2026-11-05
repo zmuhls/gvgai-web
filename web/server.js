@@ -436,6 +436,7 @@ app.post('/api/game/start', async (req, res) => {
       : new runtime.LLMClient({
         runId,
         initialLevelId,
+        clefControlTicks: 6,
         // A typed-decision run ends with the selected level's visible result.
         stopAfterLevel: Boolean(resolveModel(model).decisionModel),
         maxActions: positiveEnv('MODEL_RUN_MAX_ACTIONS', 20),
@@ -823,6 +824,7 @@ async function startServer() {
         gameManager: runtime.gameManager,
         telemetry,
         caseOptions: {
+          clefControlTicks: 6,
           maxActions: positiveEnv('MODEL_RUN_MAX_ACTIONS', 20),
           maxProviderCalls: positiveEnv('MODEL_RUN_MAX_PROVIDER_CALLS', 20),
           synchronousActions: false

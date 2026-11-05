@@ -1202,7 +1202,10 @@ function setupWebSocket() {
 
     // Cabinet status strip: last decision + decision latency
     if (lastActionEl) lastActionEl.textContent = String(data.action || '—').replace(/^ACTION_/, '');
-    if (frameLatencyEl) frameLatencyEl.textContent = data.elapsed != null ? `${data.elapsed}ms` : '—';
+    if (frameLatencyEl) {
+      frameLatencyEl.textContent = data.elapsed != null ? `${Math.round(data.elapsed + (data.planningMillis || 0))}ms` : '—';
+      frameLatencyEl.title = `Planning ${Math.round(data.planningMillis || 0)}ms · model ${data.elapsed || 0}ms`;
+    }
 
     // Accumulate the run's trace for "Export trace"
     if (state.traceLog.length < 500) {
@@ -1238,6 +1241,9 @@ function setupWebSocket() {
     const narrDiv = document.createElement('div');
     narrDiv.className = 'narration';
     narrDiv.textContent = narration;
+    if (data.decision?.control?.maxTicks > 1) {
+      narrDiv.textContent += ` Holds ${String(data.action).replace('ACTION_', '')} for up to ${data.decision.control.maxTicks} ticks, checking each move.`;
+    }
     entry.appendChild(narrDiv);
 
     if (!data.decision && moveFollowsStrategy(data)) {
@@ -1291,6 +1297,7 @@ function setupWebSocket() {
     if (healthEl) healthEl.textContent = data.health || 0;
     if (maxHealthEl && data.maxHealth) maxHealthEl.textContent = data.maxHealth;
     if (tickEl) tickEl.textContent = data.tick || 0;
+    if (lastActionEl && data.action) lastActionEl.textContent = String(data.action).replace(/^ACTION_/, '');
 
     // Advance the live tape on the newest narration entry
     if (latestPlanTape && data.planLength > 1) {

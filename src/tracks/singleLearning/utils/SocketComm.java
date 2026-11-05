@@ -188,6 +188,12 @@ public class SocketComm extends Comm {
                 if (messageParts.length >= 3) {
                     String ssoType = messageParts[2];
                     switch (ssoType) {
+                        case "JSON_PLANNING_LIVE":
+                            this.lastSsoType = LEARNING_SSO_TYPE.JSON_PLANNING_LIVE;
+                            break;
+                        case "JSON_PLANNING_GUARD":
+                            this.lastSsoType = LEARNING_SSO_TYPE.JSON_PLANNING_GUARD;
+                            break;
                         case "JSON_PLANNING":
                             this.lastSsoType = LEARNING_SSO_TYPE.JSON_PLANNING;
                             break;

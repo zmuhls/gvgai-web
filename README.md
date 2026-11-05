@@ -3,7 +3,8 @@
 Play the original GVGAI games with Cloudflare **Clef**, or select **Clef-flash**
 for its smaller decision model. The Java engine supplies legal actions and bounded
 simulated consequences. Clef returns a typed action distribution; the engine
-executes one selected action, then observes and replans.
+executes the selected key with a fresh observation every tick. Interactive play
+can hold a safe direction or firing key for up to six ticks per CLEF choice.
 
 This is a simulator-assisted agent. It runs in synchronized decision mode, with
 request deadlines rather than the competition's 40 ms controller budget. Original
@@ -53,19 +54,29 @@ they do not silently become waiting moves or calls to another provider.
 2. Java sends the current observation, sprite names and one forecast per legal
    action. Search is bounded to 12 steps, beam width 16 and 800 simulator advances
    per first action, including seven immediate risk samples. Static Sokoban dead
-   squares receive an explicit warning.
+   squares receive an explicit warning. Interactive beam search also stops after
+   a 20 ms slice per action, after the required risk samples.
 3. Clef receives the source VGDL rules, coordinates, recent outcomes and candidate
    consequences through the typed `state` / `questions` API, directly or through
    OpenRouter's Decisions endpoint.
 4. The server validates model identity, legal choice and the probability
-   distribution, applies that action once, and requests the next observation.
+   distribution, then applies exactly that key. The choice declares its maximum
+   hold duration. Each following tick checks seven immediate futures per action;
+   holds stop at a blockage, nearby dynamic sprite, newly opened turn, damage,
+   changed resources, transformation or changed tactic. Sokoban remains single-step.
 5. The browser shows action preferences and expandable simulator evidence. It does
    not score strategy adherence from prose that Clef never generated.
 
-The engine's planning API is available only in the explicit `JSON_PLANNING`
-protocol mode. Other controllers retain their competition time budget. The game
+The engine's planning API uses explicit `JSON_PLANNING`, `JSON_PLANNING_LIVE`
+and `JSON_PLANNING_GUARD` protocol modes. An interrupted hold requests deeper
+planning for the same tick without advancing the game. Other controllers retain
+their competition time budget. The game
 cannot advance while a Clef request is outstanding. A stopped run, changed level,
 or obsolete strategy invalidates its pending response.
+
+Offline evaluation defaults to the original fixed search budget and one action
+per model call. Live run summaries separate model `decisions` from `controlSteps`
+and `executedTicks`. See the [pacing measurements](docs/arcade-pacing-2026-11-05.md).
 
 ## Validate
 

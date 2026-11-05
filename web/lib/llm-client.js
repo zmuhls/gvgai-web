@@ -6,6 +6,7 @@ const { parseStructured } = require('./response-parser');
 const { resolveModel } = require('./models');
 const { buildClefInput, decisionPromptConfig, requestClef } = require('./clef-client');
 const { clefGameConfig } = require('./clef-game-config');
+const { mayContinue: mayContinueClefHold, MAX_HOLD_TICKS } = require('./clef-control');
 const promptStore = require('./prompt-store');
 const telemetry = require('./telemetry-store');
 const traceStore = require('./play-trace-store');
@@ -97,6 +98,11 @@ class LLMClient {
     this.lastSso = null;
     this.summaryEmitted = false;
     this.synchronousActions = !!options.synchronousActions;
+    // Interactive play opts into short, checked holds; evaluations default to
+    // one decision per engine tick so their historical contract stays explicit.
+    this.clefControlTicks = Math.min(MAX_HOLD_TICKS, positiveInteger(options.clefControlTicks, 1));
+    this.clefHold = null;
+    this.controlSteps = [];
     this.actionTimeoutMs = options.actionTimeoutMs || 12000;
     this.maxActions = options.maxActions || null;
     this.maxProviderCalls = positiveInteger(
@@ -195,11 +201,11 @@ class LLMClient {
   async connect(port, model, io, gameId, gameName, sessionStrategy = null) {
     this.model = model;
     if (resolveModel(model).decisionModel) {
-      // Remote choices belong to exactly one observed state. Never repeat an
-      // old action while the provider is still deciding the next one.
+      // Pause while CLEF decides; only a declared, bounded key hold may continue
+      // without another request, and every tick still gets fresh risk samples.
       this.synchronousActions = true;
-      this.initResponseType = 'JSON_PLANNING';
-      this.actResponseType = 'JSON_PLANNING';
+      this.initResponseType = this.clefControlTicks > 1 ? 'JSON_PLANNING_LIVE' : 'JSON_PLANNING';
+      this.actResponseType = this.initResponseType;
     }
     this.io = io;
     this.gameActive = true;
@@ -213,6 +219,7 @@ class LLMClient {
     this.stateTracker.reset();
     this.clearPlan();
     this.runLog = [];
+    this.controlSteps = [];
     this.runStartScore = null;
     this.lastRunOutcome = null;  // { finalScore, won, topAction, actionCounts } from previous level/run
     this.lastProvider = null;
@@ -370,6 +377,29 @@ class LLMClient {
           return;
         }
         if (this.synchronousActions) {
+          if (resolveModel(this.model).decisionModel) {
+            const observed = JSON.parse(jsonPayload);
+            if (observed.planningMode === 'JSON_PLANNING_GUARD') {
+              if (!this.gameActive) return;
+              const hold = this.clefHold;
+              if (this.gameActive && mayContinueClefHold(hold, observed, this.strategyRevision)) {
+                hold.remaining -= 1;
+                hold.previous = observed;
+                this.planStep += 1;
+                const sso = this.recordActState(jsonPayload, hold.action);
+                this.stateTracker.recordSentAction(hold.action, sso.gameTick);
+                this.recordClefExecution(sso, hold.action, 'clef-hold', hold.decisionTick);
+                if (!hold.remaining) this.clefHold = null;
+                this.sendMessageWithId(msgId, `${hold.action}#${this.clefResponseType()}`);
+              } else {
+                this.clearPlan();
+                // Ask Java for bounded search at the SAME tick. This does not
+                // move the avatar, insert NIL, or consume a provider request.
+                this.sendMessageWithId(msgId, 'REPLAN#JSON_PLANNING_LIVE');
+              }
+              return;
+            }
+          }
           const directPolicy = this.resolveAuthoritativePolicy(jsonPayload);
           if (directPolicy) {
             const sso = this.recordActState(jsonPayload, directPolicy.action);
@@ -403,7 +433,8 @@ class LLMClient {
               }
             }
             this.stateTracker.recordSentAction(action, sso ? sso.gameTick : 0);
-            this.sendMessageWithId(msgId, `${action}#${this.actResponseType}`);
+            if (resolveModel(this.model).decisionModel) this.recordClefExecution(sso, action, 'clef-choice', sso.gameTick);
+            this.sendMessageWithId(msgId, `${action}#${this.clefResponseType()}`);
           } catch (error) {
             console.error('[LLMClient] Error in synchronous LLM action:', error.message);
             if (resolveModel(this.model).decisionModel) {
@@ -562,6 +593,21 @@ class LLMClient {
   }
 
   // --- Macro-action plan executor -----------------------------------------
+
+  clefResponseType() {
+    return this.clefHold?.remaining > 0 ? 'JSON_PLANNING_GUARD' : this.actResponseType;
+  }
+
+  recordClefExecution(sso, action, source, decisionTick) {
+    const step = { tick: sso.gameTick, action, source, decisionTick };
+    this.controlSteps.push(step);
+    if (this.io) this.io.emit('game-state', {
+      runId: this.runId, tick: sso.gameTick, score: sso.gameScore,
+      health: sso.avatarHealthPoints, maxHealth: sso.avatarMaxHealthPoints,
+      action, planStep: this.planStep, planLength: this.planLength,
+      planningMillis: sso.planningMillis, control: step
+    });
+  }
 
   macroEnabled() {
     if (resolveModel(this.model).decisionModel) return false;
@@ -1015,6 +1061,7 @@ class LLMClient {
   }
 
   clearPlan() {
+    this.clefHold = null;
     this.planQueue = [];
     this.planTemplate = [];
     this.planLength = 0;
@@ -1380,7 +1427,7 @@ class LLMClient {
     const epochAtStart = this.decisionEpoch;
     const levelAtStart = this.levelCount;
     const clefInput = isDecisionModel
-      ? buildClefInput(sso, this.promptConfig, this.stateTracker, this.sessionStrategy, this.model)
+      ? buildClefInput(sso, this.promptConfig, this.stateTracker, this.sessionStrategy, this.model, this.clefControlTicks)
       : null;
     const {
       systemMessage,
@@ -1569,6 +1616,16 @@ class LLMClient {
       : [action];
     const steering = isDecisionModel ? { planActions } : this.applySteeringToPlan(action, planActions, sso);
     planActions = steering.planActions || planActions;
+    const authorizedTicks = typedDecision ? clefInput.state.control.maxTicksByAction[action] || 1 : 1;
+    if (typedDecision) {
+      planActions = Array(authorizedTicks).fill(action);
+      this.planStep = 1;
+      this.planLength = authorizedTicks;
+      this.clefHold = authorizedTicks > 1 ? {
+        action, remaining: authorizedTicks - 1, decisionTick: sso.gameTick,
+        previous: sso, revision: this.strategyRevision
+      } : null;
+    }
     if (steering.steering) {
       action = steering.action;
       reason = steering.reason || reason;
@@ -1607,7 +1664,7 @@ class LLMClient {
         decisionSource,
         decision: typedDecision ? { confidence: typedDecision.confidence, probabilities: typedDecision.probabilities,
           usage: typedDecision.usage, requestedTick: sso.gameTick,
-          planning: clefInput.state.planning } : undefined,
+          planning: clefInput.state.planning, control: { maxTicks: authorizedTicks } } : undefined,
         parsedAction: parsed.action,
         policyAuthoritative: Boolean(policyAuthoritative),
         fallbackAction,
@@ -1644,7 +1701,7 @@ class LLMClient {
         decisionSource,
         decision: typedDecision ? { confidence: typedDecision.confidence, probabilities: typedDecision.probabilities,
           usage: typedDecision.usage, requestedTick: sso.gameTick,
-          planning: clefInput.state.planning } : undefined,
+          planning: clefInput.state.planning, control: { maxTicks: authorizedTicks } } : undefined,
         parsedAction: parsed.action,
         policyAuthoritative: Boolean(policyAuthoritative),
         fallbackAction,
@@ -1654,6 +1711,7 @@ class LLMClient {
         plan: displayPlan,
         planLength: planActions.length,
         elapsed,
+        planningMillis: sso.planningMillis || 0,
         provider: steering.steering ? 'steering-direct' : usedProvider,
         modelUsed: usedModel,
         lastRunOutcome: this.lastRunOutcome || null,
@@ -1758,6 +1816,7 @@ class LLMClient {
         scoreDelta: e.scoreDelta,
         sso: e.sso || null
       })),
+      controlSteps: this.controlSteps,
       finalScore: sso.gameScore || 0,
       winner: sso.gameWinner,
       won: sso.gameWinner === 'PLAYER_WINS' || sso.gameWinner === true,
@@ -1790,6 +1849,7 @@ class LLMClient {
 
     // Reset run accumulation + history for the next level
     this.runLog = [];
+    this.controlSteps = [];
     this.runStartScore = null;
     this.stateTracker.reset();
 
@@ -1842,6 +1902,8 @@ class LLMClient {
       ticks: sso.gameTick || 0,
       decisions: this.runLog.length,
       actions: this.runLog.map(entry => entry.action),
+      controlSteps: this.controlSteps,
+      executedTicks: this.controlSteps.length || this.runLog.length,
       level: this.levelCount,
       adherence,
       highlights
@@ -1945,6 +2007,7 @@ class LLMClient {
   disconnect() {
     this.decisionEpoch += 1;
     this.gameActive = false;
+    this.clearPlan();
     this.onSessionEnd = null;  // Don't trigger cleanup on intentional disconnect
     if (this.socket) {
       this.socket.destroy();

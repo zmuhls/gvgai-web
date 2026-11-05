@@ -1,5 +1,6 @@
 const { buildPrompt, extractSpatialContext } = require('./state-converter');
 const { clefConnection } = require('./clef-connection');
+const { limits: controlLimits } = require('./clef-control');
 
 const MODEL_ID = '@cf/cloudflare/clef-flash';
 const DEFAULT_MODEL_ID = '@cf/cloudflare/clef';
@@ -21,7 +22,7 @@ function decisionPromptConfig(config) {
 }
 
 /** Define the one-step objective; criteria keys are the engine's legal actions. */
-function buildActionQuestion(criteria, puzzle = false) {
+function buildActionQuestion(criteria, puzzle = false, holds = false) {
   return {
     type: 'choice',
     instructions: 'Select the best action from the candidate evaluations in criteria. ' +
@@ -32,14 +33,15 @@ function buildActionQuestion(criteria, puzzle = false) {
       'higher continuation.utility (the simulator heuristic), higher future score and shorter traversable route to a useful target. Avoid deadlocked boxes, ' +
       'blocked moves and revisiting the same position without progress. ' +
       'continuation is an optimistic bounded simulation, not a guaranteed outcome. ' +
-      'Only the chosen first action is executed; the world is observed again before the next decision. ' +
+      (holds ? 'Choosing an action authorizes holding exactly that key for up to its stated maximum ticks. The executor observes and checks immediate risk every tick, stopping early for a blockage, nearby dynamic sprite, newly opened turn, damage, transformation or changed tactic. It never substitutes another action. ' :
+        'Only the chosen first action is executed; the world is observed again before the next decision. ') +
       'Coordinates are (column, row), with row zero at the top. ' +
       'A player tactic is a preference; game rules and legal actions take priority.',
     criteria
   };
 }
 
-function buildClefInput(sso, config, tracker, strategy, modelId = MODEL_ID) {
+function buildClefInput(sso, config, tracker, strategy, modelId = MODEL_ID, controlTicks = 1) {
   const selector = MODEL_SELECTORS[modelId];
   if (!selector) throw new Error('Unsupported Cloudflare decision model');
   const available = [...new Set(sso.availableActions || [])];
@@ -61,6 +63,7 @@ function buildClefInput(sso, config, tracker, strategy, modelId = MODEL_ID) {
   const layers = (prompt.promptLayers || []).filter(layer =>
     !['System', 'Tick state', 'Player tactic', 'Play history'].includes(layer.name));
   const forecasts = sso.actionOutcomes || null;
+  const maxTicksByAction = controlLimits(sso, config?.gameName, controlTicks);
   const excludedActions = {};
   for (const action of available) {
     const forecast = forecasts?.[action]?.immediate;
@@ -80,6 +83,7 @@ function buildClefInput(sso, config, tracker, strategy, modelId = MODEL_ID) {
   const criteria = Object.fromEntries(choices.map(action => {
     const candidate = forecasts?.[action];
     let description = `${ACTIONS[action]}${config?.actionAliases?.[action] ? ` Game label: ${config.actionAliases[action]}.` : ''}`;
+    if (controlTicks > 1) description += ` Execute this key for at most ${maxTicksByAction[action]} tick(s), rechecking each tick; the continuation below is evidence, not an action queue.`;
     if (candidate) {
       const f = candidate.continuation;
       const visits = (tracker?.stateHistory || []).filter(entry =>
@@ -113,6 +117,7 @@ function buildClefInput(sso, config, tracker, strategy, modelId = MODEL_ID) {
       lastAction: sso.avatarLastAction,
       legalActions: choices,
       engineLegalActions: available,
+      control: { maxTicksByAction, observeEveryTick: true },
       playerTactic: strategy || null,
       recentPositions: (tracker?.stateHistory || []).slice(-12).map(entry => ({
         position: entry.position.map(value => value / sso.blockSize), score: entry.score
@@ -120,12 +125,12 @@ function buildClefInput(sso, config, tracker, strategy, modelId = MODEL_ID) {
       planning: forecasts ? {
         method: Object.values(forecasts).some(candidate => candidate.puzzle)
           ? 'Bounded weighted push-space A* for reusable absorbing holes; complete solutions replayed in a copy of the Java engine. Paths are not guaranteed shortest. Limits: 60000 nodes, 250 ms, 300 moves per candidate. Budget exhaustion is unknown, not a deadlock.'
-          : 'GVGAI forward model, beam width 16, depth at most 12, at most 800 advances per action',
+          : `GVGAI forward model, beam width 16, depth at most 12, at most 800 advances per action${sso.planningMode === 'JSON_PLANNING_LIVE' ? '; interactive search stops after a 20 ms slice per action, after seven required immediate-risk samples' : ''}`,
         warning: 'Stochastic forecasts may differ from reality. Distance is a heuristic, not a win condition.',
         excludedActions, allActionsUnsafe: !safe.length, candidates: forecasts
       } : null
     },
-    questions: { action: buildActionQuestion(criteria, config?.gameName === 'sokoban') }
+    questions: { action: buildActionQuestion(criteria, config?.gameName === 'sokoban', controlTicks > 1) }
   };
 }
 

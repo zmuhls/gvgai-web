@@ -32,6 +32,7 @@ public final class ActionLookahead {
         public int immediateLosses;
         public int riskSamples = 7;
         public PuzzleForecast puzzle;
+        public boolean searchTruncated;
     }
 
     public static class PuzzleForecast {
@@ -59,7 +60,16 @@ public final class ActionLookahead {
     }
 
     public static Map<String, Candidate> evaluate(StateObservation root, String gameName) {
-        if ("sokoban".equals(gameName)) return evaluateSokoban(root);
+        return evaluate(root, gameName, false, false);
+    }
+
+    /** Interactive play bounds thinking time; offline evaluation retains its fixed search budget. */
+    public static Map<String, Candidate> evaluateLive(StateObservation root, String gameName, boolean immediateOnly) {
+        return evaluate(root, gameName, true, immediateOnly);
+    }
+
+    private static Map<String, Candidate> evaluate(StateObservation root, String gameName, boolean live, boolean immediateOnly) {
+        if ("sokoban".equals(gameName) && !immediateOnly) return evaluateSokoban(root);
         Map<String, Candidate> results = new LinkedHashMap<>();
         for (Types.ACTIONS action : root.getAvailableActions(true)) {
             Candidate result = new Candidate();
@@ -82,11 +92,16 @@ public final class ActionLookahead {
             Set<String> visited = new HashSet<>();
             visited.add(fingerprint(root));
             visited.add(fingerprint(next));
-            for (int depth = 2; depth <= DEPTH && !beam.isEmpty() && result.simulations < MAX_ADVANCES; depth++) {
+            // Reserve all seven immediate risk samples for every legal action.
+            // A short per-action slice prevents a large sprite map from spending
+            // seconds in beam search before the remote model even sees the state.
+            long deadline = live ? System.nanoTime() + 20_000_000L : Long.MAX_VALUE;
+            search: for (int depth = 2; !immediateOnly && depth <= DEPTH && !beam.isEmpty() && result.simulations < MAX_ADVANCES; depth++) {
                 List<Node> expanded = new ArrayList<>();
                 for (Node node : beam) {
                     if (node.state.isGameOver() || node.forecast.deadlocked) continue;
                     for (Types.ACTIONS move : node.state.getAvailableActions(true)) {
+                        if (System.nanoTime() >= deadline) { result.searchTruncated = true; break search; }
                         if (result.simulations >= MAX_ADVANCES) break;
                         StateObservation child = node.state.copy();
                         child.setNewSeed(31 * root.getGameTick() + action.ordinal() * 101 + result.simulations);

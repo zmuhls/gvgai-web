@@ -218,6 +218,7 @@ async function runEvalCase(evalCase, options = {}) {
         initialLevelId: evalCase.levelId,
         synchronousActions: options.synchronousActions !== false,
         actionTimeoutMs: options.actionTimeoutMs,
+        clefControlTicks: options.clefControlTicks,
         maxActions: resolveCaseMaxActions(evalCase, options),
         maxProviderCalls: options.maxProviderCalls,
         initResponseType: options.initResponseType,

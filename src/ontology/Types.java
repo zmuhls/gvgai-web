@@ -198,7 +198,9 @@ public class Types {
         IMAGE,
         JSON,
         BOTH,
-        JSON_PLANNING
+        JSON_PLANNING,
+        JSON_PLANNING_LIVE,
+        JSON_PLANNING_GUARD
     }
 
     public static final int SCORE_DISQ = -1000;

@@ -143,7 +143,7 @@ public class MovingAvatar extends VGDLSprite {
         // Its socket/request deadlines bound wall time; competition controllers
         // retain the original CPU budget. Game rules and tick limits are unchanged.
         boolean remotePlanning = this.player instanceof core.player.LearningPlayer &&
-            ((core.player.LearningPlayer)this.player).getLearningSsoType() == Types.LEARNING_SSO_TYPE.JSON_PLANNING;
+            ((core.player.LearningPlayer)this.player).getLearningSsoType().name().startsWith("JSON_PLANNING");
         if (!remotePlanning && CompetitionParameters.TIME_CONSTRAINED && ect.exceededMaxTime()) {
             long exceeded = -ect.remainingTimeMillis();
 

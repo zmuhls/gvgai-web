@@ -61,9 +61,17 @@ public class LearningPlayer extends Player {
             SerializableStateObservation sso;
             switch (comm.getLastSsoType()) {
                 case JSON_PLANNING:
+                case JSON_PLANNING_LIVE:
+                case JSON_PLANNING_GUARD:
                     so.currentGameState = Types.GAMESTATES.ACT_STATE;
                     sso = new SerializableStateObservation(so);
-                    sso.actionOutcomes = tools.ActionLookahead.evaluate(so, System.getProperty("gvgai.gameName"));
+                    long planningStart = System.nanoTime();
+                    sso.planningMode = comm.getLastSsoType().toString();
+                    sso.actionOutcomes = comm.getLastSsoType() == Types.LEARNING_SSO_TYPE.JSON_PLANNING
+                        ? tools.ActionLookahead.evaluate(so, System.getProperty("gvgai.gameName"))
+                        : tools.ActionLookahead.evaluateLive(so, System.getProperty("gvgai.gameName"),
+                            comm.getLastSsoType() == Types.LEARNING_SSO_TYPE.JSON_PLANNING_GUARD);
+                    sso.planningMillis = (System.nanoTime() - planningStart) / 1_000_000.0;
                     comm.commSend(sso.serialize(null));
                     break;
                 case JSON:
@@ -92,7 +100,14 @@ public class LearningPlayer extends Player {
             }
 
             // Receive the response and set ACTION_NIL as default action
+            boolean guardObservation = comm.getLastSsoType() == Types.LEARNING_SSO_TYPE.JSON_PLANNING_GUARD;
             String response = comm.commRecv();
+            // A stopped hold requests deeper evidence for this same tick.
+            // The next mode must be LIVE, so this cannot recursively replan forever.
+            if (guardObservation && "REPLAN".equals(response) &&
+                comm.getLastSsoType() == Types.LEARNING_SSO_TYPE.JSON_PLANNING_LIVE) {
+                return act(so, elapsedTimer);
+            }
             if (response == null || response == "")
                 response = Types.ACTIONS.ACTION_NIL.toString();
 

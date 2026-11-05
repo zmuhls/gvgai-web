@@ -31,6 +31,7 @@ const localOverrides = [
   'src/tools/SokobanSearch.java',
   'src/testing/TestSokobanSearch.java',
   'src/testing/TestActionLookahead.java',
+  'src/testing/TestLivePlanning.java',
   'src/core/player/LearningPlayer.java',
   'src/ontology/Types.java',
   'src/ontology/avatar/MovingAvatar.java',

@@ -52,6 +52,8 @@ public class SerializableStateObservation {
     public HashMap<Integer, Integer> avatarResources;
     public HashMap<Integer, String> spriteTypes;
     public java.util.Map<String, tools.ActionLookahead.Candidate> actionOutcomes;
+    public String planningMode;
+    public double planningMillis;
     public Observation[][][] observationGrid;
     public int observationGridNum;
     public int observationGridMaxRow;
