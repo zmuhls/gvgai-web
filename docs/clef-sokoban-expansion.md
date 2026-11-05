@@ -101,8 +101,19 @@ After resolving an infrastructure failure, resume into another new directory:
 ```sh
 npm --prefix web run eval:clef:matrix -- \
   --resume-from output/clef-matrix-new/summary.json \
-  --out output/clef-matrix-resumed
+  --out output/clef-matrix-resumed --budget-usd 4.75
 ```
+
+`--budget-usd` caps the new invocation (default $5), not historical runs. Deduct
+earlier spending from the authorized allowance before resuming. The parent
+reserves 65,536 input tokens before each child may call CLEF, then charges
+reported usage at $0.24 per million input tokens. Missing usage, provider errors,
+or a child exiting during a request conservatively consume the full reservation.
+Concurrent children share one allowance and stop before an unaffordable request.
+The receipt records reported, conservatively charged, and still-reserved tokens.
+Prices and maximum context were checked against
+[Cloudflare's model documentation](https://developers.cloudflare.com/workers-ai/models/clef/)
+on November 4, 2026; recheck them before future evaluations.
 
 Use `--dry-run` to inspect the fixed cases without calling a model. Raw local
 receipts, engine actions and provider attempts are retained under

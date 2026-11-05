@@ -4,6 +4,7 @@ const path = require('node:path');
 const net = require('node:net');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
+const { budgetMessage } = require('./clef-eval-budget');
 
 const root = path.resolve(__dirname, '../..');
 
@@ -77,7 +78,7 @@ async function main() {
   const files = ['web/lib/clef-client.js', 'web/lib/llm-client.js', 'web/lib/game-manager.js',
     'web/lib/models.js', 'web/lib/clef-game-config.js', 'web/lib/state-converter.js',
     'web/lib/grid-renderer.js', 'src/tracks/LearningMachine.java', 'src/core/game/SerializableStateObservation.java',
-    'web/scripts/prepare-java-runtime.js', 'web/scripts/run-clef-eval.js',
+    'web/scripts/prepare-java-runtime.js', 'web/scripts/run-clef-eval.js', 'web/scripts/clef-eval-budget.js',
     'src/tools/ActionLookahead.java', 'src/core/player/LearningPlayer.java', 'src/ontology/Types.java',
     'src/tools/SokobanSearch.java',
     'src/ontology/avatar/MovingAvatar.java', 'src/core/vgdl/VGDLViewer.java',
@@ -150,12 +151,15 @@ async function main() {
               pendingProviderCalls += 1;
               const at = Date.now();
               const attempt = { requestedTick: params[4]?.state?.tick, request: params[4] };
+              let reserved = false;
               attempts.push(attempt);
               try {
                 if (captureOnly) {
                   fs.writeFileSync(path.join(output, `${runId}-input.json`), JSON.stringify(params[4], null, 2));
                   throw new Error('Capture-only: input saved locally, no external request');
                 }
+                await budgetMessage('clef-budget:reserve');
+                reserved = true;
                 const response = await call(...params);
                 Object.assign(attempt, { action: response.action, confidence: response.confidence,
                   probabilities: response.probabilities, usage: response.usage, model: response.model });
@@ -164,8 +168,15 @@ async function main() {
                 attempt.error = error.message;
                 throw error;
               } finally {
-                attempt.elapsedMs = Date.now() - at;
-                pendingProviderCalls -= 1;
+                try {
+                  if (reserved) await budgetMessage('clef-budget:settle', attempt.usage?.input_tokens);
+                } catch (error) {
+                  attempt.error ||= error.message;
+                  throw error;
+                } finally {
+                  attempt.elapsedMs = Date.now() - at;
+                  pendingProviderCalls -= 1;
+                }
               }
             };
             return client;

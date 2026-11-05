@@ -4,6 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, execFileSync } = require('node:child_process');
+const {ClefBudget, superviseBudget} = require('./clef-eval-budget');
 
 function buildCases() {
   const cases = [];
@@ -40,6 +41,7 @@ async function main() {
   const option = (name, fallback) => args.includes(name) ? args[args.indexOf(name) + 1] : fallback;
   const concurrency = Number(option('--concurrency', 3));
   const maxActions = Number(option('--max-actions', 300));
+  const budget = new ClefBudget(Number(option('--budget-usd', 5)));
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 3 ||
       !Number.isInteger(maxActions) || maxActions < 1 || maxActions > 300) {
     throw new Error('Use --concurrency 1..3 and --max-actions 1..300');
@@ -54,7 +56,10 @@ async function main() {
     revision:execFileSync('git', ['rev-parse','HEAD'], {encoding:'utf8'}).trim(),
     model:'@cf/cloudflare/clef', maxActions, concurrency, resumeFrom,
     cases:previous?remainingCases(previous):buildCases(), results:[]};
-  const write = () => fs.writeFileSync(path.join(output,'summary.json'), JSON.stringify(report,null,2));
+  const write = () => {
+    report.budget = budget.snapshot();
+    fs.writeFileSync(path.join(output,'summary.json'), JSON.stringify(report,null,2));
+  };
   write();
   if (args.includes('--dry-run')) { console.log(JSON.stringify(report,null,2)); return; }
   let cursor = 0;
@@ -70,7 +75,8 @@ async function main() {
           const child = spawn(process.execPath, [path.join(__dirname,'run-clef-eval.js'),
             '--games',String(c.gameId),'--level',String(c.level),'--seed',String(c.seed),
             '--max-actions',String(maxActions),'--require-wins','0','--out',caseDir],
-          {stdio:['ignore',log,log],env:process.env});
+          {stdio:['ignore',log,log,'ipc'],env:{...process.env,CLEF_EVAL_BUDGET_IPC:'1'}});
+          superviseBudget(child, budget, write);
           child.once('error',reject); child.once('exit',resolve);
         });
       } finally { fs.closeSync(log); }
