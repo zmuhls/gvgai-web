@@ -1,0 +1,1426 @@
+{
+  "specification": "clef-expansion-receipt-v1",
+  "date": "2026-11-04 America/New_York",
+  "recordedAt": "2026-11-05T01:15:33.573Z",
+  "status": "sokoban-passed; broader live inference blocked by personal account free quota",
+  "baseRevision": "20e53ecc332c359f957b9a8a82962144cd40ec0c",
+  "model": "@cf/cloudflare/clef",
+  "accountType": "separate personal Cloudflare standard account",
+  "sourceHashes": {
+    "src/tools/SokobanSearch.java": "d5e556c4f120eef60b4ce50b17751926a4011810c1713f3bf7889aac1839277f",
+    "src/tools/ActionLookahead.java": "bf9363ded2ae7a373252c6dc3ff8d90f62750f73fdea590af86b8e74df2954a6",
+    "src/core/player/LearningPlayer.java": "c4215bdef085e07ce3994bec7362a8fba72185ac2b41bc49a7fb4f09bf705c7a",
+    "web/lib/clef-client.js": "3bfa1eb45745b45f00f1606c2fd122d754c85de1d9eb9474a3e29208bfcfdb9c",
+    "web/lib/game-manager.js": "eeb7e290ff6927cf580370a424e1c45ed0b299e8c00b7b5eed01925b2a4ad6c0",
+    "web/scripts/run-clef-eval.js": "288ff544c6581ebbd8aa5610010fbccacd4ade7f447c8bb015e7e2f0c22bed6a"
+  },
+  "originalGameHashes": {
+    "examples/gridphysics/sokoban.txt": "5700e3c72d494b38dac452941c478e479d3915a99556ab9e99c8f405cf1f3dd2",
+    "examples/gridphysics/sokoban_lvl0.txt": "0fe79fabdc624255516c497ed93c68eea0ec2148bd66fe9cd966b30b9eeb5e28",
+    "examples/gridphysics/aliens.txt": "4621087fdac18bb5868ab9be770b4b5c0238abd7aef28c548f7d8ba1e523e37c",
+    "examples/gridphysics/aliens_lvl0.txt": "e6d68e62540cce6c3afad87fd295169624ad028fe22765529ae06ba77ea82223",
+    "examples/gridphysics/sokoban_lvl1.txt": "c6eb5a835513cf56c81429785fd0d7afc4c3163b1ef27d58b69ed0952ba9c29f",
+    "examples/gridphysics/sokoban_lvl2.txt": "446a795be499c6dc11806788763c32b524c4353c021e9d5ca5e9230031a0cbb1",
+    "examples/gridphysics/sokoban_lvl3.txt": "834e421d3785fcdbc8d9096953fe91cfc8c3fd3a61843badc00a3bb7c1c82432",
+    "examples/gridphysics/sokoban_lvl4.txt": "4dbf8febd16fef69e21851ad1861fd2874242270fe84176ca3d250f18bdb4108",
+    "examples/gridphysics/aliens_lvl4.txt": "67cc7426b94e1e3f0dfad9468da07df368ad797b3da9d8f16854f111119e5cdf",
+    "examples/gridphysics/butterflies.txt": "f9acec420b4ce53c171aa3da3b71d77a0340afd95f8df49faf63b6233ae17afb",
+    "examples/gridphysics/butterflies_lvl0.txt": "466b53b5984318485ac340d89dfe5b6512cd12c305c43bed31ebf35b2cdd0036",
+    "examples/gridphysics/butterflies_lvl4.txt": "15ea74122bbea35fe57c4effb2797fdcd24c48b5a16bef5ba311dd88fd3afd05",
+    "examples/gridphysics/camelRace.txt": "112f4cdb66a950448e2457ba3423af9cce2b01be558e5acb69580bea86fc2ac6",
+    "examples/gridphysics/camelRace_lvl0.txt": "c97f94468b2ceebba431d28f24cadfffbc29e84c38034525cd7a50d26f9cbe92",
+    "examples/gridphysics/camelRace_lvl4.txt": "ade6a351bce1f5c5b8129ec1d136a5ab3c9c7a038ef80450f4622ee0a1bc7d5f",
+    "examples/gridphysics/chase.txt": "abef1f8fafeff20d59d43e06fc97c27c3d2163b5766bde1155706ba641697d57",
+    "examples/gridphysics/chase_lvl0.txt": "5526e1432cc167fd4ee89891396303d9cafc61000ce4ad6bc3b907e74f1395f7",
+    "examples/gridphysics/chase_lvl4.txt": "bcd431f4683fdc79be12259ff74e14b3ae2f07720c861e87f4a01eb6de0a568d",
+    "examples/gridphysics/crossfire.txt": "c636c0f6de95abec2e2b1dd99c61786a09d796d7d8693b2b7497b7c1ea668d42",
+    "examples/gridphysics/crossfire_lvl0.txt": "bbe923b06fd7a127e4341fbf0946766340177aa36a12963fde7ba6130cd896e0",
+    "examples/gridphysics/crossfire_lvl4.txt": "b4ee25c3fd2727b40dd48894d897d89902f3827accdf670250bf0f6662fcdee3",
+    "examples/gridphysics/frogs.txt": "99c76cdb11c45a9a2b79d72df16cd5fbb815f36966777c792ab5a6ffe8d673c9",
+    "examples/gridphysics/frogs_lvl0.txt": "25d0b975cddd251da75e3c5f4e3fb0fc5cb127bdf84a9547bff3a86bc0a09923",
+    "examples/gridphysics/frogs_lvl4.txt": "a7c9abbe908b7449716242b276389c373dd2616c006f6a802db4d6eb1499e009",
+    "examples/gridphysics/hungrybirds.txt": "b27b230643579144f901a89ae175f8a994655c92a2d235146cc43e48866f63b4",
+    "examples/gridphysics/hungrybirds_lvl0.txt": "bd3ca702252b901af1a6b0e5719cfb4f9053106205643fb5ff4096dbcd2ad805",
+    "examples/gridphysics/hungrybirds_lvl4.txt": "b54a0f702396166e8ddef232507668f547165a7c6645aa7b1dcb54fded4741a5",
+    "examples/gridphysics/labyrinth.txt": "fc62c100acd49fc2e2286ba1b494787eb511a54ddffcc1f08e7fb6ee80ab4849",
+    "examples/gridphysics/labyrinth_lvl0.txt": "5d72567d44a07afa499181b6b5039d41a9502b9ae72f33708d3bca9492e28883",
+    "examples/gridphysics/labyrinth_lvl4.txt": "aee140fcddabfff03094f1eb72538f439e444df27ab958e7079d11bef3aa53ba",
+    "examples/gridphysics/modality.txt": "42833a0c41706fbf6a32316a8514d722ea4f3bb303aff77b77021df70a2f2314",
+    "examples/gridphysics/modality_lvl0.txt": "0ab3da525c3cd889c77518fa4f820e5aa91e17a811c340eeeeb824b8f7790189",
+    "examples/gridphysics/modality_lvl4.txt": "aa71d37b3548059a209998af028a27eb06f553b3e85621677bdd78187c55211f",
+    "examples/gridphysics/zelda.txt": "6a81daf8a34542e2ced3e0685a086ed5e587a8fed8f8b664d665adbf0b39b996",
+    "examples/gridphysics/zelda_lvl0.txt": "9e0098f65224465a4d602cce0425e681e3f5ed2b533d7f748e8c9885e5d27998",
+    "examples/gridphysics/zelda_lvl4.txt": "c05d7cb1c4d61af95242945301471851b0a1c43ad23da16e0c6313766838a121"
+  },
+  "plannedCases": [
+    {
+      "gameId": 87,
+      "level": 0,
+      "seed": 7
+    },
+    {
+      "gameId": 87,
+      "level": 0,
+      "seed": 42
+    },
+    {
+      "gameId": 87,
+      "level": 0,
+      "seed": 2026
+    },
+    {
+      "gameId": 87,
+      "level": 1,
+      "seed": 7
+    },
+    {
+      "gameId": 87,
+      "level": 1,
+      "seed": 42
+    },
+    {
+      "gameId": 87,
+      "level": 1,
+      "seed": 2026
+    },
+    {
+      "gameId": 87,
+      "level": 2,
+      "seed": 7
+    },
+    {
+      "gameId": 87,
+      "level": 2,
+      "seed": 42
+    },
+    {
+      "gameId": 87,
+      "level": 2,
+      "seed": 2026
+    },
+    {
+      "gameId": 87,
+      "level": 3,
+      "seed": 7
+    },
+    {
+      "gameId": 87,
+      "level": 3,
+      "seed": 42
+    },
+    {
+      "gameId": 87,
+      "level": 3,
+      "seed": 2026
+    },
+    {
+      "gameId": 87,
+      "level": 4,
+      "seed": 7
+    },
+    {
+      "gameId": 87,
+      "level": 4,
+      "seed": 42
+    },
+    {
+      "gameId": 87,
+      "level": 4,
+      "seed": 2026
+    },
+    {
+      "gameId": 0,
+      "level": 0,
+      "seed": 7
+    },
+    {
+      "gameId": 0,
+      "level": 0,
+      "seed": 2026
+    },
+    {
+      "gameId": 0,
+      "level": 4,
+      "seed": 7
+    },
+    {
+      "gameId": 0,
+      "level": 4,
+      "seed": 2026
+    },
+    {
+      "gameId": 13,
+      "level": 0,
+      "seed": 7
+    },
+    {
+      "gameId": 13,
+      "level": 0,
+      "seed": 2026
+    },
+    {
+      "gameId": 13,
+      "level": 4,
+      "seed": 7
+    },
+    {
+      "gameId": 13,
+      "level": 4,
+      "seed": 2026
+    },
+    {
+      "gameId": 15,
+      "level": 0,
+      "seed": 7
+    },
+    {
+      "gameId": 15,
+      "level": 0,
+      "seed": 2026
+    },
+    {
+      "gameId": 15,
+      "level": 4,
+      "seed": 7
+    },
+    {
+      "gameId": 15,
+      "level": 4,
+      "seed": 2026
+    },
+    {
+      "gameId": 18,
+      "level": 0,
+      "seed": 7
+    },
+    {
+      "gameId": 18,
+      "level": 0,
+      "seed": 2026
+    },
+    {
+      "gameId": 18,
+      "level": 4,
+      "seed": 7
+    },
+    {
+      "gameId": 18,
+      "level": 4,
+      "seed": 2026
+    },
+    {
+      "gameId": 26,
+      "level": 0,
+      "seed": 7
+    },
+    {
+      "gameId": 26,
+      "level": 0,
+      "seed": 2026
+    },
+    {
+      "gameId": 26,
+      "level": 4,
+      "seed": 7
+    },
+    {
+      "gameId": 26,
+      "level": 4,
+      "seed": 2026
+    },
+    {
+      "gameId": 44,
+      "level": 0,
+      "seed": 7
+    },
+    {
+      "gameId": 44,
+      "level": 0,
+      "seed": 2026
+    },
+    {
+      "gameId": 44,
+      "level": 4,
+      "seed": 7
+    },
+    {
+      "gameId": 44,
+      "level": 4,
+      "seed": 2026
+    },
+    {
+      "gameId": 50,
+      "level": 0,
+      "seed": 7
+    },
+    {
+      "gameId": 50,
+      "level": 0,
+      "seed": 2026
+    },
+    {
+      "gameId": 50,
+      "level": 4,
+      "seed": 7
+    },
+    {
+      "gameId": 50,
+      "level": 4,
+      "seed": 2026
+    },
+    {
+      "gameId": 58,
+      "level": 0,
+      "seed": 7
+    },
+    {
+      "gameId": 58,
+      "level": 0,
+      "seed": 2026
+    },
+    {
+      "gameId": 58,
+      "level": 4,
+      "seed": 7
+    },
+    {
+      "gameId": 58,
+      "level": 4,
+      "seed": 2026
+    },
+    {
+      "gameId": 66,
+      "level": 0,
+      "seed": 7
+    },
+    {
+      "gameId": 66,
+      "level": 0,
+      "seed": 2026
+    },
+    {
+      "gameId": 66,
+      "level": 4,
+      "seed": 7
+    },
+    {
+      "gameId": 66,
+      "level": 4,
+      "seed": 2026
+    },
+    {
+      "gameId": 108,
+      "level": 0,
+      "seed": 7
+    },
+    {
+      "gameId": 108,
+      "level": 0,
+      "seed": 2026
+    },
+    {
+      "gameId": 108,
+      "level": 4,
+      "seed": 7
+    },
+    {
+      "gameId": 108,
+      "level": 4,
+      "seed": 2026
+    }
+  ],
+  "results": [
+    {
+      "gameId": 87,
+      "level": 0,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level0-seed7/summary.json",
+      "score": 4,
+      "decisions": 91,
+      "apiErrors": 0,
+      "inputTokens": 354055,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 57755,
+      "latencyMs": {
+        "p50": 564,
+        "p95": 957
+      }
+    },
+    {
+      "gameId": 87,
+      "level": 0,
+      "seed": 42,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level0-seed42/summary.json",
+      "score": 4,
+      "decisions": 91,
+      "apiErrors": 0,
+      "inputTokens": 354055,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 58628,
+      "latencyMs": {
+        "p50": 575,
+        "p95": 936
+      }
+    },
+    {
+      "gameId": 87,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level0-seed2026/summary.json",
+      "score": 4,
+      "decisions": 91,
+      "apiErrors": 0,
+      "inputTokens": 354055,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 58822,
+      "latencyMs": {
+        "p50": 590,
+        "p95": 995
+      }
+    },
+    {
+      "gameId": 87,
+      "level": 1,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level1-seed7/summary.json",
+      "score": 3,
+      "decisions": 31,
+      "apiErrors": 0,
+      "inputTokens": 91598,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 16585,
+      "latencyMs": {
+        "p50": 516,
+        "p95": 826
+      }
+    },
+    {
+      "gameId": 87,
+      "level": 1,
+      "seed": 42,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level1-seed42/summary.json",
+      "score": 3,
+      "decisions": 31,
+      "apiErrors": 0,
+      "inputTokens": 91598,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 16573,
+      "latencyMs": {
+        "p50": 511,
+        "p95": 764
+      }
+    },
+    {
+      "gameId": 87,
+      "level": 1,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level1-seed2026/summary.json",
+      "score": 3,
+      "decisions": 31,
+      "apiErrors": 0,
+      "inputTokens": 91598,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 17687,
+      "latencyMs": {
+        "p50": 516,
+        "p95": 871
+      }
+    },
+    {
+      "gameId": 87,
+      "level": 2,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level2-seed7/summary.json",
+      "score": 3,
+      "decisions": 26,
+      "apiErrors": 0,
+      "inputTokens": 74981,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 13920,
+      "latencyMs": {
+        "p50": 518,
+        "p95": 670
+      }
+    },
+    {
+      "gameId": 87,
+      "level": 2,
+      "seed": 42,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level2-seed42/summary.json",
+      "score": 3,
+      "decisions": 26,
+      "apiErrors": 0,
+      "inputTokens": 74981,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 13938,
+      "latencyMs": {
+        "p50": 507,
+        "p95": 715
+      }
+    },
+    {
+      "gameId": 87,
+      "level": 2,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level2-seed2026/summary.json",
+      "score": 3,
+      "decisions": 26,
+      "apiErrors": 0,
+      "inputTokens": 74981,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 15430,
+      "latencyMs": {
+        "p50": 521,
+        "p95": 851
+      }
+    },
+    {
+      "gameId": 87,
+      "level": 3,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level3-seed7/summary.json",
+      "score": 3,
+      "decisions": 31,
+      "apiErrors": 0,
+      "inputTokens": 90103,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 15849,
+      "latencyMs": {
+        "p50": 477,
+        "p95": 738
+      }
+    },
+    {
+      "gameId": 87,
+      "level": 3,
+      "seed": 42,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level3-seed42/summary.json",
+      "score": 3,
+      "decisions": 31,
+      "apiErrors": 0,
+      "inputTokens": 90103,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 18052,
+      "latencyMs": {
+        "p50": 538,
+        "p95": 812
+      }
+    },
+    {
+      "gameId": 87,
+      "level": 3,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level3-seed2026/summary.json",
+      "score": 3,
+      "decisions": 31,
+      "apiErrors": 0,
+      "inputTokens": 90103,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 16874,
+      "latencyMs": {
+        "p50": 519,
+        "p95": 806
+      }
+    },
+    {
+      "gameId": 87,
+      "level": 4,
+      "seed": 7,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level4-seed7/summary.json",
+      "score": 2,
+      "decisions": 8,
+      "apiErrors": 0,
+      "inputTokens": 19219,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 4600,
+      "latencyMs": {
+        "p50": 445,
+        "p95": 941
+      }
+    },
+    {
+      "gameId": 87,
+      "level": 4,
+      "seed": 42,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level4-seed42/summary.json",
+      "score": 2,
+      "decisions": 8,
+      "apiErrors": 0,
+      "inputTokens": 19219,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 4152,
+      "latencyMs": {
+        "p50": 416,
+        "p95": 789
+      }
+    },
+    {
+      "gameId": 87,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "win",
+      "exitCode": 0,
+      "receipt": "game87-level4-seed2026/summary.json",
+      "score": 2,
+      "decisions": 8,
+      "apiErrors": 0,
+      "inputTokens": 19219,
+      "actionIntegrity": true,
+      "endedBy": "game-over",
+      "elapsedMs": 5163,
+      "latencyMs": {
+        "p50": 516,
+        "p95": 1061
+      }
+    },
+    {
+      "gameId": 0,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game0-level0-seed2026/summary.json",
+      "score": 10,
+      "decisions": 33,
+      "apiErrors": 1,
+      "inputTokens": 77212,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 22367,
+      "latencyMs": {
+        "p50": 438,
+        "p95": 710
+      }
+    },
+    {
+      "gameId": 0,
+      "level": 0,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game0-level0-seed7/summary.json",
+      "score": 11,
+      "decisions": 34,
+      "apiErrors": 1,
+      "inputTokens": 79604,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 25824,
+      "latencyMs": {
+        "p50": 510,
+        "p95": 896
+      }
+    },
+    {
+      "gameId": 0,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game0-level4-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 812,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 0,
+      "level": 4,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game0-level4-seed7/summary.json",
+      "score": 7,
+      "decisions": 32,
+      "apiErrors": 1,
+      "inputTokens": 72709,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 21564,
+      "latencyMs": {
+        "p50": 438,
+        "p95": 832
+      }
+    },
+    {
+      "gameId": 13,
+      "level": 0,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game13-level0-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1129,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 13,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game13-level0-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1200,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 13,
+      "level": 4,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game13-level4-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1142,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 13,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game13-level4-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1312,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 15,
+      "level": 0,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game15-level0-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1064,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 15,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game15-level0-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 940,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 15,
+      "level": 4,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game15-level4-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 865,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 15,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game15-level4-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1226,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 18,
+      "level": 0,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game18-level0-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1035,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 18,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game18-level0-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1199,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 18,
+      "level": 4,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game18-level4-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1031,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 18,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game18-level4-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1073,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 26,
+      "level": 0,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game26-level0-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1222,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 26,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game26-level0-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1293,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 26,
+      "level": 4,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game26-level4-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1350,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 26,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game26-level4-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1411,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 44,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game44-level0-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1032,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 44,
+      "level": 0,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game44-level0-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1468,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 44,
+      "level": 4,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game44-level4-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 996,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 50,
+      "level": 0,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game50-level0-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 829,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 44,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game44-level4-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1032,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 50,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game50-level0-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 525,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 50,
+      "level": 4,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game50-level4-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 685,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 50,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game50-level4-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 685,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 58,
+      "level": 0,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game58-level0-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 648,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 58,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game58-level0-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 555,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 58,
+      "level": 4,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game58-level4-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 666,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 58,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game58-level4-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 538,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 66,
+      "level": 0,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game66-level0-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 535,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 66,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game66-level0-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 539,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 66,
+      "level": 4,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game66-level4-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 562,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 66,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game66-level4-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 503,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 108,
+      "level": 0,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game108-level0-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 837,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 108,
+      "level": 0,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game108-level0-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1547,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 108,
+      "level": 4,
+      "seed": 7,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game108-level4-seed7/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 841,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    },
+    {
+      "gameId": 108,
+      "level": 4,
+      "seed": 2026,
+      "outcome": "error",
+      "exitCode": 1,
+      "receipt": "game108-level4-seed2026/summary.json",
+      "score": 0,
+      "decisions": 0,
+      "apiErrors": 1,
+      "inputTokens": 0,
+      "actionIntegrity": true,
+      "endedBy": "provider-error",
+      "elapsedMs": 1325,
+      "latencyMs": {
+        "p50": null,
+        "p95": null
+      }
+    }
+  ],
+  "totals": {
+    "decisions": 660,
+    "inputTokens": 2119393,
+    "win": 15,
+    "error": 40
+  },
+  "sokoban": {
+    "wins": 15,
+    "cases": 15,
+    "decisions": 561,
+    "inputTokens": 1889868,
+    "apiErrors": 0,
+    "allEngineActionsMatch": true
+  },
+  "engineChecks": {
+    "sourceCount": 351,
+    "sokobanWinningPathReplays": 15,
+    "expandedCases": 44,
+    "games": 11,
+    "levels": [
+      0,
+      4
+    ],
+    "seeds": [
+      7,
+      2026
+    ]
+  },
+  "webTests": {
+    "passed": 476,
+    "skipped": 4,
+    "failed": 0
+  },
+  "browser": {
+    "status": "quota-blocked",
+    "selectedGame": 87,
+    "selectedLevel": 4,
+    "displayedError": "Cloudflare Clef HTTP 429",
+    "won": false
+  },
+  "quota": {
+    "httpStatus": 429,
+    "cloudflareErrorCode": 4006,
+    "dailyFreeNeurons": 10000,
+    "automaticRetry": false
+  },
+  "limits": "No completed broader multi-game live results; no win-rate claim for unfinished or provider-blocked cases."
+}

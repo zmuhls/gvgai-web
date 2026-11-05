@@ -50,6 +50,7 @@ test('Java launch args include the streamed screenshot path', () => {
   }, 3, 2, screenshotPath);
 
   assert.equal(args[0], '-Djava.awt.headless=true');
+  assert.ok(args.includes('-Dgvgai.gameName=avoidgeorge'));
   assert.deepEqual(args.slice(args.indexOf('-gameId'), args.indexOf('-gameId') + 2), ['-gameId', '3']);
   assert.deepEqual(args.slice(args.indexOf('-levelId'), args.indexOf('-levelId') + 2), ['-levelId', '2']);
   assert.deepEqual(args.slice(args.indexOf('-socketPort'), args.indexOf('-socketPort') + 2), ['-socketPort', '8080']);

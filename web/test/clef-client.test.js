@@ -218,6 +218,23 @@ test('rejects a choice that contradicts the maximum preference', () => {
   assert.throws(() => parseClefResponse(data, actions), /inconsistent/);
 });
 
+test('Sokoban distinguishes verified wins, deadlocks and exhausted search budgets', () => {
+  const candidate = (status, engineVerified=false, solutionMoves=null) => ({
+    immediate:{position:[1,1],terminal:false,deadlocked:false},
+    continuation:{winner:engineVerified?'PLAYER_WINS':'NO_WINNER',steps:solutionMoves||1,scoreDelta:0,targetDistance:1},
+    puzzle:{status,engineVerified,solutionMoves}
+  });
+  const request = buildClefInput({...state,availableActions:[...actions,'ACTION_NIL'],actionOutcomes:{
+    ACTION_LEFT:candidate('no-solution'),ACTION_RIGHT:candidate('solution',true,29),
+    ACTION_NIL:candidate('budget-exhausted')
+  }},{gameName:'sokoban'},null,null);
+  assert.deepEqual(Object.keys(request.questions.action.criteria),['ACTION_RIGHT','ACTION_NIL']);
+  assert.match(request.questions.action.criteria.ACTION_RIGHT,/COMPLETE WIN VERIFIED IN JAVA: 29/);
+  assert.match(request.questions.action.criteria.ACTION_NIL,/budget-exhausted/);
+  assert.match(request.questions.action.instructions,/puzzles can require revisiting/);
+  assert.match(request.state.planning.method,/not guaranteed shortest/);
+});
+
 test('provider failure aborts a synchronized CLEF run without fabricating moves', async () => {
   const instance = client();
   instance.synchronousActions = true;

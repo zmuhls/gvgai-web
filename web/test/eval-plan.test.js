@@ -10,7 +10,7 @@ const FEATURED_MODEL_IDS = [
   'devstral-small-2:24b',
   'deepseek-v4-flash'
 ];
-const FEATURED_GAME_IDS = [50, 26, 15, 13, 20, 68, 18, 30, 63, 0];
+const FEATURED_GAME_IDS = [50, 26, 15, 13, 20, 68, 18, 30, 63, 0, 87];
 
 function loadEvalPlan() {
   try {
@@ -70,7 +70,7 @@ test('arcade eval plan interleaves games and models for marquee rotation', () =>
 
 test('arcade eval plan can cover the full model-native starter set', () => {
   const { buildArcadeEvalPlan } = loadEvalPlan();
-  const plan = buildArcadeEvalPlan({ gameCount: 10 });
+  const plan = buildArcadeEvalPlan({ gameCount: 11 });
 
   assert.deepEqual(plan.gameIds, FEATURED_GAME_IDS);
   assert.equal(plan.games[5].name, 'pacman');

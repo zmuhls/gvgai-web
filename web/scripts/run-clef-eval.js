@@ -53,6 +53,7 @@ async function main() {
   process.env.GVGAI_SEED = String(seed);
   process.env.GVGAI_SOCKET_PORT = String(await freePort());
   process.env.GVGAI_TRACE_DIR = path.join(output, 'traces');
+  process.env.GVGAI_SCREENSHOT_PATH = path.join(output, 'frame.png');
   process.env.MODEL_GUARDRAIL_STATE = path.join(output, 'usage-guardrail.json');
   for (const period of ['HOURLY', 'DAILY', 'MONTHLY']) {
     process.env[`MODEL_GUARDRAIL_${period}`] = String(modes.length * games.length * (maxActions + 2));
@@ -78,6 +79,7 @@ async function main() {
     'web/lib/grid-renderer.js', 'src/tracks/LearningMachine.java', 'src/core/game/SerializableStateObservation.java',
     'web/scripts/prepare-java-runtime.js', 'web/scripts/run-clef-eval.js',
     'src/tools/ActionLookahead.java', 'src/core/player/LearningPlayer.java', 'src/ontology/Types.java',
+    'src/tools/SokobanSearch.java',
     'src/ontology/avatar/MovingAvatar.java', 'src/core/vgdl/VGDLViewer.java',
     'src/tracks/singleLearning/utils/SocketComm.java',
     'examples/gridphysics/sokoban.txt', 'examples/gridphysics/sokoban_lvl0.txt',
@@ -95,7 +97,7 @@ async function main() {
         if (!committed.equals(fs.readFileSync(path.join(root, file)))) throw new Error(`Public source mismatch: ${file}`);
         report.sourceHashes[file] = crypto.createHash('sha256').update(committed).digest('hex');
       }
-      const runId = `${gameName}-${mode}-seed${seed}`;
+      const runId = `${gameName}-level${level}-${mode}-seed${seed}`;
       const events = [];
       const attempts = [];
       const engineActions = [];

@@ -86,6 +86,7 @@ function applyEnvOverrides(config, env = process.env) {
     if (Number.isInteger(socketPort) && socketPort > 0) next.gvgai.socketPort = socketPort;
   }
   if (env.GVGAI_RUNTIME_ROOT) next.gvgai.runtimeRoot = env.GVGAI_RUNTIME_ROOT;
+  if (env.GVGAI_SCREENSHOT_PATH) next.gvgai.screenshotPath = env.GVGAI_SCREENSHOT_PATH;
 
   if (env.LEGION_VLLM_URL) {
     next.legion = { ...(next.legion || {}), apiUrl: env.LEGION_VLLM_URL };

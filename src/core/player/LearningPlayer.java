@@ -63,7 +63,7 @@ public class LearningPlayer extends Player {
                 case JSON_PLANNING:
                     so.currentGameState = Types.GAMESTATES.ACT_STATE;
                     sso = new SerializableStateObservation(so);
-                    sso.actionOutcomes = tools.ActionLookahead.evaluate(so);
+                    sso.actionOutcomes = tools.ActionLookahead.evaluate(so, System.getProperty("gvgai.gameName"));
                     comm.commSend(sso.serialize(null));
                     break;
                 case JSON:

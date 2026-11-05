@@ -10,9 +10,9 @@ const gamesRoute = require('../routes/games-local');
 
 const WEB_ROOT = path.resolve(__dirname, '..');
 
-test('public game library contains only the ten retained cabinets', () => {
+test('public game library includes Sokoban after the ten retained cabinets', () => {
   assert.deepEqual(readFeaturedIds(path.resolve(WEB_ROOT, '..')), [
-    50, 26, 15, 13, 20, 68, 18, 30, 63, 0
+    50, 26, 15, 13, 20, 68, 18, 30, 63, 0, 87
   ]);
 });
 
@@ -20,6 +20,7 @@ test('games route derives stable featured ranks', () => {
   const ranks = gamesRoute.loadFeaturedRanks();
 
   assert.equal(ranks.get(0), 10);
+  assert.equal(ranks.get(87), 11);
   assert.equal(ranks.get(14), undefined);
   assert.equal(ranks.get(19), undefined);
   assert.equal(ranks.get(44), undefined);
@@ -41,7 +42,7 @@ test('static game catalog agrees with featured data', () => {
     .map(game => game.id);
 
   assert.deepEqual(staticFeatured, featuredIds);
-  assert.equal(staticGames.length, 10);
+  assert.equal(staticGames.length, 11);
   assert.ok(staticGames.every(game => game.featured));
   for (const [index, gameId] of featuredIds.entries()) {
     const game = staticGames.find(row => row.id === gameId);
@@ -49,7 +50,7 @@ test('static game catalog agrees with featured data', () => {
   }
 });
 
-test('initial HTML cabinet grid contains the same ten-game library', () => {
+test('initial HTML cabinet grid contains the same public library', () => {
   const featuredIds = readFeaturedIds(path.resolve(WEB_ROOT, '..'));
   const html = fs.readFileSync(path.join(WEB_ROOT, 'public', 'index.html'), 'utf-8');
   const initialGrid = html.match(/<div id="games-grid">([\s\S]*?)<\/div>\s*<section class="companion-games"/);

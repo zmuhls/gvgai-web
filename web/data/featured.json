@@ -1,4 +1,4 @@
 {
-  "_comment": "The complete public Inference Arcade library. Cakybaky (14), chipschallenge (19), and frogs (44) were removed after repeat level-1 early losses. Order follows web/data/featured-ranking.json: wins, model passes, strategy breadth, win speed, and action diversity.",
-  "featured": [50, 26, 15, 13, 20, 68, 18, 30, 63, 0]
+  "_comment": "The public Inference Arcade library. The original ten retain their ranking; Sokoban is available with complete-solution search for CLEF. Cakybaky (14), chipschallenge (19), and frogs (44) remain outside the public rotation.",
+  "featured": [50, 26, 15, 13, 20, 68, 18, 30, 63, 0, 87]
 }

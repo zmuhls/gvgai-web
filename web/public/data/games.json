@@ -178,5 +178,23 @@
     "levelCount": 5,
     "featured": true,
     "featuredRank": 10
+  },
+  {
+    "id": 87,
+    "name": "sokoban",
+    "file": "examples/gridphysics/sokoban.txt",
+    "category": "gridphysics",
+    "archetype": "pusher-puzzle",
+    "pace": "deliberate",
+    "levels": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "levelCount": 5,
+    "featured": true,
+    "featuredRank": 11
   }
 ]

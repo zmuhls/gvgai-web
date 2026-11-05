@@ -21,11 +21,14 @@ function decisionPromptConfig(config) {
 }
 
 /** Define the one-step objective; criteria keys are the engine's legal actions. */
-function buildActionQuestion(criteria) {
+function buildActionQuestion(criteria, puzzle = false) {
   return {
     type: 'choice',
     instructions: 'Select the best action from the candidate evaluations in criteria. ' +
-      'First prefer fewer immediate losses across risk samples. Then prefer a simulated win in the fewest steps. Otherwise prefer survival, objective progress, ' +
+      (puzzle ? 'First prefer fewer immediate losses across risk samples. When a complete solution is engine-verified, choose the action with the fewest total moves to that win, including the first move. ' +
+      'A verified complete solution takes priority over nearby score gains, distance heuristics and recent-position penalties: puzzles can require revisiting a cell. ' +
+      'Otherwise prefer a simulated win in the fewest steps, then survival, objective progress, '
+        : 'First prefer fewer immediate losses across risk samples. Then prefer a simulated win in the fewest steps. Otherwise prefer survival, objective progress, ') +
       'higher continuation.utility (the simulator heuristic), higher future score and shorter traversable route to a useful target. Avoid deadlocked boxes, ' +
       'blocked moves and revisiting the same position without progress. ' +
       'continuation is an optimistic bounded simulation, not a guaranteed outcome. ' +
@@ -64,6 +67,9 @@ function buildClefInput(sso, config, tracker, strategy, modelId = MODEL_ID) {
     if (forecast?.terminal && forecast.winner !== 'PLAYER_WINS') excludedActions[action] = 'simulated immediate loss';
     if (forecasts?.[action]?.immediateLosses > 0) excludedActions[action] = `immediate loss in ${forecasts[action].immediateLosses}/${forecasts[action].riskSamples} simulations`;
     if (config?.gameName === 'sokoban' && forecast?.deadlocked) excludedActions[action] = 'box on a static dead square';
+    if (config?.gameName === 'sokoban' && forecasts?.[action]?.puzzle?.status === 'no-solution') {
+      excludedActions[action] = 'push-space search exhausted: no solution under the absorbing-hole rules';
+    }
   }
   // A forecast is fallible. If every action is rejected, expose all choices
   // and the warnings rather than inventing a safe action or a provider fallback.
@@ -82,6 +88,11 @@ function buildClefInput(sso, config, tracker, strategy, modelId = MODEL_ID) {
         `Best simulated continuation: ${f.winner}, score gain ${f.scoreDelta}, ` +
         `remaining route distance ${f.targetDistance}, ${f.steps} steps, utility ${f.utility ?? 'unknown'} (higher is better). ` +
         `Next position visited ${visits} times recently without score progress.`;
+      if (candidate.puzzle) {
+        description += candidate.puzzle.engineVerified
+          ? ` COMPLETE WIN VERIFIED IN JAVA: ${candidate.puzzle.solutionMoves} total moves including this action. Fewer total moves is better.`
+          : ` Complete-solution search: ${candidate.puzzle.status}. This is not a verified winning continuation.`;
+      }
       if (excludedActions[action]) description += ` WARNING: ${excludedActions[action]}; avoid this action if possible.`;
     }
     return [action, description];
@@ -107,12 +118,14 @@ function buildClefInput(sso, config, tracker, strategy, modelId = MODEL_ID) {
         position: entry.position.map(value => value / sso.blockSize), score: entry.score
       })),
       planning: forecasts ? {
-        method: 'GVGAI forward model, beam width 16, depth at most 12, at most 800 advances per action',
+        method: Object.values(forecasts).some(candidate => candidate.puzzle)
+          ? 'Bounded weighted push-space A* for reusable absorbing holes; complete solutions replayed in a copy of the Java engine. Paths are not guaranteed shortest. Limits: 60000 nodes, 250 ms, 300 moves per candidate. Budget exhaustion is unknown, not a deadlock.'
+          : 'GVGAI forward model, beam width 16, depth at most 12, at most 800 advances per action',
         warning: 'Stochastic forecasts may differ from reality. Distance is a heuristic, not a win condition.',
         excludedActions, allActionsUnsafe: !safe.length, candidates: forecasts
       } : null
     },
-    questions: { action: buildActionQuestion(criteria) }
+    questions: { action: buildActionQuestion(criteria, config?.gameName === 'sokoban') }
   };
 }
 

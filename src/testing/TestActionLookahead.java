@@ -14,11 +14,16 @@ import java.util.Map;
 /** Integration regressions using unmodified upstream levels, without a provider. */
 public final class TestActionLookahead {
     public static void main(String[] args) {
-        for (String gameName : new String[]{"sokoban", "hungrybirds", "camelRace", "crossfire", "butterflies", "chase"}) {
+        boolean expanded = args.length > 0 && "--expanded".equals(args[0]);
+        String[] games = expanded ? new String[]{"sokoban", "hungrybirds", "camelRace", "crossfire", "butterflies",
+            "chase", "aliens", "frogs", "labyrinth", "modality", "zelda"}
+            : new String[]{"sokoban", "hungrybirds", "camelRace", "crossfire", "butterflies", "chase"};
+        for (String gameName : games) for (int level : expanded ? new int[]{0,4} : new int[]{0})
+            for (int seed : expanded ? new int[]{7,2026} : new int[]{42}) {
             VGDLFactory.GetInstance().init();
             VGDLRegistry.GetInstance().init();
             Game game = new VGDLParser().parseGame("examples/gridphysics/" + gameName + ".txt");
-            game.buildLevel("examples/gridphysics/" + gameName + "_lvl0.txt", 42);
+            game.buildLevel("examples/gridphysics/" + gameName + "_lvl" + level + ".txt", seed);
             StateObservation state = game.getObservation();
             state.currentGameState = Types.GAMESTATES.ACT_STATE;
             Gson gson = new Gson();
@@ -31,11 +36,12 @@ public final class TestActionLookahead {
                 if (c == null || c.simulations > 800 || c.continuation.steps > 12) throw new AssertionError("Unbounded or missing forecast");
                 if (!c.continuation.actions.get(0).equals(action.toString())) throw new AssertionError("Forecast has wrong first action");
             }
-            if (gameName.equals("sokoban")) {
+            if (gameName.equals("sokoban") && level == 0) {
                 if (!forecasts.get("ACTION_UP").immediate.deadlocked) throw new AssertionError("Missed the first-push Sokoban deadlock");
                 if (forecasts.get("ACTION_LEFT").immediate.deadlocked) throw new AssertionError("Rejected a safe Sokoban move");
             }
-            System.out.println("PASS " + gameName + ": live state preserved, forecasts bounded, all legal actions covered");
+            System.out.println("PASS " + gameName + " level=" + level + " seed=" + seed +
+                ": live state preserved, forecasts bounded, all legal actions covered");
         }
     }
 }

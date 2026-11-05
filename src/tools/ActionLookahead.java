@@ -31,6 +31,14 @@ public final class ActionLookahead {
         public int simulations;
         public int immediateLosses;
         public int riskSamples = 7;
+        public PuzzleForecast puzzle;
+    }
+
+    public static class PuzzleForecast {
+        public String status;
+        public int expanded;
+        public Integer solutionMoves;
+        public boolean engineVerified;
     }
 
     private static class Node {
@@ -47,6 +55,11 @@ public final class ActionLookahead {
     }
 
     public static Map<String, Candidate> evaluate(StateObservation root) {
+        return evaluate(root, null);
+    }
+
+    public static Map<String, Candidate> evaluate(StateObservation root, String gameName) {
+        if ("sokoban".equals(gameName)) return evaluateSokoban(root);
         Map<String, Candidate> results = new LinkedHashMap<>();
         for (Types.ACTIONS action : root.getAvailableActions(true)) {
             Candidate result = new Candidate();
@@ -94,6 +107,37 @@ public final class ActionLookahead {
             }
             result.continuation = best.forecast;
             results.put(action.toString(), result);
+        }
+        return results;
+    }
+
+    private static Map<String, Candidate> evaluateSokoban(StateObservation root) {
+        Map<String, Candidate> results = new LinkedHashMap<>();
+        // Populate bounded suffix caches before comparing first actions.
+        SokobanSearch.solve(root);
+        for (Types.ACTIONS action : root.getAvailableActions(true)) {
+            Candidate c = new Candidate();
+            c.riskSamples = 1; c.simulations = 1;
+            StateObservation next = root.copy(); next.advance(action);
+            ArrayList<String> path = new ArrayList<>(Arrays.asList(action.toString()));
+            c.immediate = describe(next, path, root.getGameScore());
+            c.continuation = c.immediate;
+            c.puzzle = new PuzzleForecast();
+            SokobanSearch.Result solution = SokobanSearch.solve(next);
+            c.puzzle.status = solution.status; c.puzzle.expanded = solution.expanded;
+            if (solution.actions != null) {
+                StateObservation proof = next.copy();
+                for (Types.ACTIONS move : solution.actions) {
+                    if (proof.isGameOver()) break;
+                    proof.advance(move); path.add(move.toString()); c.simulations++;
+                }
+                if (proof.getGameWinner() == Types.WINNER.PLAYER_WINS) {
+                    c.puzzle.engineVerified = true;
+                    c.puzzle.solutionMoves = path.size();
+                    c.continuation = describe(proof, path, root.getGameScore());
+                } else c.puzzle.status = "model-mismatch";
+            }
+            results.put(action.toString(), c);
         }
         return results;
     }

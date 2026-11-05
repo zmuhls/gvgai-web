@@ -16,6 +16,7 @@
     "sync:cadavre-ui": "node scripts/sync-cadavre-ui.js",
     "eval:arcade": "node scripts/run-arcade-eval.js --dry-run --all",
     "eval:clef": "node scripts/run-clef-eval.js",
+    "eval:clef:matrix": "node scripts/run-clef-matrix.js",
     "eval:arcade:execute": "node scripts/run-arcade-eval.js",
     "tournament:run": "node scripts/run-model-tournament.js",
     "tournament:scheduled": "node scripts/run-model-tournament.js --local --roster-size 8 --challengers 4 --max-actions 40",

@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { getConfig } = require('./runtime-config');
 const { resolveScreenshotPath } = require('./screenshot-path');
+const { readGameRegistry } = require('./game-registry');
 const config = getConfig();
 const MAX_COMPLETED_PROCESSES = 20;
 
@@ -119,6 +120,9 @@ function buildJavaArgs(runtime, gameId, levelId, screenshotPath) {
     '-clientType', 'java',
     '-imgPath', screenshotPath
   ];
+
+  const gameName = readGameRegistry().get(Number(gameId))?.name;
+  if (gameName) args.splice(1, 0, `-Dgvgai.gameName=${gameName}`);
 
   if (process.env.GVGAI_SEED !== undefined) {
     const seed = Number(process.env.GVGAI_SEED);

@@ -93,11 +93,12 @@ const PREVIEW_GAMES = [
   { id: 18, name: 'chase', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 7 },
   { id: 30, name: 'digdug', category: 'gridphysics', archetype: 'navigator', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 8 },
   { id: 63, name: 'link', category: 'gridphysics', archetype: 'collector', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 9 },
-  { id: 0, name: 'aliens', category: 'gridphysics', archetype: 'shooter-lane', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 10 }
+  { id: 0, name: 'aliens', category: 'gridphysics', archetype: 'shooter-lane', pace: 'reactive', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 10 },
+  { id: 87, name: 'sokoban', category: 'gridphysics', archetype: 'pusher-puzzle', pace: 'deliberate', levels: [0, 1, 2, 3, 4], levelCount: 5, featured: true, featuredRank: 11 }
 ];
 
-const FEATURED_CABINET_COUNT = 10;
-const FEATURED_ORDER_IDS = [50, 26, 15, 13, 20, 68, 18, 30, 63, 0];
+const FEATURED_CABINET_COUNT = PREVIEW_GAMES.length;
+const FEATURED_ORDER_IDS = [50, 26, 15, 13, 20, 68, 18, 30, 63, 0, 87];
 
 const PREVIEW_MODELS = [
   {
