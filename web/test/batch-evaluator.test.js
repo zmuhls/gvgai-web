@@ -180,6 +180,18 @@ test('runEvalCase passes response type overrides to the live client', async () =
   assert.equal(result.finalScore, 3);
 });
 
+test('a missing or wrong Java seed aborts before creating a model client', async () => {
+  for (const stdout of ['', '[GAME] seed: 0']) {
+    let stopped = false;
+    await assert.rejects(runEvalCase({gameId:13,levelId:0},{expectedSeed:7,
+      gameManager:{startGame:async()=>({processId:'seed-check'}),waitForReady:async()=>true,
+        getProcessOutput:()=>({stdout,stderr:''}),stopGame:()=>{stopped=true;}},
+      createLLMClient:()=>assert.fail('must not create a provider client for an unverified seed')
+    }),/does not match requested seed 7/);
+    assert.equal(stopped,true);
+  }
+});
+
 test('prompt comparison marks different outcomes as meaningful', () => {
   const comparison = summarizePromptDifferences([
     {

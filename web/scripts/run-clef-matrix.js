@@ -18,7 +18,7 @@ function buildCases() {
 }
 
 function classify(receipt) {
-  if (!receipt || receipt.apiErrors || receipt.result?.error || !receipt.actionIntegrity ||
+  if (!receipt || !receipt.seedVerified || receipt.apiErrors || receipt.result?.error || !receipt.actionIntegrity ||
       receipt.controlDecisions || !receipt.modelDecisions) return 'error';
   if (receipt.result.won && receipt.endedBy === 'game-over') return 'win';
   if (receipt.endedBy === 'decision-cap') return 'capped';
@@ -83,6 +83,7 @@ async function main() {
       const summaryFile = path.join(caseDir,'summary.json');
       const receipt = fs.existsSync(summaryFile) ? JSON.parse(fs.readFileSync(summaryFile,'utf8')).results[0] : null;
       const result = {...c, outcome:classify(receipt), exitCode:code, receipt:name+'/summary.json',
+        effectiveSeed:receipt?.effectiveSeed, seedVerified:receipt?.seedVerified,
         score:receipt?.result?.finalScore, decisions:receipt?.modelDecisions, apiErrors:receipt?.apiErrors,
         inputTokens:receipt?.inputTokens, actionIntegrity:receipt?.actionIntegrity, endedBy:receipt?.endedBy,
         reportedCostUsd:receipt?.reportedCostUsd, servingProviders:receipt?.servingProviders,

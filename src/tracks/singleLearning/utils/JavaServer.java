@@ -169,7 +169,9 @@ public class JavaServer {
         }
         // This plays one selected level for a batch-eval case.
         System.out.println("[GAME] Game idx:" + gameIdx + " game name " + gameName + " first level " + levelIdx);
-        LearningMachine.runOneGame(game, level_files[0], visuals, cmd, null, 0);
+        int randomSeed = Integer.getInteger("gvgai.seed", 0);
+        System.out.println("[GAME] seed: " + randomSeed);
+        LearningMachine.runOneGame(game, level_files[0], visuals, cmd, null, randomSeed);
 
 
 

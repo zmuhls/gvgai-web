@@ -85,7 +85,9 @@ contacting a provider and can never pass acceptance.
 The initial November 4 acceptance suite verified seven distinct wins with full Clef:
 Labyrinth, Crossfire, Hungry Birds, Camel Race, Butterflies, Chase and Modality.
 Sokoban initially reached its decision cap. The subsequent push-space search
-fix won all five original Sokoban levels on seeds 7, 42 and 2026: 15/15 runs.
+fix won all five original Sokoban levels: 15/15 repeated runs. A later startup
+audit found that the first level ignored requested seeds and always used zero;
+the seed path is now corrected and verified before paid evaluations begin.
 See the [expanded validation report](docs/clef-sokoban-expansion.md) for the
 complete matrix, provider failures and later transport checks.
 

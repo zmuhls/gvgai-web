@@ -11,7 +11,7 @@ test('matrix covers every Sokoban level on three seeds plus ten other games', ()
 });
 
 test('matrix never counts caps, provider failures or fabricated actions as wins', () => {
-  const ok = {apiErrors:0, actionIntegrity:true, controlDecisions:0, modelDecisions:8,
+  const ok = {apiErrors:0, seedVerified:true, actionIntegrity:true, controlDecisions:0, modelDecisions:8,
     result:{won:true,winner:'PLAYER_WINS'},endedBy:'game-over'};
   assert.equal(classify(ok),'win');
   assert.equal(classify({...ok,endedBy:'decision-cap'}),'capped');
@@ -19,6 +19,7 @@ test('matrix never counts caps, provider failures or fabricated actions as wins'
   assert.equal(classify({...ok,actionIntegrity:false}),'error');
   assert.equal(classify({...ok,controlDecisions:1}),'error');
   assert.equal(classify({...ok,modelDecisions:0}),'error');
+  assert.equal(classify({...ok,seedVerified:false}),'error');
   assert.equal(classify({...ok,result:{won:false,winner:'PLAYER_LOSES'}}),'loss');
 });
 

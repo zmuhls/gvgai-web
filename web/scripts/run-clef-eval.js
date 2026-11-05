@@ -83,7 +83,8 @@ async function main() {
     'src/tools/ActionLookahead.java', 'src/core/player/LearningPlayer.java', 'src/ontology/Types.java',
     'src/tools/SokobanSearch.java',
     'src/ontology/avatar/MovingAvatar.java', 'src/core/vgdl/VGDLViewer.java',
-    'src/tracks/singleLearning/utils/SocketComm.java',
+    'src/tracks/singleLearning/utils/SocketComm.java', 'src/tracks/singleLearning/utils/JavaServer.java',
+    'web/lib/batch-evaluator.js',
     'examples/gridphysics/sokoban.txt', 'examples/gridphysics/sokoban_lvl0.txt',
     'examples/gridphysics/aliens.txt', 'examples/gridphysics/aliens_lvl0.txt'];
   report.sourceHashes = Object.fromEntries(files.map(file => [file,
@@ -111,7 +112,7 @@ async function main() {
       let result;
       try {
         result = await runEvalCase(evalCase, {
-          timeoutMs, readyTimeoutMs: 60000,
+          timeoutMs, readyTimeoutMs: 60000, expectedSeed:seed,
           io: { emit(event, payload) {
             if (['llm-reasoning', 'model-decision-discarded', 'run-summary', 'llm-error', 'level-end'].includes(event)) {
               events.push({ event, payload });
@@ -197,7 +198,8 @@ async function main() {
       const decisions = events.filter(event => event.event === 'llm-reasoning').map(event => event.payload);
       const summary = events.find(event => event.event === 'run-summary')?.payload || {};
       const receipt = {
-        ...evalCase, mode, seed, elapsedMs: Date.now() - start, result,
+        ...evalCase, mode, seed, effectiveSeed:result.engineSeed, seedVerified:result.engineSeed === seed,
+        elapsedMs: Date.now() - start, result,
         endedBy: summary.endedBy || (summary.winner === 'PLAYER_WINS' || summary.winner === 'PLAYER_LOSES'
           ? 'game-over' : 'unknown'),
         apiAttempts: attempts.length, apiErrors: attempts.filter(attempt => attempt.error).length,

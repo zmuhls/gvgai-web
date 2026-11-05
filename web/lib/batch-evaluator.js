@@ -206,6 +206,11 @@ async function runEvalCase(evalCase, options = {}) {
       throw new Error(`Java game process did not report socket readiness within ${readyTimeoutMs}ms. Last stdout: ${stdout}. Last stderr: ${stderr}`);
     }
 
+    const seedMatch = gameManager.getProcessOutput(gameProcess.processId).stdout.match(/\[GAME\] seed: (-?\d+)/);
+    const engineSeed = seedMatch ? Number(seedMatch[1]) : null;
+    if (options.expectedSeed !== undefined && engineSeed !== options.expectedSeed) {
+      throw new Error(`Java engine seed ${engineSeed} does not match requested seed ${options.expectedSeed}; prepare the current Java runtime before evaluation`);
+    }
     llmClient = options.createLLMClient
       ? options.createLLMClient(evalCase)
       : new LLMClient({
@@ -244,6 +249,7 @@ async function runEvalCase(evalCase, options = {}) {
     const summary = await summaryPromise;
     return {
       ...normalizeEvalResult(evalCase, summary, options),
+      engineSeed,
       llmErrors,
       eventCount: sink.events.length
     };

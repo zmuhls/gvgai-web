@@ -9,6 +9,7 @@
     "dev": "nodemon server.js",
     "test": "node --test test/*.test.js",
     "test:cadavre": "node --test test/cadavre-*.test.js",
+    "test:seeds": "node scripts/check-java-seeds.js",
     "wall:migrate": "node scripts/migrate-cadavre-wall.js",
     "java:prepare": "node scripts/prepare-java-runtime.js",
     "telemetry:check": "node scripts/check-supabase-telemetry.js",

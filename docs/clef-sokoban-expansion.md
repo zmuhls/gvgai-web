@@ -48,15 +48,19 @@ simulation is search evidence rather than model-authored reasoning.
 The machine-readable [receipt](clef-expansion-2026-11-04.json) separates live
 model results from engine-only checks and blocked attempts.
 
-- **Sokoban: 15/15 live CLEF wins.** All five unchanged levels, each with seeds
-  7, 42, and 2026; 561 decisions, 1,889,868 reported input tokens, no provider
+- **Sokoban: 15/15 live CLEF wins.** All five unchanged levels, three repeats
+  each; 561 decisions, 1,889,868 reported input tokens, no provider
   errors, and every engine action matched that tick's typed model decision.
+  A later audit found that these first-level runs actually used seed zero:
+  the launch arguments requested 7, 42 and 2026, but JavaServer ignored them.
+  The original receipt's `seed` fields are requested seeds, not verified seeds.
 - Decisions per run by UI level: 91, 31, 26, 31, and 8. Scores: 4, 3, 3, 3, and 2.
-  Sokoban is deterministic; repeating seeds checks the integration, not a
+  Sokoban is deterministic; repeated runs check the integration, not a
   claim of stochastic robustness. The earlier development pilot also won
   level 0 in 91 decisions and is retained separately.
 - All 15 abstract solution paths were independently replayed to wins by Java
-  integration tests. The original state remained unchanged by search.
+  integration tests, which directly supplied seeds 7, 42 and 2026 to the engine.
+  The original state remained unchanged by search.
 - Engine-only expanded checks: 44 cases across 11 games, levels 0/4 and seeds
   7/2026. They verified unchanged observations, bounded forecasts, and coverage
   of every legal action. They do not establish CLEF game wins.
@@ -87,6 +91,14 @@ The release does not claim completed multi-game live coverage until those
 remaining cases have actual results.
 
 ## Reproduce
+
+JavaServer now passes the requested `gvgai.seed` into its first `runOneGame`
+call and reports the effective seed. The live evaluator checks that report
+before constructing a model client; stale Java builds stop without paid calls.
+`npm --prefix web run test:seeds` exercises the real Java socket with scripted
+actions: seed 7 reproduces exactly, while seed 2026 changes Butterflies' stochastic
+trajectory. It makes no model requests. The corrected 40-case run supersedes
+the interrupted OpenRouter batch whose first-level seed was still zero.
 
 Configure server-side credentials for the personal account or its dedicated
 relay, prepare Java, and use a new output directory:
