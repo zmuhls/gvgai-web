@@ -1,4 +1,5 @@
 const { buildPrompt, extractSpatialContext } = require('./state-converter');
+const { clefConnection } = require('./clef-connection');
 
 const MODEL_ID = '@cf/cloudflare/clef-flash';
 const DEFAULT_MODEL_ID = '@cf/cloudflare/clef';
@@ -153,20 +154,17 @@ async function requestClef(input, options = {}) {
   if (!modelId) throw new Error('Unsupported Cloudflare decision model');
   const body = JSON.stringify(input);
   if (Buffer.byteLength(body) > 64000) throw new Error('Clef decision context exceeds the 64 KB application limit');
-  const accountId = options.accountId || process.env.CLOUDFLARE_ACCOUNT_ID;
-  const apiToken = options.apiToken || process.env.CLOUDFLARE_API_TOKEN || process.env.CLOUDFLARE_AUTH_TOKEN;
-  if (!/^[a-f0-9]{32}$/i.test(accountId || '') || !apiToken) {
-    throw new Error('Clef needs CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN on the server');
-  }
+  const connection = clefConnection(modelId, process.env, options);
   const controller = new AbortController();
   const timeoutMs = options.timeoutMs || 12000;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await (options.fetch || fetch)(
-      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${modelId}`,
+      connection.url,
       {
         method: 'POST',
-        headers: { Authorization: `Bearer ${apiToken}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${connection.token}`, 'Content-Type': 'application/json' },
+        redirect: 'error',
         body,
         signal: controller.signal
       }

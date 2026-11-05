@@ -11,6 +11,8 @@
 // for Ollama-primary models the fallback simply takes over. Fallback slugs
 // below were verified against OpenRouter /api/v1/models on 2026-07-08.
 
+const { clefConnection } = require('./clef-connection');
+
 const MODELS = [
   {
     id: '@cf/cloudflare/clef', name: 'Clef',
@@ -209,7 +211,7 @@ function isModelAvailable(model, env = process.env) {
   if (!model) return false;
   switch (model.provider) {
     case 'cloudflare':
-      return Boolean((env.CLOUDFLARE_API_TOKEN || env.CLOUDFLARE_AUTH_TOKEN) && /^[a-f0-9]{32}$/i.test(env.CLOUDFLARE_ACCOUNT_ID || ''));
+      try { clefConnection(model.id, env); return true; } catch { return false; }
     case 'ollama-cloud':
       return Boolean(env.OLLAMA_CLOUD_API_KEY || env.OLLAMA_API_KEY) ||
         Boolean(model.fallback && env.OPENROUTER_API_KEY);

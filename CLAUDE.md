@@ -293,8 +293,13 @@ Human play traces → training data → QLoRA fine-tune → registry → the mod
 ## Deployment (Railway + Cloudflare + Supabase)
 
 **CLEF rollout (November 2026).** The arcade now prefers full Cloudflare CLEF
-when `CLOUDFLARE_ACCOUNT_ID` and a server-side `CLOUDFLARE_API_TOKEN` with Workers
-AI access are configured. CLEF uses typed decisions and synchronous simulator
+when a server-side connection is configured. Production uses `CLEF_RELAY_URL`
+and `CLEF_RELAY_SECRET` for the dedicated `ops/clef-worker` native AI binding in
+the operator's separate standard Cloudflare account. **Do not deploy this relay
+or route arcade inference through the CUNY AI Lab enterprise account.** The
+relay's configuration pins the intended account and rejects mismatches.
+Direct REST remains available with `CLOUDFLARE_ACCOUNT_ID` and a server-side
+`CLOUDFLARE_API_TOKEN` with Workers AI access. CLEF uses typed decisions and synchronous simulator
 lookahead through `JSON_PLANNING`; it does not use the legacy chat-model queue,
 40 ms controller budget, saved strategy memory, or provider fallback. See
 `docs/clef-overhaul.md` for research and validation limits.
@@ -306,8 +311,8 @@ limits explicitly on Railway: `MODEL_RUN_MAX_ACTIONS=300`,
 `MODEL_GUARDRAIL_DAILY=2000`, and `MODEL_GUARDRAIL_MONTHLY=10000`.
 These remain bounded shared allowances; the older 20-call limits stop most games
 before completion. Keep the existing disabled background-inference flags and
-`PORT=3000`. Use a durable API token in the production secret store, not a local
-Wrangler OAuth access token. Each CLEF browser run ends after the selected level.
+`PORT=3000`. Store the dedicated relay secret in Railway; never store a local
+Wrangler OAuth access token there. Each CLEF browser run ends after the selected level.
 
 The arcade is live at **https://inference-arcade.com** (Cloudflare-proxied apex CNAME → `gaaqisv1.up.railway.app`; the Railway-generated domain is `inference-arcade-production.up.railway.app`).
 

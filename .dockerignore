@@ -4,6 +4,9 @@ out
 sources.txt
 node_modules
 web/node_modules
+ops/clef-worker/node_modules
+ops/clef-worker/.cloudflare
+ops/clef-worker/.wrangler
 web/.gvgai-runtime*
 web/data/play-traces
 web/data/usage-guardrail.json

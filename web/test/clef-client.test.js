@@ -89,6 +89,32 @@ test('REST call uses the native model path and typed body', async () => {
   assert.equal(result.action, 'ACTION_RIGHT');
 });
 
+test('relay uses only its scoped secret and preserves typed response validation', async () => {
+  const relaySecret = 'relay-test-'.repeat(4);
+  const result = await requestClef(input(), {
+    relayUrl: 'https://clef.example', relaySecret, apiToken: 'must-not-be-sent',
+    fetch: async (url, options) => {
+      assert.equal(url, 'https://clef.example/v1/decision');
+      assert.equal(options.headers.Authorization, `Bearer ${relaySecret}`);
+      assert.equal(options.redirect, 'error');
+      assert.equal(JSON.parse(options.body).model, 'clef-flash');
+      return {ok:true,json:async()=>response()};
+    }
+  });
+  assert.equal(result.action, 'ACTION_RIGHT');
+  assert.equal(isModelAvailable(resolveModel(MODEL_ID), {CLEF_RELAY_URL:'https://clef.example',CLEF_RELAY_SECRET:relaySecret}), true);
+});
+
+test('invalid relay configuration fails closed without falling back to account credentials', async () => {
+  for (const relayUrl of ['http://clef.example', 'https://user:password@clef.example', 'https://clef.example/?token=secret', 'https://clef.example/path']) {
+    await assert.rejects(requestClef(input(), {
+      relayUrl, relaySecret:'r'.repeat(32), accountId:'a'.repeat(32),apiToken:'must-not-be-used',
+      fetch:async()=>assert.fail('must not send credentials')
+    }), /HTTPS origin/);
+  }
+  assert.equal(isModelAvailable(resolveModel(MODEL_ID), {CLEF_RELAY_URL:'https://clef.example'}),false);
+});
+
 test('HTTP error hides the upstream body and timeout covers body parsing', async () => {
   const options = { accountId: 'a'.repeat(32), apiToken: 'test-token' };
   await assert.rejects(requestClef(input(), { ...options,

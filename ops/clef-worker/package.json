@@ -1,0 +1,15 @@
+{
+  "name": "inference-arcade-clef",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "cf build",
+    "deploy": "cf deploy",
+    "test": "node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "2.0.0-beta.v.11",
+    "cf": "1.0.0-beta.27",
+    "vite": "8.3.5"
+  }
+}

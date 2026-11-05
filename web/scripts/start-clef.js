@@ -1,12 +1,10 @@
 #!/usr/bin/env node
 const { loadRootEnv } = require('./load-root-env');
+const { clefConnection } = require('../lib/clef-connection');
 
 async function main() {
   await loadRootEnv();
-  if (!/^[a-f0-9]{32}$/i.test(process.env.CLOUDFLARE_ACCOUNT_ID || '') ||
-      !(process.env.CLOUDFLARE_API_TOKEN || process.env.CLOUDFLARE_AUTH_TOKEN)) {
-    throw new Error('Set server-only CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN before starting CLEF.');
-  }
+  clefConnection('@cf/cloudflare/clef');
   // An explicit interactive profile; operator-supplied limits always win.
   const defaults = {
     MODEL_RUN_MAX_ACTIONS: '300', MODEL_RUN_MAX_PROVIDER_CALLS: '300', MODEL_RUN_MAX_MS: '600000',
